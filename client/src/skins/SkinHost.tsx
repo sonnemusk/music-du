@@ -4,7 +4,6 @@ import { CompactLayout } from "./layouts/CompactLayout";
 import { DockLayout } from "./layouts/DockLayout";
 import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
 import { SideLayout } from "./layouts/SideLayout";
-import { SplitLayout } from "./layouts/SplitLayout";
 import "./layouts/layouts.css";
 import "./themes/refined-base.css";
 
@@ -23,9 +22,6 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       break;
     case "immersive":
       layout = <ImmersiveLayout brand={brand} />;
-      break;
-    case "split":
-      layout = <SplitLayout brand={brand} />;
       break;
     case "compact":
       layout = <CompactLayout brand={brand} />;

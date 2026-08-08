@@ -6,7 +6,6 @@ export const LAYOUT_IDS = [
   "side",
   "dock",
   "immersive",
-  "split",
   "compact",
 ] as const;
 
@@ -19,7 +18,6 @@ export const LAYOUT_META: Record<
   side: { name: "侧栏", short: "侧", blurb: "左播放器 · 右列表" },
   dock: { name: "Dock", short: "底", blurb: "底部迷你条 + 导航" },
   immersive: { name: "沉浸", short: "浸", blurb: "封面虚化全屏背景" },
-  split: { name: "分栏", short: "分", blurb: "封面英雄区 + 文案" },
   compact: { name: "紧凑", short: "紧", blurb: "顶栏信息 + 列表" },
 };
 
