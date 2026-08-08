@@ -52,8 +52,18 @@ describe("theme catalog", () => {
     expect(fs.existsSync(path.join(root, "client/src/skins/layouts/SideLayout.tsx"))).toBe(
       true
     );
-    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/MoreLayouts.tsx"))).toBe(
+    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/ImmersiveLayout.tsx"))).toBe(
       true
+    );
+    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/CompactLayout.tsx"))).toBe(
+      true
+    );
+    // dead layout samples removed
+    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/MoreLayouts.tsx"))).toBe(
+      false
+    );
+    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/SplitLayout.tsx"))).toBe(
+      false
     );
   });
 });

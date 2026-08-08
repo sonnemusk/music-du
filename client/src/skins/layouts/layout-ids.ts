@@ -1,6 +1,6 @@
 /**
  * Active skin layouts — only those still used by THEME_CATALOG.
- * Extra layout components may remain in MoreLayouts for future use.
+ * (side / immersive / compact only; showcase layouts removed)
  */
 export const LAYOUT_IDS = [
   "side",

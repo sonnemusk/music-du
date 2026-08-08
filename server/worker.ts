@@ -27,6 +27,7 @@ import {
 import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, resolvePlay } from "./play.js";
+import { libraryTokenOk, mergeTrackList } from "./library-merge.js";
 import {
   ensureResolveCacheSchema,
   getResolveCache,
@@ -43,8 +44,8 @@ export type Env = {
   /** Comma-separated keys for fallback host (round-robin) */
   CHKSZ_FALLBACK_APIKEYS?: string;
   /**
-   * Shared secret for library R/W + /favs export.
-   * Header `X-Music-Token` or query `?token=` or cookie `music_tok`.
+   * Shared secret for /api/library only (SPA X-Music-Token).
+   * /favs + /export are gated by Cloudflare Access (not this token).
    */
   MUSIC_ACCESS_TOKEN?: string;
   ASSETS: Fetcher;
@@ -257,9 +258,9 @@ function libraryUnauthorized(c: {
     /* */
   }
   const got = header || queryTok.trim() || cookieTok.trim();
-  if (got && got === expected) return null;
+  if (libraryTokenOk(expected, got)) return null;
   return new Response(
-    JSON.stringify({ ok: false, error: "unauthorized — set X-Music-Token or ?token=" }),
+    JSON.stringify({ ok: false, error: "unauthorized — set X-Music-Token" }),
     { status: 401, headers: { "Content-Type": "application/json;charset=utf-8" } }
   );
 }
@@ -730,13 +731,14 @@ app.get("/api/library", async (c) => {
   return c.json({ ok: true, data: await loadLib(c.env.MUSIC_DU_DB) });
 });
 
-/** Short URL: open /favs?token=… to download favorites JSON (no UI button). */
+/**
+ * Short URL: open /favs or /export to download favorites JSON.
+ * No app token — protect with Cloudflare Access at the edge (see docs/ACCESS.md).
+ */
 async function favoritesExportResponse(c: {
   env: Env;
   req: { header: (n: string) => string | undefined; url: string };
 }) {
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return new Response(
       JSON.stringify({
@@ -782,56 +784,6 @@ async function favoritesExportResponse(c: {
 
 app.get("/favs", (c) => favoritesExportResponse(c));
 app.get("/export", (c) => favoritesExportResponse(c));
-
-/**
- * Merge library lists without accidental wipe.
- * - forceClear*: client explicitly cleared → take incoming (may be empty)
- * - else: incoming order first, then keep server-only rows (removals use DELETE)
- * Prevents a thin client state (e.g. 1 favorite) from clobbering D1 (22 favorites).
- */
-function mergeTrackList(
-  existing: any[],
-  incoming: any[] | undefined,
-  forceClear: boolean,
-  cap: number
-): any[] {
-  if (forceClear) {
-    const out: any[] = [];
-    const seen = new Set<string>();
-    for (const t of incoming || []) {
-      const id = t?.id ?? t?.sid;
-      if (id == null || id === "") continue;
-      const k = String(id);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push({ ...t, id: /^\d+$/.test(k) ? Number(k) : id });
-      if (out.length >= cap) break;
-    }
-    return out;
-  }
-  if (!incoming?.length) return existing || [];
-  const out: any[] = [];
-  const seen = new Set<string>();
-  for (const t of incoming) {
-    const id = t?.id ?? t?.sid;
-    if (id == null || id === "") continue;
-    const k = String(id);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push({ ...t, id: /^\d+$/.test(k) ? Number(k) : id });
-    if (out.length >= cap) break;
-  }
-  for (const t of existing || []) {
-    if (out.length >= cap) break;
-    const id = t?.id ?? t?.sid;
-    if (id == null || id === "") continue;
-    const k = String(id);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(t);
-  }
-  return out;
-}
 
 app.put("/api/library", async (c) => {
   const denied = libraryUnauthorized(c);

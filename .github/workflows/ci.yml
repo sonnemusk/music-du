@@ -55,3 +55,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+      - name: Smoke production after deploy
+        env:
+          SMOKE_BASE: https://music.dubin.cc
+          MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
+        run: bash scripts/smoke-prod.sh

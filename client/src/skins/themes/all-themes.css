@@ -72,23 +72,6 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
 }
-.theme-aurora .dock-mini {
-  background: rgba(12, 20, 40, 0.92);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  backdrop-filter: blur(14px);
-}
-.theme-aurora .dock-mini-play {
-  background: var(--accent);
-  color: var(--accent-fg);
-}
-.theme-aurora .dock-nav {
-  background: rgba(8, 12, 24, 0.94);
-  border-top: 1px solid var(--line);
-}
-.theme-aurora .dock-nav button.on {
-  color: var(--accent);
-}
 .theme-aurora .seek-row input {
   accent-color: var(--accent);
 }
@@ -379,9 +362,6 @@
   color: #fff;
   border-radius: 0 15px 15px 0;
 }
-.theme-sakura .dock-title {
-  color: #9f1239;
-}
 .theme-sakura .track-row {
   background: rgba(255, 255, 255, 0.7);
   border-radius: 16px;
@@ -394,27 +374,6 @@
 }
 .theme-sakura .track-row .cov {
   border-radius: 12px;
-}
-.theme-sakura .dock-mini {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(251, 113, 133, 0.12);
-}
-.theme-sakura .dock-mini-cov {
-  border-radius: 12px;
-  overflow: hidden;
-}
-.theme-sakura .dock-mini-play {
-  background: var(--accent);
-  color: #fff;
-}
-.theme-sakura .dock-nav {
-  background: rgba(255, 241, 242, 0.95);
-  border-top: 1px solid var(--line);
-}
-.theme-sakura .dock-nav button.on {
-  color: var(--accent);
 }
 .theme-sakura .t-btn {
   border-radius: 50%;
@@ -773,12 +732,6 @@
   color: #1a0f0a;
   border-radius: 0 13px 13px 0;
 }
-.theme-sunset .dock-title {
-  background: linear-gradient(90deg, #fdba74, #fb7185);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 .theme-sunset .track-row {
   border-radius: 14px;
 }
@@ -788,27 +741,6 @@
 }
 .theme-sunset .track-row .cov {
   border-radius: 12px;
-}
-.theme-sunset .dock-mini {
-  background: linear-gradient(135deg, rgba(67, 20, 7, 0.95), rgba(26, 15, 10, 0.95));
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-}
-.theme-sunset .dock-mini-cov {
-  border-radius: 10px;
-  overflow: hidden;
-}
-.theme-sunset .dock-mini-play {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #1a0f0a;
-}
-.theme-sunset .dock-nav {
-  background: rgba(12, 10, 9, 0.94);
-  border-top: 1px solid var(--line);
-}
-.theme-sunset .dock-nav button.on {
-  color: var(--accent);
 }
 .theme-sunset .t-btn {
   border-radius: 50%;

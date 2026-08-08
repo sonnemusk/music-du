@@ -146,8 +146,19 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   }, [mode, locateRequest?.id, locateRequest?.nonce, curTrack?.id, tracks.length]);
 
   const play = (t: Track) => {
-    // Double-click / keyboard only — single click would fire twice on dblclick and cancel resolve
     void playTrack(t, { from: mode });
+  };
+
+  /** Touch / coarse pointer: single tap plays. Mouse: double-click (avoids accidental play). */
+  const isTouchUi = () => {
+    try {
+      if (typeof window === "undefined") return false;
+      if (window.matchMedia?.("(pointer: coarse)").matches) return true;
+      if (navigator.maxTouchPoints > 0) return true;
+    } catch {
+      /* */
+    }
+    return false;
   };
 
   const preferredQuality = usePlayer((s) => s.preferredQuality);
@@ -186,12 +197,17 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
             }}
             data-track-id={String(t.id)}
             className={`track-row ${active ? "playing" : ""} ${active && loadingPlay ? "loading" : ""}`}
-            onDoubleClick={() => play(t)}
+            onClick={() => {
+              if (isTouchUi()) play(t);
+            }}
+            onDoubleClick={() => {
+              if (!isTouchUi()) play(t);
+            }}
             onMouseEnter={() => warmRow(t)}
             onFocus={() => warmRow(t)}
             role="button"
             tabIndex={0}
-            title="双击播放"
+            title={isTouchUi() ? "点击播放" : "双击播放"}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
