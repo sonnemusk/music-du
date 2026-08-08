@@ -9,8 +9,8 @@ import { usePlayer } from "../store/player";
  * [/] or P/N prev / next
  * M          mute
  * F          favorite current
- * 1–3        cycle play mode (list/single/shuffle via repeated cycle? use L for mode)
  * L          cycle play mode
+ * G / .      locate playing track in list (收藏 preferred)
  * Esc        close theme panel
  */
 export function KeyboardShortcuts() {
@@ -20,6 +20,7 @@ export function KeyboardShortcuts() {
   const toggleMute = usePlayer((s) => s.toggleMute);
   const toggleFavorite = usePlayer((s) => s.toggleFavorite);
   const cycleMode = usePlayer((s) => s.cycleMode);
+  const locateCurrentInList = usePlayer((s) => s.locateCurrentInList);
   const setSkinOpen = usePlayer((s) => s.setSkinOpen);
   const skinOpen = usePlayer((s) => s.skinOpen);
 
@@ -71,6 +72,12 @@ export function KeyboardShortcuts() {
         cycleMode();
         return;
       }
+      // Goto: jump list scroll to now-playing (prefer 收藏)
+      if (key === "g" || key === "G" || key === ".") {
+        e.preventDefault();
+        locateCurrentInList();
+        return;
+      }
       if (key === "Escape" && skinOpen) {
         e.preventDefault();
         setSkinOpen(false);
@@ -86,6 +93,7 @@ export function KeyboardShortcuts() {
     toggleMute,
     toggleFavorite,
     cycleMode,
+    locateCurrentInList,
     setSkinOpen,
     skinOpen,
   ]);

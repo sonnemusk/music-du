@@ -270,6 +270,11 @@ type State = {
   muted: boolean;
   /** Sticky next-track id (esp. shuffle) so prefetch matches the real next() */
   predictedNextId: string | null;
+  /**
+   * Bump to ask TrackList to scroll the playing row into view.
+   * `id` = track id; `nonce` forces re-scroll even if same id.
+   */
+  locateRequest: { id: string; nonce: number } | null;
 
   setAudio: (el: HTMLAudioElement | null) => void;
   setSkin: (s: SkinId) => void;
@@ -277,6 +282,8 @@ type State = {
   setSkinOpen: (v: boolean) => void;
   setTab: (t: PanelTab) => void;
   setSeeking: (v: boolean) => void;
+  /** Switch to 收藏 (or list that contains current) and scroll to playing row. */
+  locateCurrentInList: () => void;
   bootstrap: () => Promise<void>;
   search: (q: string) => Promise<void>;
   loadCharts: (
@@ -433,6 +440,7 @@ export const usePlayer = create<State>((set, get) => ({
   volume: typeof window !== "undefined" ? loadVolume() : 1,
   muted: typeof window !== "undefined" ? loadMuted() : false,
   predictedNextId: null,
+  locateRequest: null,
 
   setAudio: (el) => {
     const { volume, muted, curTrack, playing } = get();
@@ -463,6 +471,32 @@ export const usePlayer = create<State>((set, get) => ({
     get().setSkin(next);
   },
   setSkinOpen: (v) => set({ skinOpen: v }),
+  locateCurrentInList: () => {
+    const cur = get().curTrack;
+    if (!cur) {
+      get().showToast("当前没有播放中的歌曲");
+      return;
+    }
+    const id = String(cur.id);
+    const inList = (list: Track[]) => list.some((t) => String(t.id) === id);
+    // Prefer 收藏 when the track is favorited (user request); else active queue tab
+    let tab: PanelTab = get().tab;
+    if (inList(get().favorites)) tab = "favorites";
+    else if (inList(get().playlist)) tab = "playlist";
+    else if (inList(get().history)) tab = "history";
+    else if (inList(get().searchResults)) tab = "search";
+    else if (inList(get().chartTracks)) tab = "charts";
+    else {
+      get().showToast("播放中的歌曲不在当前列表里");
+      return;
+    }
+    const nonce = (get().locateRequest?.nonce || 0) + 1;
+    set({ tab, locateRequest: { id, nonce } });
+    // Also align queue when landing on favorites/playlist/history
+    if (tab === "favorites" || tab === "playlist" || tab === "history") {
+      set({ queueSource: tab });
+    }
+  },
   setTab: (t) => {
     set({ tab: t });
     if (t === "charts") void get().loadCharts();

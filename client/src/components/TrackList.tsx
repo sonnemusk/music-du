@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import * as api from "../lib/api";
 import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
@@ -15,11 +16,27 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   const playTrack = usePlayer((s) => s.playTrack);
   const curTrack = usePlayer((s) => s.curTrack);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
+  const locateRequest = usePlayer((s) => s.locateRequest);
   const isFavorite = usePlayer((s) => s.isFavorite);
   const toggleFavorite = usePlayer((s) => s.toggleFavorite);
   const addToPlaylist = usePlayer((s) => s.addToPlaylist);
   const removeFromPlaylist = usePlayer((s) => s.removeFromPlaylist);
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Scroll playing row into view when locateCurrentInList() fires
+  useEffect(() => {
+    if (!locateRequest?.id) return;
+    const el = rowRefs.current.get(String(locateRequest.id));
+    if (!el) return;
+    // Wait a frame so tab switch can paint the list first
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.add("track-row--flash");
+      window.setTimeout(() => el.classList.remove("track-row--flash"), 900);
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [locateRequest?.id, locateRequest?.nonce, tracks]);
 
   const play = (t: Track) => {
     // Single entry — do NOT also fire on double-click (would cancel resolve mid-flight)
@@ -49,6 +66,12 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
         return (
           <div
             key={`${String(t.id)}-${rank || i}`}
+            ref={(node) => {
+              const k = String(t.id);
+              if (node) rowRefs.current.set(k, node);
+              else rowRefs.current.delete(k);
+            }}
+            data-track-id={String(t.id)}
             className={`track-row ${active ? "playing" : ""} ${active && loadingPlay ? "loading" : ""}`}
             onClick={() => play(t)}
             onMouseEnter={() => warmRow(t)}

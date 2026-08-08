@@ -293,6 +293,18 @@ button.badge,
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+/* Brief highlight after “locate playing track” (G / .) */
+.track-row.track-row--flash {
+  animation: track-row-flash 0.85s ease-out;
+}
+@keyframes track-row-flash {
+  0% {
+    background: color-mix(in srgb, currentColor 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
 .track-rank {
   width: 28px;
   flex-shrink: 0;
