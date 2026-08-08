@@ -712,7 +712,7 @@ async function favoritesExportResponse(c: {
 }
 
 app.get("/favs", (c) => favoritesExportResponse(c));
-app.get("/f.json", (c) => favoritesExportResponse(c));
+app.get("/export", (c) => favoritesExportResponse(c));
 
 /**
  * Merge library lists without accidental wipe.

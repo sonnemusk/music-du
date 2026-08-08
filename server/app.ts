@@ -287,7 +287,7 @@ export function createApp(opts?: {
     });
   };
   app.get("/favs", favoritesExport);
-  app.get("/f.json", favoritesExport);
+  app.get("/export", favoritesExport);
 
   app.put("/api/library", async (c) => {
     try {
