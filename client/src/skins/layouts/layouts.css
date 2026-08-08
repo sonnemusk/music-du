@@ -781,8 +781,7 @@ button.badge,
   display: flex;
   align-items: center;
   gap: 10px;
-  /* Room for hover tip above the bar (was 12px → tip sat under 沉浸/♥) */
-  margin-top: 28px;
+  margin-top: 12px;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
