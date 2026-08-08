@@ -28,9 +28,13 @@ import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, resolvePlay } from "./play.js";
 import {
-  countNewFavorites,
-  parseFavsExportJson,
+  filterNewById,
+  minScoreForMatch,
+  parseImportPayload,
+  scoreNameMatch,
+  type FavsExportTrack,
 } from "./favs-import.js";
+import type { Track } from "./types.js";
 import {
   libraryRevisionOk,
   libraryTokenOk,
@@ -841,12 +845,15 @@ async function favoritesExportResponse(c: {
 app.get("/favs", (c) => favoritesExportResponse(c));
 app.get("/export", (c) => favoritesExportResponse(c));
 
-/** Import page — same Access gate as rest of site; no app token (like /favs). */
+/** Import page — Access-gated; supports /favs JSON + name lists. */
 function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
   const ok = Boolean(opts?.ok);
   const notice = msg
     ? `<p class="msg${ok ? " ok" : ""}">${msg.replace(/</g, "&lt;")}</p>`
-    : `<p class="hint">仅支持 <code>/favs</code> 导出的 JSON。按 <code>id</code> 与已有收藏去重，不会重复导入。</p>`;
+    : `<p class="hint">支持：<br/>
+      1) <code>/favs</code> 导出的 JSON（按 id 精确合并）<br/>
+      2) 文本/CSV：每行 <code>歌名</code> 或 <code>歌名 - 作者</code>（搜索匹配，可能有误差）<br/>
+      已有收藏按 <strong>id 去重</strong>，不会重复导入。</p>`;
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -857,10 +864,10 @@ function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
     body { margin: 0; min-height: 100vh; display: grid; place-items: center;
       background: #0b0b12; color: #f4f4f5; }
-    .card { width: min(420px, 92vw); padding: 28px 24px; border-radius: 16px;
+    .card { width: min(440px, 92vw); padding: 28px 24px; border-radius: 16px;
       background: #18181b; border: 1px solid #27272a; box-shadow: 0 20px 50px #0008; }
     h1 { margin: 0 0 8px; font-size: 1.25rem; }
-    .hint, .msg { margin: 0 0 16px; opacity: .7; font-size: .9rem; line-height: 1.45; }
+    .hint, .msg { margin: 0 0 16px; opacity: .7; font-size: .88rem; line-height: 1.5; }
     .msg { color: #fca5a5; opacity: 1; }
     .msg.ok { color: #6ee7b7; }
     code { font-size: .85em; opacity: .9; }
@@ -877,7 +884,7 @@ function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
     <h1>导入收藏</h1>
     ${notice}
     <form method="post" action="/import" enctype="multipart/form-data">
-      <input type="file" name="file" accept="application/json,.json" required />
+      <input type="file" name="file" accept="application/json,.json,.txt,.csv,text/plain,text/csv" required />
       <button type="submit">合并导入（自动去重）</button>
     </form>
     <p class="links"><a href="/">← 返回播放器</a> · <a href="/favs">导出 /favs</a></p>
@@ -888,40 +895,127 @@ function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
 
 app.get("/import", (c) => c.html(favoritesImportHtml()));
 
+/** Cap name-match rows per request (free-tier rate limits). */
+const IMPORT_NAME_MATCH_CAP = 80;
+
 app.post("/import", async (c) => {
   if (!c.env.MUSIC_DU_DB) {
     return c.html(favoritesImportHtml("D1 未配置，无法导入"), 503);
   }
   try {
+    injectEnv(c.env);
     const ct = c.req.header("content-type") || "";
-    let raw: unknown = null;
+    let text = "";
     if (ct.includes("multipart/form-data")) {
       const body = await c.req.parseBody();
       const file = body.file;
       if (file && typeof file === "object" && "text" in file) {
-        raw = JSON.parse(await (file as File).text());
+        text = await (file as File).text();
       } else if (typeof file === "string") {
-        raw = JSON.parse(file);
+        text = file;
       }
+    } else if (ct.includes("application/json")) {
+      text = JSON.stringify(await c.req.json().catch(() => null));
     } else {
-      raw = await c.req.json().catch(() => null);
+      text = await c.req.text();
     }
-    if (!raw) {
-      return c.html(favoritesImportHtml("未收到有效 JSON 文件"), 400);
+    if (!text?.trim()) {
+      return c.html(favoritesImportHtml("未收到文件内容"), 400);
     }
-    const parsed = parseFavsExportJson(raw);
+
+    const parsed = parseImportPayload(text);
     if (!parsed.ok) {
       return c.html(favoritesImportHtml(parsed.error), 400);
     }
-    const incoming = parsed.tracks;
+
     const existing = await loadLib(c.env.MUSIC_DU_DB);
-    const added = countNewFavorites(existing.favorites || [], incoming);
-    if (added === 0) {
-      // Nothing new — still bounce to player so SPA refreshes
-      return c.redirect(`/?imported=0&total=${(existing.favorites || []).length}`, 303);
+    const haveIds = new Set(
+      (existing.favorites || []).map((t: any) => String(t.id))
+    );
+
+    const resolved: FavsExportTrack[] = [];
+    const failed: string[] = [];
+    let skippedDup = 0;
+    let nameMatched = 0;
+
+    // Phase 1: exact ids
+    for (const row of parsed.rows) {
+      if (row.kind !== "exact") continue;
+      const k = String(row.id);
+      if (haveIds.has(k) || resolved.some((t) => String(t.id) === k)) {
+        skippedDup++;
+        continue;
+      }
+      resolved.push({
+        id: row.id,
+        name: row.name,
+        artist: row.artist,
+        album: row.album,
+        cover: row.cover,
+        duration: row.duration,
+      });
+      haveIds.add(k);
     }
-    // Merge only; never forceClear — existing ids win position, new ids append
-    const fav = mergeTrackList(existing.favorites || [], incoming, false, 2000);
+
+    // Phase 2: name / name+artist → search (slow; capped)
+    const nameRows = parsed.rows.filter((r) => r.kind === "name").slice(0, IMPORT_NAME_MATCH_CAP);
+    const overCap = parsed.rows.filter((r) => r.kind === "name").length - nameRows.length;
+    for (const row of nameRows) {
+      if (row.kind !== "name") continue;
+      try {
+        let hits: Track[] = await chksz.search(row.query, 8, {
+          apikey: withKey(c.env),
+        });
+        if (!hits.length && row.artist) {
+          hits = await chksz.search(row.name, 8, { apikey: withKey(c.env) });
+        }
+        let best: Track | null = null;
+        let bestScore = -1;
+        for (const h of hits) {
+          const sc = scoreNameMatch(row.name, row.artist, h.name, h.artist || "");
+          if (sc > bestScore) {
+            bestScore = sc;
+            best = h;
+          }
+        }
+        const need = minScoreForMatch(Boolean(row.artist));
+        if (!best || bestScore < need) {
+          failed.push(row.artist ? `${row.name} - ${row.artist}` : row.name);
+          continue;
+        }
+        const k = String(best.id);
+        if (haveIds.has(k)) {
+          skippedDup++;
+          continue;
+        }
+        resolved.push({
+          id: best.id,
+          name: best.name || row.name,
+          artist: best.artist || row.artist,
+          album: best.album || "",
+          cover: best.cover || "",
+          duration: Number(best.duration || 0) || 0,
+        });
+        haveIds.add(k);
+        nameMatched++;
+        // gentle pacing for free upstream
+        await new Promise((r) => setTimeout(r, 120));
+      } catch {
+        failed.push(row.artist ? `${row.name} - ${row.artist}` : row.name);
+      }
+    }
+
+    const onlyNew = filterNewById(existing.favorites || [], resolved);
+    if (!onlyNew.length) {
+      const total = (existing.favorites || []).length;
+      const failQ = failed.length ? `&failed=${failed.length}` : "";
+      return c.redirect(
+        `/?imported=0&total=${total}&skipped=${skippedDup}${failQ}`,
+        303
+      );
+    }
+
+    const fav = mergeTrackList(existing.favorites || [], onlyNew, false, 2000);
     const result = await saveLib(
       c.env.MUSIC_DU_DB,
       {
@@ -937,8 +1031,16 @@ app.post("/import", async (c) => {
       return c.html(favoritesImportHtml("库正在被其他端写入，请重试"), 409);
     }
     const total = (result.data.favorites || []).length;
-    // Redirect into SPA — client reloads library from query
-    return c.redirect(`/?imported=${added}&total=${total}`, 303);
+    const added = onlyNew.length;
+    const qs = new URLSearchParams({
+      imported: String(added),
+      total: String(total),
+      skipped: String(skippedDup),
+      matched: String(nameMatched),
+    });
+    if (failed.length) qs.set("failed", String(failed.length));
+    if (overCap > 0) qs.set("capped", String(overCap));
+    return c.redirect(`/?${qs.toString()}`, 303);
   } catch (e: any) {
     return c.html(
       favoritesImportHtml(`导入失败：${e?.message || String(e)}`),

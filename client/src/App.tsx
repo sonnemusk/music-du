@@ -28,16 +28,23 @@ export default function App() {
         if (!q.has("imported")) return;
         const added = Number(q.get("imported") || 0);
         const total = Number(q.get("total") || 0);
+        const skipped = Number(q.get("skipped") || 0);
+        const failed = Number(q.get("failed") || 0);
+        const capped = Number(q.get("capped") || 0);
         await reloadLibrary();
-        if (added > 0) {
-          showToast(`已导入 ${added} 首新歌${total ? `（共 ${total}）` : ""}`);
-        } else {
-          showToast(total ? `无新歌，收藏仍为 ${total} 首` : "无新歌可导入（已去重）");
-        }
+        const parts: string[] = [];
+        if (added > 0) parts.push(`新增 ${added} 首`);
+        else parts.push("无新歌");
+        if (total) parts.push(`共 ${total}`);
+        if (skipped) parts.push(`去重 ${skipped}`);
+        if (failed) parts.push(`未匹配 ${failed}`);
+        if (capped) parts.push(`名匹配上限外 ${capped}`);
+        showToast(parts.join(" · "));
         // Clean query so refresh doesn't re-toast
         const url = new URL(window.location.href);
-        url.searchParams.delete("imported");
-        url.searchParams.delete("total");
+        for (const k of ["imported", "total", "skipped", "failed", "matched", "capped"]) {
+          url.searchParams.delete(k);
+        }
         window.history.replaceState({}, "", url.pathname + url.search + url.hash);
       } catch {
         /* */

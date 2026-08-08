@@ -65,7 +65,7 @@ Workers Observability enabled in `wrangler.toml`. Useful log signals:
 | URL | Behavior |
 |-----|----------|
 | `GET /favs` | Download export JSON |
-| `GET/POST /import` | Upload **same** JSON shape; merge by id (dedupe); redirect `/?imported=&total=` |
+| `GET/POST /import` | (1) `/favs` JSON by id (2) text lines `歌名` / `歌名 - 作者` via search match; **dedupe by id**; redirect `/?imported=&total=&skipped=&failed=` |
 
 ## Node
 
