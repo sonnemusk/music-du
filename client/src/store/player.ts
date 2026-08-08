@@ -420,7 +420,7 @@ export const usePlayer = create<State>((set, get) => ({
   duration: 0,
   buffered: 0,
   quality: "",
-  preferredRank: typeof window !== "undefined" ? loadPreferredRank() : 0,
+  preferredRank: typeof window !== "undefined" ? loadPreferredRank() : 1,
   availableQualities: [],
   preferredQuality: DEFAULT_QUALITY,
   playSource: "",

@@ -95,7 +95,7 @@ export function QualityPicker({ className }: { className?: string }) {
               <p className="quality-opt--hint-line">
                 {probing ? "正在探测本曲可用音质…" : "先播放一首歌后再选音质"}
               </p>
-              <p className="quality-opt--hint-sub">默认优先最高可用档</p>
+              <p className="quality-opt--hint-sub">默认第二档（如沉浸）</p>
             </div>
           )}
         </div>

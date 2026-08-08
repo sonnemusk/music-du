@@ -29,8 +29,13 @@ const LABELS: Record<string, { short: string; label: string }> = {
   standard: { short: "标准", label: "标准" },
 };
 
-/** Intent for pre-resolve when we don't know availability yet — aim highest. */
-export const DEFAULT_QUALITY = "jymaster";
+/**
+ * Default quality = rank 1 (second of top-3), e.g. 沉浸/sky when available.
+ * Rank 0 is highest (母带); we prefer one step down for bandwidth by default.
+ */
+export const DEFAULT_QUALITY_RANK: QualityRank = 1;
+/** Intent level for pre-resolve when ladder unknown (matches DEFAULT_QUALITY_RANK). */
+export const DEFAULT_QUALITY = "sky";
 
 export const QUALITY_RANK_KEY = "kazam.v2.qualityRank";
 
@@ -40,7 +45,7 @@ export function labelForLevel(level: string | null | undefined): {
 } {
   const k = String(level || "").toLowerCase();
   if (LABELS[k]) return LABELS[k];
-  if (!k) return { short: "自动", label: "自动最高" };
+  if (!k) return { short: "自动", label: "自动（第二档）" };
   return { short: k.toUpperCase().slice(0, 4), label: k.toUpperCase() };
 }
 
@@ -74,12 +79,13 @@ export function loadPreferredRank(): QualityRank {
     if (n === 0 || n === 1 || n === 2) return n;
     // migrate old preferred level names → rank intent
     const old = localStorage.getItem("kazam.v2.preferredQuality");
+    if (old === "jymaster") return 0;
     if (old === "sky") return 1;
     if (old === "jyeffect") return 2;
   } catch {
     /* */
   }
-  return 0;
+  return DEFAULT_QUALITY_RANK;
 }
 
 export function savePreferredRank(rank: QualityRank): void {
@@ -97,7 +103,7 @@ export function savePreferredRank(rank: QualityRank): void {
 export function intentLevelForRank(rank: QualityRank): string {
   if (rank === 1) return "sky";
   if (rank === 2) return "jyeffect";
-  return DEFAULT_QUALITY;
+  return "jymaster"; // rank 0 = highest ladder intent
 }
 
 /** Pick level for play: rank among available; empty → sticky intent for that rank. */

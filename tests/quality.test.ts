@@ -10,8 +10,9 @@ import {
 } from "../client/src/lib/quality.js";
 
 describe("quality selection (dynamic top-3)", () => {
-  it("defaults to highest intent", () => {
-    expect(DEFAULT_QUALITY).toBe("jymaster");
+  it("defaults to second-tier intent (sky / 沉浸)", () => {
+    expect(DEFAULT_QUALITY).toBe("sky");
+    expect(labelForLevel("sky").short).toBe("沉浸");
     expect(labelForLevel("jymaster").short).toBe("母带");
     expect(labelForLevel("hires").label).toContain("Hi-Res");
   });
@@ -41,6 +42,7 @@ describe("quality selection (dynamic top-3)", () => {
     expect(pickLevelForRank([], 0)).toBe("jymaster");
     expect(pickLevelForRank([], 1)).toBe("sky");
     expect(pickLevelForRank([], 2)).toBe("jyeffect");
+    expect(intentLevelForRank(0)).toBe("jymaster");
     expect(intentLevelForRank(1)).toBe("sky");
   });
 
