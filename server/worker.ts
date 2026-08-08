@@ -118,6 +118,16 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
   const seen = new Set<string>();
   let pos = 0;
   const now = Date.now() / 1000;
+  // Batch inserts — sequential awaits time out past ~500 rows on free Workers
+  const stmts: D1PreparedStatement[] = [];
+  const flush = async () => {
+    if (!stmts.length) return;
+    const chunk = stmts.splice(0, stmts.length);
+    // D1 batch soft limit ~100 statements
+    for (let i = 0; i < chunk.length; i += 80) {
+      await db.batch(chunk.slice(i, i + 80));
+    }
+  };
   for (const raw of tracks || []) {
     const t = sanitize(raw);
     if (!t) continue;
@@ -125,30 +135,33 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
     if (seen.has(k)) continue;
     seen.add(k);
     if (pos >= cap) break;
-    await db
-      .prepare(
-        `INSERT INTO library_tracks
-         (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
-      )
-      .bind(
-        listType,
-        k,
-        pos,
-        t.name,
-        t.artist,
-        t.album,
-        t.cover,
-        t.duration,
-        t.level,
-        t.br,
-        t.size,
-        0,
-        now
-      )
-      .run();
+    stmts.push(
+      db
+        .prepare(
+          `INSERT INTO library_tracks
+           (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        )
+        .bind(
+          listType,
+          k,
+          pos,
+          t.name,
+          t.artist,
+          t.album,
+          t.cover,
+          t.duration,
+          t.level,
+          t.br,
+          t.size,
+          0,
+          now
+        )
+    );
     pos++;
+    if (stmts.length >= 80) await flush();
   }
+  await flush();
 }
 
 async function saveLib(db: D1Database, data: any) {
