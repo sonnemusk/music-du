@@ -130,13 +130,19 @@ async function main() {
         return;
       }
 
-      // production static
+      // production static (path-traversal safe)
       const pathname = decodeURIComponent(url.split("?")[0] || "/");
-      const safe = path.normalize(pathname).replace(/^(\.\.[/\\])+/, "");
-      const filePath = path.join(clientDist, safe === "/" ? "index.html" : safe);
+      const safe = path.normalize(pathname).replace(/^(\.\.[/\\])+/, "").replace(/^[/\\]+/, "");
+      const root = path.resolve(clientDist);
+      const filePath = path.resolve(root, safe === "" || safe === "." ? "index.html" : safe);
+      if (!filePath.startsWith(root + path.sep) && filePath !== root) {
+        res.statusCode = 403;
+        res.end("Forbidden");
+        return;
+      }
       if (serveStaticFile(filePath, res)) return;
       // SPA fallback
-      const index = path.join(clientDist, "index.html");
+      const index = path.join(root, "index.html");
       if (serveStaticFile(index, res)) return;
       res.statusCode = 404;
       res.end("Not found — run npm run build");
@@ -150,11 +156,9 @@ async function main() {
     console.log(
       `Music (${isProd ? "prod" : "dev"}) http://${HOST}:${PORT}`
     );
-    // Pre-warm hot charts + cover disk cache (daily-ish data)
-    if (CHKSZ_APIKEY) {
-      startChartWarmLoop({ apikey: CHKSZ_APIKEY });
-      console.log("chart warm loop started (12h fresh / 24h ttl, disk cache)");
-    }
+    // Free .top needs no key — always warm charts on Node
+    startChartWarmLoop({ apikey: CHKSZ_APIKEY || undefined });
+    console.log("chart warm loop started (12h fresh / 24h ttl, disk cache)");
   });
 }
 

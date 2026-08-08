@@ -8,12 +8,50 @@ import type {
   Track,
 } from "./types";
 
+const TOKEN_LS = "music.accessToken";
+
+/** Library access token — localStorage, or Vite build env. */
+export function getAccessToken(): string {
+  try {
+    const ls = localStorage.getItem(TOKEN_LS);
+    if (ls?.trim()) return ls.trim();
+  } catch {
+    /* */
+  }
+  const envTok = (import.meta as any).env?.VITE_MUSIC_ACCESS_TOKEN;
+  return typeof envTok === "string" ? envTok.trim() : "";
+}
+
+export function setAccessToken(token: string) {
+  try {
+    if (token.trim()) localStorage.setItem(TOKEN_LS, token.trim());
+    else localStorage.removeItem(TOKEN_LS);
+  } catch {
+    /* */
+  }
+}
+
+function withAuthHeaders(init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers || {});
+  const tok = getAccessToken();
+  if (tok) headers.set("X-Music-Token", tok);
+  return { credentials: "same-origin", ...init, headers };
+}
+
 async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
-  const r = await fetch(path, { credentials: "same-origin", ...opts });
-  const j = await r.json();
+  const r = await fetch(path, withAuthHeaders(opts));
+  let j: any = null;
+  try {
+    j = await r.json();
+  } catch {
+    j = null;
+  }
+  if (r.status === 401) {
+    throw new Error(j?.error || "unauthorized — library token required");
+  }
   if (!r.ok && j?.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
   if (j?.ok === false) throw new Error(j.error || "request failed");
-  return j;
+  return j as T;
 }
 
 export async function searchSongs(q: string, limit = 30): Promise<Track[]> {

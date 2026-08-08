@@ -507,9 +507,9 @@ export const usePlayer = create<State>((set, get) => ({
       api.resolveSong(id, { level: opts?.level || get().preferredQuality });
     if (t === "favorites") {
       prefetchSongResolves(get().favorites, resolve, { level: get().preferredQuality, 
-        limit: 48,
+        limit: 24,
         concurrency: 2,
-        startDelayMs: 80,
+        startDelayMs: 120,
       });
       // Auto-scroll after list has a chance to mount (defer nonce so TrackList effect re-runs)
       const cur = get().curTrack;
@@ -526,15 +526,15 @@ export const usePlayer = create<State>((set, get) => ({
       }
     } else if (t === "playlist") {
       prefetchSongResolves(get().playlist, resolve, { level: get().preferredQuality, 
-        limit: 40,
+        limit: 20,
         concurrency: 2,
-        startDelayMs: 80,
+        startDelayMs: 120,
       });
     } else if (t === "history") {
       prefetchSongResolves(get().history, resolve, { level: get().preferredQuality, 
-        limit: 30,
+        limit: 16,
         concurrency: 2,
-        startDelayMs: 80,
+        startDelayMs: 120,
       });
     } else if (t === "search") {
       prefetchSongResolves(get().searchResults, resolve, { level: get().preferredQuality, 
@@ -2045,16 +2045,17 @@ export const usePlayer = create<State>((set, get) => ({
       void api
         .deleteFromList("favorites", track.id)
         .then(applyLib(set))
-        .catch(() => persistSoon(get, { forceClearFavorites: !favorites.length }));
+        // Always force-clear on DELETE failure so merge cannot resurrect the row
+        .catch(() => persistSoon(get, { forceClearFavorites: true }));
     } else {
       favorites = [track, ...favorites.filter((x) => String(x.id) !== String(track.id))].slice(
         0,
-        500
+        2000
       );
       get().showToast(`已收藏: ${track.name}`);
       set({ favorites });
       void persistSoon(get);
-      // Eagerly cache newly favorited track audio
+      // Eagerly cache newly favorited track audio (best-effort; CF 302 may block IDB)
       void cacheAudioFromStream(track.id, { level: String(track.level || "") });
     }
   },
@@ -2077,7 +2078,7 @@ export const usePlayer = create<State>((set, get) => ({
     void api
       .deleteFromList("playlist", id)
       .then(applyLib(set))
-      .catch(() => persistSoon(get, { forceClearPlaylist: !playlist.length }));
+      .catch(() => persistSoon(get, { forceClearPlaylist: true }));
   },
 
   removeFromHistory: (id) => {
@@ -2087,7 +2088,7 @@ export const usePlayer = create<State>((set, get) => ({
     void api
       .deleteFromList("history", id)
       .then(applyLib(set))
-      .catch(() => persistSoon(get, { forceClearHistory: !history.length }));
+      .catch(() => persistSoon(get, { forceClearHistory: true }));
   },
 }));
 

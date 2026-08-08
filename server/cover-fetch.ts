@@ -14,7 +14,7 @@ const ALLOWED_HOST_SUFFIXES = [
   "music.163.com",
   "gtimg.cn",
   "y.qq.com",
-  "qq.com",
+  // not bare qq.com (too broad / open-proxy risk)
   "kugou.com",
   "kuwo.cn",
   "douyinpic.com",

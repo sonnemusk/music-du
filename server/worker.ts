@@ -42,6 +42,11 @@ export type Env = {
   CHKSZ_FALLBACK_BASE?: string;
   /** Comma-separated keys for fallback host (round-robin) */
   CHKSZ_FALLBACK_APIKEYS?: string;
+  /**
+   * Shared secret for library R/W + /favs export.
+   * Header `X-Music-Token` or query `?token=` or cookie `music_tok`.
+   */
+  MUSIC_ACCESS_TOKEN?: string;
   ASSETS: Fetcher;
   /** Free D1 library — dashboard name: music-du-library (binding MUSIC_DU_DB). */
   MUSIC_DU_DB?: D1Database;
@@ -119,17 +124,19 @@ async function loadLib(db: D1Database) {
   return { ...lists, curIdx };
 }
 
+/**
+ * Safe list rewrite: upsert first, then delete stale rows.
+ * Never DELETE-all before inserts — a mid-flight timeout used to wipe favorites
+ * (observed drop ~578 → ~240 ≈ partial batch after wipe).
+ */
 async function writeList(db: D1Database, listType: string, tracks: any[], cap: number) {
-  await db.prepare(`DELETE FROM library_tracks WHERE list_type=?`).bind(listType).run();
   const seen = new Set<string>();
   let pos = 0;
   const now = Date.now() / 1000;
-  // Batch inserts — sequential awaits time out past ~500 rows on free Workers
   const stmts: D1PreparedStatement[] = [];
   const flush = async () => {
     if (!stmts.length) return;
     const chunk = stmts.splice(0, stmts.length);
-    // D1 batch soft limit ~100 statements
     for (let i = 0; i < chunk.length; i += 80) {
       await db.batch(chunk.slice(i, i + 80));
     }
@@ -144,7 +151,7 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
     stmts.push(
       db
         .prepare(
-          `INSERT INTO library_tracks
+          `INSERT OR REPLACE INTO library_tracks
            (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
         )
@@ -168,6 +175,11 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
     if (stmts.length >= 80) await flush();
   }
   await flush();
+  // Drop rows not rewritten in this pass (removed tracks)
+  await db
+    .prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`)
+    .bind(listType, now)
+    .run();
 }
 
 async function saveLib(db: D1Database, data: any) {
@@ -188,18 +200,68 @@ async function deleteSid(db: D1Database, listType: string, sid: string) {
     .prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`)
     .bind(listType, String(sid))
     .run();
+  // Compact positions in one pass (avoid N sequential UPDATEs timing out)
   const { results } = await db
     .prepare(`SELECT sid FROM library_tracks WHERE list_type=? ORDER BY pos ASC`)
     .bind(listType)
     .all();
+  const stmts: D1PreparedStatement[] = [];
   let i = 0;
   for (const r of results || []) {
-    await db
-      .prepare(`UPDATE library_tracks SET pos=? WHERE list_type=? AND sid=?`)
-      .bind(i++, listType, (r as any).sid)
-      .run();
+    stmts.push(
+      db
+        .prepare(`UPDATE library_tracks SET pos=? WHERE list_type=? AND sid=?`)
+        .bind(i++, listType, (r as any).sid)
+    );
+    if (stmts.length >= 80) {
+      await db.batch(stmts.splice(0, stmts.length));
+    }
   }
+  if (stmts.length) await db.batch(stmts);
   return loadLib(db);
+}
+
+/** Library / export gate — requires MUSIC_ACCESS_TOKEN when configured. */
+function libraryUnauthorized(c: {
+  env: Env;
+  req: { header: (n: string) => string | undefined; url: string };
+}): Response | null {
+  const expected = (c.env.MUSIC_ACCESS_TOKEN || "").trim();
+  if (!expected) {
+    // Fail closed on production hostnames without token configured
+    try {
+      const host = new URL(c.req.url).hostname;
+      if (host.endsWith("dubin.cc") || host.endsWith("dubin.one") || host.endsWith("dubin.vip")) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "MUSIC_ACCESS_TOKEN not configured on worker",
+          }),
+          { status: 503, headers: { "Content-Type": "application/json;charset=utf-8" } }
+        );
+      }
+    } catch {
+      /* */
+    }
+    return null;
+  }
+  const header = (c.req.header("X-Music-Token") || c.req.header("x-music-token") || "").trim();
+  let queryTok = "";
+  let cookieTok = "";
+  try {
+    queryTok = new URL(c.req.url).searchParams.get("token") || "";
+    const cookie = c.req.header("Cookie") || "";
+    const m = cookie.match(/(?:^|;\s*)music_tok=([^;]+)/);
+    if (m) cookieTok = decodeURIComponent(m[1]);
+  } catch {
+    /* */
+  }
+  const got = header || queryTok.trim() || cookieTok.trim();
+  if (got && got === expected) return null;
+  return new Response(
+    JSON.stringify({ ok: false, error: "unauthorized — set X-Music-Token or ?token=" }),
+    { status: 401, headers: { "Content-Type": "application/json;charset=utf-8" } }
+  );
 }
 
 function withKey(env: Env) {
@@ -222,6 +284,7 @@ app.get("/api/health", (c) =>
     api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
     fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
     has_d1: Boolean(c.env.MUSIC_DU_DB),
+    library_auth: Boolean(c.env.MUSIC_ACCESS_TOKEN),
     project: "music-du",
     /** Free-tier contract for operators */
     policy: {
@@ -324,8 +387,9 @@ app.get("/api/song/:sid/qualities", async (c) => {
       if (cached.length >= Math.min(2, limit)) {
         const ladder = qualityLadder();
         const qualities = [...cached]
+          .filter((r) => r.level && r.level !== "default")
           .map((r) => ({
-            level: r.level === "default" ? "jymaster" : r.level,
+            level: r.level,
             br: r.br,
             size: r.size,
             url: r.url,
@@ -473,9 +537,12 @@ app.get("/api/song/:sid", async (c) => {
         (async () => {
           try {
             await ensureResolveCacheSchema(db);
+            // Only cache under the *actual* delivered level — never poison
+            // requested keys (e.g. jymaster) with a fallthrough standard URL.
+            const actualLevel = src.level || level || "default";
             await putResolveCache(db, {
               sid,
-              level: src.level || level || "default",
+              level: actualLevel,
               url: remoteUrl,
               br: src.br,
               size: src.size,
@@ -484,20 +551,6 @@ app.get("/api/song/:sid", async (c) => {
               cover: src.cover,
               source: src.source,
             });
-            // Also key under requested level so ?level=jymaster hits D1 next time
-            if (level && level !== src.level) {
-              await putResolveCache(db, {
-                sid,
-                level,
-                url: remoteUrl,
-                br: src.br,
-                size: src.size,
-                name: src.name,
-                artist: src.artist,
-                cover: src.cover,
-                source: src.source,
-              });
-            }
             await pruneResolveCache(db);
           } catch {
             /* */
@@ -508,7 +561,8 @@ app.get("/api/song/:sid", async (c) => {
     const body = JSON.stringify({ ok: true, data });
     const headers = {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "public, max-age=120, s-maxage=600, stale-while-revalidate=300",
+      // Keep edge ≤ D1 resolve TTL (~18m); signed CDN URLs die sooner
+      "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=120",
       "X-Song-Cache": "MISS",
     };
     const res = new Response(body, { status: 200, headers });
@@ -660,6 +714,8 @@ app.get("/api/cover-proxy", async (c) => {
 });
 
 app.get("/api/library", async (c) => {
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   // No D1 → 503 so client falls back to localStorage (free, no paid store)
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
@@ -674,11 +730,13 @@ app.get("/api/library", async (c) => {
   return c.json({ ok: true, data: await loadLib(c.env.MUSIC_DU_DB) });
 });
 
-/** Short URL: open /favs to download favorites JSON (no UI button). */
+/** Short URL: open /favs?token=… to download favorites JSON (no UI button). */
 async function favoritesExportResponse(c: {
   env: Env;
-  req: { url: string };
+  req: { header: (n: string) => string | undefined; url: string };
 }) {
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return new Response(
       JSON.stringify({
@@ -776,6 +834,8 @@ function mergeTrackList(
 }
 
 app.put("/api/library", async (c) => {
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
       { ok: false, error: "D1 not configured — browser localStorage only (free)", localOnly: true },
@@ -812,6 +872,8 @@ app.put("/api/library", async (c) => {
 });
 
 app.delete("/api/library/:listType/:sid", async (c) => {
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
       { ok: false, error: "D1 not configured — browser localStorage only (free)", localOnly: true },

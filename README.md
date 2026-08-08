@@ -55,11 +55,16 @@ Copy [`.env.example`](./.env.example). Variable **names** (not values) include:
 
 | Variable | Purpose |
 |----------|---------|
-| Upstream API key / base URL | Server-only music gateway |
+| `MUSIC_ACCESS_TOKEN` | Protects library + `/favs` (Worker secret) |
+| `VITE_MUSIC_ACCESS_TOKEN` | Same token baked into SPA for `X-Music-Token` |
+| `CHKSZ_API_BASE` | Free primary gateway (default `api.chksz.top`, no key) |
+| `CHKSZ_FALLBACK_*` | Paid `.com` backup + keys |
 | `HOST` / `PORT` | Node listen address |
 | `MUSIC_DATA_DIR` | SQLite + disk caches (Node) |
 
-**Never commit** `.env`, tokens, or real keys. Production secrets live in the host env, Cloudflare Worker secrets, or GitHub Actions secrets.
+**Never commit** `.env`, tokens, or real keys. Production secrets live in the host env, Cloudflare Worker secrets, or GitHub Actions secrets (`MUSIC_ACCESS_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
+
+Export favorites: `https://music.dubin.cc/favs?token=YOUR_TOKEN`
 
 ---
 

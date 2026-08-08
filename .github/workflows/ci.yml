@@ -44,7 +44,11 @@ jobs:
           cache: npm
       - run: npm ci
       # SPA assets must exist under dist/client before wrangler upload
-      - run: npm run build
+      - name: Build client + server
+        env:
+          # baked into SPA for library X-Music-Token (same value as Worker secret)
+          VITE_MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
+        run: npm run build
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
