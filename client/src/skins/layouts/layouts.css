@@ -617,12 +617,91 @@
   text-align: center;
   line-height: 1;
 }
-.seek-row input[type="range"] {
+/* Custom seek: buffer (mid) + played (bright) under transparent range input */
+.seek-track {
+  --seek-play: 0%;
+  --seek-buf: 0%;
+  position: relative;
   flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+.seek-track__rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  overflow: hidden;
+  pointer-events: none;
+}
+.seek-track__buffer,
+.seek-track__played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  max-width: 100%;
+}
+/* Buffered ahead of playhead — slightly lighter than track */
+.seek-track__buffer {
+  width: var(--seek-buf);
+  background: color-mix(in srgb, currentColor 38%, transparent);
+  transition: width 0.15s linear;
+}
+/* Already played */
+.seek-track__played {
+  width: var(--seek-play);
+  background: color-mix(in srgb, currentColor 82%, transparent);
+  transition: width 0.08s linear;
+}
+.seek-row input[type="range"],
+.seek-track input[type="range"] {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   height: 28px;
   margin: 0;
   cursor: pointer;
+  /* Transparent native track so our buffer/played rails show through */
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.seek-track input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+.seek-track input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+.seek-track input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: currentColor;
+  border: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+.seek-track input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: currentColor;
+  border: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
 }
 .transport.compact {
   max-width: none;

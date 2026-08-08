@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { usePlayer } from "../store/player";
 
 /** Shared transport controls — skins style via CSS scope. */
@@ -9,6 +10,8 @@ export function Transport({ compact }: { compact?: boolean }) {
   const modeLabel = usePlayer((s) => s.modeLabel);
   const currentTime = usePlayer((s) => s.currentTime);
   const duration = usePlayer((s) => s.duration);
+  const buffered = usePlayer((s) => s.buffered);
+  const playSource = usePlayer((s) => s.playSource);
   const fmt = usePlayer((s) => s.fmt);
   const seek = usePlayer((s) => s.seek);
   const setSeeking = usePlayer((s) => s.setSeeking);
@@ -20,6 +23,12 @@ export function Transport({ compact }: { compact?: boolean }) {
   const setVolume = usePlayer((s) => s.setVolume);
   const toggleMute = usePlayer((s) => s.toggleMute);
   const ratio = duration > 0 ? currentTime / duration : 0;
+  // Local blob / full cache always show full buffer; else clamp buffered ≥ played
+  const localFull =
+    /本地|blob|cache|缓存/i.test(playSource || "") || buffered >= 0.995;
+  const bufRatio = localFull ? 1 : Math.max(buffered, ratio);
+  const playPct = Math.round(ratio * 1000) / 10;
+  const bufPct = Math.round(bufRatio * 1000) / 10;
   const volPct = Math.round((muted ? 0 : volume) * 100);
 
   return (
@@ -65,20 +74,44 @@ export function Transport({ compact }: { compact?: boolean }) {
       )}
       <div className="seek-row">
         <span aria-hidden="true">{fmt(currentTime)}</span>
-        <input
-          type="range"
-          min={0}
-          max={1000}
-          step={1}
-          value={Math.floor(ratio * 1000)}
-          onMouseDown={() => setSeeking(true)}
-          onTouchStart={() => setSeeking(true)}
-          onInput={(e) => seek(Number((e.target as HTMLInputElement).value) / 1000)}
-          onChange={(e) => seek(Number(e.target.value) / 1000)}
-          onMouseUp={() => setSeeking(false)}
-          onTouchEnd={() => setSeeking(false)}
-          aria-label="播放进度"
-        />
+        <div
+          className="seek-track"
+          style={
+            {
+              "--seek-play": `${playPct}%`,
+              "--seek-buf": `${bufPct}%`,
+            } as CSSProperties
+          }
+          title={
+            duration > 0
+              ? `已播放 ${Math.round(playPct)}% · 已缓冲 ${Math.round(bufPct)}%`
+              : undefined
+          }
+        >
+          <div className="seek-track__rail" aria-hidden="true">
+            <div className="seek-track__buffer" />
+            <div className="seek-track__played" />
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1000}
+            step={1}
+            value={Math.floor(ratio * 1000)}
+            onMouseDown={() => setSeeking(true)}
+            onTouchStart={() => setSeeking(true)}
+            onInput={(e) => seek(Number((e.target as HTMLInputElement).value) / 1000)}
+            onChange={(e) => seek(Number(e.target.value) / 1000)}
+            onMouseUp={() => setSeeking(false)}
+            onTouchEnd={() => setSeeking(false)}
+            aria-label="播放进度"
+            aria-valuetext={
+              duration > 0
+                ? `${fmt(currentTime)} / ${fmt(duration)}，已缓冲 ${Math.round(bufPct)}%`
+                : undefined
+            }
+          />
+        </div>
         <span aria-hidden="true">{fmt(duration)}</span>
       </div>
       {!compact && (

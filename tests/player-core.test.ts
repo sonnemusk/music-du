@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bufferedRatio,
   clampSeek,
   clampVolume,
   coverProxyUrl,
@@ -110,5 +111,29 @@ describe("player-core", () => {
     expect(coverUrl(u)).not.toContain("/api/cover-proxy");
     expect(coverProxyUrl(u, "thumb")).toContain("/api/cover-proxy");
     expect(coverProxyUrl(u, "thumb")).toContain("param%3D120y120");
+  });
+
+  it("bufferedRatio from media ranges / blob", () => {
+    expect(bufferedRatio(null)).toBe(0);
+    const blobAudio = {
+      currentSrc: "blob:https://example/1",
+      src: "blob:https://example/1",
+      duration: 100,
+      buffered: { length: 0 },
+    } as unknown as HTMLMediaElement;
+    expect(bufferedRatio(blobAudio)).toBe(1);
+
+    const ranges = {
+      length: 2,
+      start: (i: number) => (i === 0 ? 0 : 40),
+      end: (i: number) => (i === 0 ? 25 : 70),
+    };
+    const streamAudio = {
+      currentSrc: "https://cdn.example/a.mp3",
+      src: "https://cdn.example/a.mp3",
+      duration: 100,
+      buffered: ranges,
+    } as unknown as HTMLMediaElement;
+    expect(bufferedRatio(streamAudio)).toBeCloseTo(0.7, 5);
   });
 });

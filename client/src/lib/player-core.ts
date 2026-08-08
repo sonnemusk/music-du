@@ -166,6 +166,29 @@ export function clampSeek(current: number, delta: number, duration: number): num
   return Math.max(0, Math.min(duration, current + delta));
 }
 
+/**
+ * How far media is buffered ahead (0–1), from HTMLMediaElement.buffered.
+ * blob: / fully local sources report 1.
+ */
+export function bufferedRatio(audio: HTMLMediaElement | null | undefined): number {
+  if (!audio) return 0;
+  const src = audio.currentSrc || audio.src || "";
+  if (src.startsWith("blob:") || src.startsWith("data:")) return 1;
+  const d = audio.duration;
+  if (!d || !isFinite(d) || d <= 0) return 0;
+  const ranges = audio.buffered;
+  if (!ranges || ranges.length === 0) return 0;
+  let maxEnd = 0;
+  for (let i = 0; i < ranges.length; i++) {
+    try {
+      maxEnd = Math.max(maxEnd, ranges.end(i));
+    } catch {
+      /* InvalidStateError while loading */
+    }
+  }
+  return Math.max(0, Math.min(1, maxEnd / d));
+}
+
 export function clampVolume(v: number): number {
   if (!isFinite(v)) return 1;
   return Math.max(0, Math.min(1, v));

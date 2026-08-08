@@ -23,6 +23,7 @@ import {
   setCachedLyric,
 } from "../lib/lyric-cache";
 import {
+  bufferedRatio,
   clampSeek,
   clampVolume,
   coverUrl,
@@ -163,6 +164,8 @@ type State = {
   loadingPlay: boolean;
   currentTime: number;
   duration: number;
+  /** 0–1 how far the current media is buffered (HTMLMediaElement.buffered) */
+  buffered: number;
   quality: string;
   playSource: string;
   lyrics: LyricLine[];
@@ -308,6 +311,7 @@ export const usePlayer = create<State>((set, get) => ({
   loadingPlay: false,
   currentTime: 0,
   duration: 0,
+  buffered: 0,
   quality: "",
   playSource: "",
   lyrics: [],
@@ -781,6 +785,7 @@ export const usePlayer = create<State>((set, get) => ({
       loadingPlay: true,
       currentTime: 0,
       duration: 0,
+      buffered: 0,
       quality: "…",
       playSource: "",
       lyrics: instantLyrics,
@@ -1390,12 +1395,17 @@ export const usePlayer = create<State>((set, get) => ({
   tick: () => {
     const audio = get().audioEl;
     if (!audio) return;
+    const buf = bufferedRatio(audio);
     if (!get().seeking) {
       set({
         currentTime: audio.currentTime || 0,
         duration: audio.duration || 0,
+        buffered: buf,
         playing: !audio.paused && !!audio.src,
       });
+    } else {
+      // Still update buffer while scrubbing
+      if (Math.abs(buf - get().buffered) > 0.005) set({ buffered: buf });
     }
     const idx = lyricIndexAt(get().lyrics, (audio.currentTime || 0) * 1000);
     if (idx !== get().lyricIdx) set({ lyricIdx: idx });

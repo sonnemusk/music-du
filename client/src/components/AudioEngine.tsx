@@ -27,17 +27,27 @@ export function AudioEngine() {
     const onEnd = () => next(1);
     const onPlay = () => tick();
     const onPause = () => tick();
+    // Buffering progress for seek bar (HTMLMediaElement.buffered)
+    const onProgress = () => tick();
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("ended", onEnd);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
     el.addEventListener("loadedmetadata", onTime);
+    el.addEventListener("progress", onProgress);
+    el.addEventListener("canplay", onProgress);
+    el.addEventListener("canplaythrough", onProgress);
+    el.addEventListener("loadeddata", onProgress);
     return () => {
       el.removeEventListener("timeupdate", onTime);
       el.removeEventListener("ended", onEnd);
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
       el.removeEventListener("loadedmetadata", onTime);
+      el.removeEventListener("progress", onProgress);
+      el.removeEventListener("canplay", onProgress);
+      el.removeEventListener("canplaythrough", onProgress);
+      el.removeEventListener("loadeddata", onProgress);
     };
   }, [tick, next]);
 
