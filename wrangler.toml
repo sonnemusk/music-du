@@ -25,13 +25,9 @@ database_name = "music-du-library"
 database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
 migrations_dir = "migrations"
 
+# Custom Domain (no path wildcards — CF Custom Domains are hostname-only)
 [[routes]]
 pattern = "music.dubin.cc"
-zone_name = "dubin.cc"
-custom_domain = true
-
-[[routes]]
-pattern = "music.dubin.cc/*"
 zone_name = "dubin.cc"
 custom_domain = true
 

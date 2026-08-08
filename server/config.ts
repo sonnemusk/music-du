@@ -1,42 +1,65 @@
+/**
+ * Shared env for Node + Cloudflare Workers.
+ * Never call fileURLToPath unless import.meta.url is a real string (Workers can lack it).
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+function moduleDir(): string {
+  try {
+    const u = import.meta?.url;
+    if (typeof u === "string" && u.length > 0) {
+      return path.dirname(fileURLToPath(u));
+    }
+  } catch {
+    /* Workers / non-file URL */
+  }
+  try {
+    return process.cwd();
+  } catch {
+    return ".";
+  }
+}
+
 /** Project root: works from `server/` (tsx) and `dist/server/` (compiled). */
 export const ROOT = (() => {
-  const parent = path.resolve(__dirname, "..");
-  // dist/server → dist → project root
-  if (path.basename(__dirname) === "server" && path.basename(parent) === "dist") {
+  const dir = moduleDir();
+  const parent = path.resolve(dir, "..");
+  if (path.basename(dir) === "server" && path.basename(parent) === "dist") {
     return path.resolve(parent, "..");
   }
-  // server → project root
+  if (path.basename(dir) === "server") return parent;
   return parent;
 })();
 
 function loadDotenv() {
-  for (const candidate of [path.join(ROOT, ".env"), path.join(process.cwd(), ".env")]) {
-    if (!fs.existsSync(candidate)) continue;
-    try {
-      const text = fs.readFileSync(candidate, "utf8");
-      for (const line of text.split("\n")) {
-        const s = line.trim();
-        if (!s || s.startsWith("#") || !s.includes("=")) continue;
-        const i = s.indexOf("=");
-        const key = s.slice(0, i).trim();
-        let val = s.slice(i + 1).trim().replace(/^["']|["']$/g, "");
-        if (key && process.env[key] === undefined) process.env[key] = val;
+  try {
+    for (const candidate of [path.join(ROOT, ".env"), path.join(process.cwd(), ".env")]) {
+      if (!fs.existsSync(candidate)) continue;
+      try {
+        const text = fs.readFileSync(candidate, "utf8");
+        for (const line of text.split("\n")) {
+          const s = line.trim();
+          if (!s || s.startsWith("#") || !s.includes("=")) continue;
+          const i = s.indexOf("=");
+          const key = s.slice(0, i).trim();
+          let val = s.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+          if (key && process.env[key] === undefined) process.env[key] = val;
+        }
+      } catch {
+        /* */
       }
-    } catch {
-      /* ignore */
+      break;
     }
-    break;
+  } catch {
+    /* Workers without real fs */
   }
 }
 
 loadDotenv();
 
-/** Default: free public gateway (api.chksz.top). Override via CHKSZ_API_BASE. */
+/** Default free gateway. Override via CHKSZ_API_BASE. */
 export const CHKSZ_API_BASE = (process.env.CHKSZ_API_BASE || "https://api.chksz.top").replace(
   /\/$/,
   ""
@@ -75,7 +98,11 @@ export function qualityLevels(preferred?: string | null): string[] {
 export function dataDir(): string {
   const raw = process.env.MUSIC_DATA_DIR || path.join(ROOT, "data");
   const p = path.isAbsolute(raw) ? raw : path.resolve(ROOT, raw);
-  fs.mkdirSync(p, { recursive: true });
+  try {
+    fs.mkdirSync(p, { recursive: true });
+  } catch {
+    /* */
+  }
   return p;
 }
 
