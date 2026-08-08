@@ -1,17 +1,23 @@
 import { useEffect } from "react";
-import { coverUrl } from "../lib/player-core";
+import { coverProxyUrl } from "../lib/player-core";
 import { usePlayer } from "../store/player";
 
-/** Lock-screen / OS media keys + document title sync. */
+/**
+ * Lock-screen / Control Center / Apple headphone remote (AVRCP).
+ *
+ * Critical for Safari / AirPods:
+ * - Bind action handlers ONCE (do not null+rebind on every play/pause — that breaks remotes)
+ * - Handlers always read fresh state via getState()
+ * - Keep playbackState + positionState in sync with the real <audio>
+ * - Artwork must be same-origin (CORS) → use cover-proxy, not bare CDN
+ */
 export function MediaSession() {
   const curTrack = usePlayer((s) => s.curTrack);
   const playing = usePlayer((s) => s.playing);
-  const togglePlay = usePlayer((s) => s.togglePlay);
-  const next = usePlayer((s) => s.next);
-  const seekBy = usePlayer((s) => s.seekBy);
-  const audioEl = usePlayer((s) => s.audioEl);
+  const currentTime = usePlayer((s) => s.currentTime);
+  const duration = usePlayer((s) => s.duration);
 
-  // Document title
+  // Document title (separate from Media Session)
   useEffect(() => {
     if (curTrack?.name) {
       document.title = `${playing ? "▶ " : ""}${curTrack.name} · ${curTrack.artist || "Music"}`;
@@ -20,65 +26,94 @@ export function MediaSession() {
     }
   }, [curTrack, playing]);
 
-  // Media Session API
+  // Action handlers — mount once only
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     const ms = navigator.mediaSession;
 
-    if (curTrack) {
-      const artwork: MediaImage[] = [];
-      if (curTrack.cover) {
-        const src = coverUrl(curTrack.cover, "medium");
-        if (src) {
-          artwork.push({ src: src.startsWith("http") ? src : `${location.origin}${src}`, sizes: "512x512", type: "image/jpeg" });
-        }
-      }
-      try {
-        ms.metadata = new MediaMetadata({
-          title: curTrack.name || "Music",
-          artist: curTrack.artist || "",
-          album: curTrack.album || "Music",
-          artwork,
-        });
-      } catch {
-        /* older browsers */
-      }
-    }
-
-    try {
-      ms.playbackState = playing ? "playing" : "paused";
-    } catch {
-      /* */
-    }
-
-    const bind = (action: MediaSessionAction, handler: () => void) => {
+    const bind = (
+      action: MediaSessionAction,
+      handler: MediaSessionActionHandler
+    ) => {
       try {
         ms.setActionHandler(action, handler);
       } catch {
-        /* unsupported action */
+        /* unsupported on this browser */
       }
     };
 
-    bind("play", () => {
-      if (!playing) togglePlay();
-    });
-    bind("pause", () => {
-      if (playing) togglePlay();
-    });
-    bind("previoustrack", () => next(-1));
-    bind("nexttrack", () => next(1));
-    bind("seekbackward", () => seekBy(-10));
-    bind("seekforward", () => seekBy(10));
-    bind("stop", () => {
-      if (playing) togglePlay();
-      if (audioEl) {
+    const onPlay = () => {
+      const s = usePlayer.getState();
+      const a = s.audioEl;
+      if (!a) return;
+      // Prefer real element state over React flag (avoids stale/desync)
+      if (a.paused) s.togglePlay();
+    };
+
+    const onPause = () => {
+      const s = usePlayer.getState();
+      const a = s.audioEl;
+      if (!a) return;
+      if (!a.paused) s.togglePlay();
+    };
+
+    const onNext = () => {
+      usePlayer.getState().next(1);
+    };
+
+    /** Apple Music-like: long-press / prev — restart if >3s into track */
+    const onPrev = () => {
+      const s = usePlayer.getState();
+      const a = s.audioEl;
+      if (a && (a.currentTime || 0) > 3) {
         try {
-          audioEl.currentTime = 0;
+          a.currentTime = 0;
         } catch {
           /* */
         }
+        s.tick();
+        if (a.paused) s.togglePlay();
+        return;
       }
-    });
+      s.next(-1);
+    };
+
+    const onSeekBack = () => usePlayer.getState().seekBy(-10);
+    const onSeekFwd = () => usePlayer.getState().seekBy(10);
+
+    const onSeekTo = (details: MediaSessionActionDetails) => {
+      const s = usePlayer.getState();
+      const a = s.audioEl;
+      if (!a || details.seekTime == null || !isFinite(details.seekTime)) return;
+      const d = a.duration || 0;
+      if (d > 0) {
+        a.currentTime = Math.max(0, Math.min(d, details.seekTime));
+        s.tick();
+      }
+    };
+
+    const onStop = () => {
+      const s = usePlayer.getState();
+      const a = s.audioEl;
+      if (a && !a.paused) s.togglePlay();
+      if (a) {
+        try {
+          a.currentTime = 0;
+        } catch {
+          /* */
+        }
+        s.tick();
+      }
+    };
+
+    bind("play", onPlay);
+    bind("pause", onPause);
+    bind("previoustrack", onPrev);
+    bind("nexttrack", onNext);
+    bind("seekbackward", onSeekBack);
+    bind("seekforward", onSeekFwd);
+    bind("seekto", onSeekTo);
+    bind("stop", onStop);
 
     return () => {
       for (const action of [
@@ -88,6 +123,7 @@ export function MediaSession() {
         "nexttrack",
         "seekbackward",
         "seekforward",
+        "seekto",
         "stop",
       ] as MediaSessionAction[]) {
         try {
@@ -97,7 +133,73 @@ export function MediaSession() {
         }
       }
     };
-  }, [curTrack, playing, togglePlay, next, seekBy, audioEl]);
+  }, []);
+
+  // Metadata when track changes
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    if (!curTrack) {
+      try {
+        ms.metadata = null;
+      } catch {
+        /* */
+      }
+      return;
+    }
+
+    const artwork: MediaImage[] = [];
+    if (curTrack.cover) {
+      // Same-origin proxy required for Media Session artwork (CORS)
+      const proxy = coverProxyUrl(curTrack.cover, "medium");
+      if (proxy) {
+        const abs = proxy.startsWith("http")
+          ? proxy
+          : `${location.origin}${proxy}`;
+        artwork.push(
+          { src: abs, sizes: "96x96", type: "image/jpeg" },
+          { src: abs, sizes: "256x256", type: "image/jpeg" },
+          { src: abs, sizes: "512x512", type: "image/jpeg" }
+        );
+      }
+    }
+
+    try {
+      ms.metadata = new MediaMetadata({
+        title: curTrack.name || "Music",
+        artist: curTrack.artist || "",
+        album: curTrack.album || "Music",
+        artwork,
+      });
+    } catch {
+      /* older browsers */
+    }
+  }, [curTrack]);
+
+  // playbackState + positionState (needed for Control Center / headphones UI)
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    try {
+      ms.playbackState = playing ? "playing" : "paused";
+    } catch {
+      /* */
+    }
+
+    try {
+      const d = duration || 0;
+      const pos = currentTime || 0;
+      if (d > 0 && isFinite(d) && isFinite(pos)) {
+        ms.setPositionState({
+          duration: d,
+          playbackRate: 1,
+          position: Math.max(0, Math.min(pos, d)),
+        });
+      }
+    } catch {
+      /* NotSupportedError when no active media / invalid ranges */
+    }
+  }, [playing, currentTime, duration]);
 
   return null;
 }

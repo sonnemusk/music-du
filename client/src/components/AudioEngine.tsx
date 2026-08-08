@@ -9,7 +9,14 @@ export function AudioEngine() {
   const next = usePlayer((s) => s.next);
 
   useEffect(() => {
-    setAudio(ref.current);
+    const el = ref.current;
+    setAudio(el);
+    // iOS remote / headphone transport reliability
+    if (el) {
+      el.setAttribute("playsinline", "true");
+      el.setAttribute("webkit-playsinline", "true");
+      el.setAttribute("x-webkit-airplay", "allow");
+    }
     return () => setAudio(null);
   }, [setAudio]);
 
@@ -35,11 +42,22 @@ export function AudioEngine() {
   }, [tick, next]);
 
   return (
+    // Do NOT use display:none — iOS Safari often drops remote / headphone
+    // controls for hidden media elements. Keep a 1×1 off-screen player.
     <audio
       ref={ref}
-      preload="metadata"
+      preload="auto"
       playsInline
-      style={{ display: "none" }}
+      style={{
+        position: "fixed",
+        width: 1,
+        height: 1,
+        opacity: 0,
+        pointerEvents: "none",
+        left: 0,
+        bottom: 0,
+        zIndex: -1,
+      }}
     />
   );
 }
