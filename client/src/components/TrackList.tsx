@@ -71,12 +71,17 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   /** Track previous mode so we detect entering 喜欢 (including first mount). */
   const prevModeRef = useRef<string | null>(null);
+  /** Last curTrack we auto-located — next/prev while on 喜欢 should re-scroll. */
+  const prevLocateCurIdRef = useRef<string | null>(null);
 
-  // Locate: explicit G/locateRequest, or auto when entering favorites with curTrack in list
+  // Locate: G/locateRequest, enter 喜欢, or curTrack change while already on 喜欢
   useEffect(() => {
     const prev = prevModeRef.current;
     const enteredFavorites = mode === "favorites" && prev !== "favorites";
     prevModeRef.current = mode;
+
+    const curId = curTrack ? String(curTrack.id) : null;
+    const curChanged = Boolean(curId && curId !== prevLocateCurIdRef.current);
 
     let wantId: string | null = null;
     if (locateRequest?.id) {
@@ -87,12 +92,19 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
     if (
       !wantId &&
       mode === "favorites" &&
-      (enteredFavorites || prev === null) &&
-      curTrack &&
-      tracks.some((t) => String(t.id) === String(curTrack.id))
+      curId &&
+      tracks.some((t) => String(t.id) === curId) &&
+      (enteredFavorites || prev === null || curChanged)
     ) {
-      wantId = String(curTrack.id);
+      wantId = curId;
     }
+
+    if (mode === "favorites" && curId) {
+      prevLocateCurIdRef.current = curId;
+    } else if (mode !== "favorites") {
+      // Leaving 喜欢: keep id so re-enter with same song still scrolls via enteredFavorites
+    }
+
     if (!wantId) return;
 
     let cancelled = false;
