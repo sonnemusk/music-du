@@ -111,10 +111,6 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
       wantId = curId;
     }
 
-    if (mode === "favorites" && curId) {
-      prevLocateCurIdRef.current = curId;
-    }
-
     if (!wantId) return;
 
     let cancelled = false;
@@ -124,12 +120,12 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
 
     const run = () => {
       if (cancelled) return;
-      // Re-read playing id — next() may have advanced during retries
-      const liveId =
-        mode === "favorites" && curTrack
-          ? String(curTrack.id)
-          : targetId;
-      const id = mode === "favorites" && inList(liveId) ? liveId : targetId;
+      // Always prefer live playing id on 喜欢 (next may advance during retries)
+      const livePlaying =
+        mode === "favorites" ? usePlayer.getState().curTrack : null;
+      const liveId = livePlaying ? String(livePlaying.id) : targetId;
+      const id =
+        mode === "favorites" && liveId && inList(liveId) ? liveId : targetId;
       const el = rowRefs.current.get(id);
       if (!el) {
         if (attempts++ < maxAttempts) {
@@ -139,18 +135,24 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
       }
       const ok = scrollRowIntoList(el);
       flashRow(el);
+      // Only mark located after we actually found the row
+      if (mode === "favorites") {
+        prevLocateCurIdRef.current = id;
+      }
       if (!ok || attempts < 2) {
         attempts++;
         window.setTimeout(() => {
           if (cancelled) return;
+          const still = usePlayer.getState().curTrack;
           const againId =
-            mode === "favorites" && curTrack && inList(String(curTrack.id))
-              ? String(curTrack.id)
+            mode === "favorites" && still && inList(String(still.id))
+              ? String(still.id)
               : id;
           const again = rowRefs.current.get(againId);
           if (again) {
             scrollRowIntoList(again);
             flashRow(again);
+            if (mode === "favorites") prevLocateCurIdRef.current = againId;
           }
         }, 120);
       }

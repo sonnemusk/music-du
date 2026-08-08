@@ -1002,14 +1002,6 @@ export const usePlayer = create<State>((set, get) => ({
     const sameTrack =
       get().curTrack != null && String(get().curTrack!.id) === String(t.id);
 
-    // Keep 喜欢 list scroll locked to the playing row (next/prev / auto-advance)
-    if (
-      get().tab === "favorites" &&
-      (get().queueSource === "favorites" || get().isFavorite(t.id))
-    ) {
-      const nonce = (get().locateRequest?.nonce || 0) + 1;
-      set({ locateRequest: { id: String(t.id), nonce } });
-    }
     const known0 = sameTrack ? get().availableQualities : [];
     const intentQ = intentLevelForRank(rank0);
     const stickyPref = sameTrack
@@ -1024,6 +1016,17 @@ export const usePlayer = create<State>((set, get) => ({
     const stickyLevel = String(
       preMeta?.level || stickyPref || intentQ || DEFAULT_QUALITY
     );
+
+    // Follow playing row on 喜欢 — set locateRequest atomically with curTrack
+    // (separate set() races made list stick to the previous song)
+    const followFavorites =
+      get().tab === "favorites" &&
+      (get().queueSource === "favorites" ||
+        get().isFavorite(t.id) ||
+        (opts?.from === "favorites"));
+    const locateNonce = followFavorites
+      ? (get().locateRequest?.nonce || 0) + 1
+      : get().locateRequest?.nonce || 0;
 
     // UI first — search click must highlight immediately (before any await)
     stopPausedBufferPump();
@@ -1043,6 +1046,9 @@ export const usePlayer = create<State>((set, get) => ({
       lyricIdx: instantIdx,
       predictedNextId: null,
       curTrack: t,
+      ...(followFavorites
+        ? { locateRequest: { id: String(t.id), nonce: locateNonce } }
+        : {}),
     });
 
     // Queue source follows the list the user clicked (favorites ↔ playlist etc.)
