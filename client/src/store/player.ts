@@ -873,24 +873,34 @@ export const usePlayer = create<State>((set, get) => ({
     if (t.cover) prefetchCover(t.cover, "medium");
     void persistSoon(get);
 
-    // Probe top-3 levels that actually have URLs for this track (not fixed 母带/沉浸/高清 ids)
-    let prefQ = get().preferredQuality || DEFAULT_QUALITY;
-    try {
-      const raw = await api.fetchSongQualities(t.id, 3);
-      const choices = normalizeChoices(raw);
-      prefQ = pickLevelForRank(choices, get().preferredRank);
-      if (get().playToken === token) {
-        set({
-          availableQualities: choices,
-          preferredQuality: prefQ,
-        });
+    // Intent level: rank 0 → jymaster (server falls through to best available).
+    // Do NOT block first paint on full qualities probe (that was 3–6s cold).
+    const rank = get().preferredRank;
+    const known = get().availableQualities;
+    let prefQ =
+      known.length > 0
+        ? pickLevelForRank(known, rank)
+        : rank === 1
+          ? "sky"
+          : rank === 2
+            ? "jyeffect"
+            : DEFAULT_QUALITY;
+    set({ preferredQuality: prefQ });
+
+    // Background: discover this track's real top-3 for the quality menu only
+    void (async () => {
+      try {
+        const raw = await api.fetchSongQualities(t.id, 3);
+        if (get().playToken !== token) return;
+        const choices = normalizeChoices(raw);
+        const level = pickLevelForRank(choices, get().preferredRank);
+        set({ availableQualities: choices, preferredQuality: level });
+      } catch {
+        if (get().playToken === token) {
+          /* keep menu empty; playback already using ladder fallthrough */
+        }
       }
-    } catch {
-      if (get().playToken === token) {
-        set({ availableQualities: [], preferredQuality: DEFAULT_QUALITY });
-      }
-      prefQ = DEFAULT_QUALITY;
-    }
+    })();
 
     // Only toast when we actually need a network resolve (cache miss)
     const hadResolveCache = Boolean(

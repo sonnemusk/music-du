@@ -236,6 +236,7 @@ export type ProbedQuality = {
 /**
  * Walk high→low ladder; keep first `limit` levels that actually return a URL.
  * Songs without 母带/沉浸 still get the best 3 that exist (e.g. hires/exhigh/standard).
+ * Probes in small parallel batches for lower latency (still free ChKSz calls).
  */
 export async function probeTopQualities(
   sid: string | number,
@@ -243,22 +244,50 @@ export async function probeTopQualities(
   opts?: { apikey?: string }
 ): Promise<ProbedQuality[]> {
   const max = Math.max(1, Math.min(5, limit || 3));
+  const ladder = qualityLevels(null);
   const out: ProbedQuality[] = [];
-  for (const lv of qualityLevels(null)) {
-    if (out.length >= max) break;
-    const hit = await fetchMusicExact(sid, lv, opts);
-    if (!hit?.url) continue;
-    out.push({
-      level: String(hit.level || lv),
-      br: Number(hit.br || 0),
-      size: Number(hit.size || 0),
-      url: String(hit.url),
-      name: hit.name ? String(hit.name) : undefined,
-      artist: hit.artist ? String(hit.artist) : undefined,
-      cover: hit.picUrl || hit.cover ? tryHttps(String(hit.picUrl || hit.cover)) : undefined,
-    });
+  const batchSize = 3;
+  for (let i = 0; i < ladder.length && out.length < max; i += batchSize) {
+    const batch = ladder.slice(i, i + batchSize);
+    const hits = await Promise.all(
+      batch.map(async (lv) => {
+        const hit = await fetchMusicExact(sid, lv, opts);
+        return hit?.url
+          ? ({
+              level: String(hit.level || lv),
+              br: Number(hit.br || 0),
+              size: Number(hit.size || 0),
+              url: String(hit.url),
+              name: hit.name ? String(hit.name) : undefined,
+              artist: hit.artist ? String(hit.artist) : undefined,
+              cover:
+                hit.picUrl || hit.cover
+                  ? tryHttps(String(hit.picUrl || hit.cover))
+                  : undefined,
+              _order: ladder.indexOf(lv),
+            } as ProbedQuality & { _order: number })
+          : null;
+      })
+    );
+    const ok = hits
+      .filter(Boolean)
+      .sort((a, b) => (a!._order as number) - (b!._order as number)) as (ProbedQuality & {
+      _order: number;
+    })[];
+    for (const h of ok) {
+      if (out.length >= max) break;
+      // preserve ladder order across batches
+      if (out.some((x) => x.level === h.level)) continue;
+      const { _order, ...rest } = h;
+      void _order;
+      out.push(rest);
+    }
   }
-  return out;
+  // Re-sort by ladder order (batch merges can interleave)
+  out.sort(
+    (a, b) => ladder.indexOf(a.level) - ladder.indexOf(b.level)
+  );
+  return out.slice(0, max);
 }
 
 export async function fetchLyric(
