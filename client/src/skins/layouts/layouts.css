@@ -963,9 +963,12 @@ button.badge,
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center; /* same as immersive .imm-now — vertical center */
   gap: 14px;
   padding: 20px 16px 18px;
   overflow: auto;
+  min-height: 0;
+  align-self: stretch;
 }
 .side-player .transport {
   margin-top: 4px;
