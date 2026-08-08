@@ -511,6 +511,12 @@ export const usePlayer = create<State>((set, get) => ({
         concurrency: 2,
         startDelayMs: 80,
       });
+      // Auto-scroll to now-playing / paused track when opening 喜欢
+      const cur = get().curTrack;
+      if (cur && get().favorites.some((x) => String(x.id) === String(cur.id))) {
+        const nonce = (get().locateRequest?.nonce || 0) + 1;
+        set({ locateRequest: { id: String(cur.id), nonce } });
+      }
     } else if (t === "playlist") {
       prefetchSongResolves(get().playlist, resolve, { level: get().preferredQuality, 
         limit: 40,
@@ -633,6 +639,11 @@ export const usePlayer = create<State>((set, get) => ({
         currentTime: 0,
         duration: 0,
         predictedNextId: null,
+        // First paint on 喜欢: scroll list to the random/selected track
+        locateRequest: {
+          id: String(start.id),
+          nonce: (get().locateRequest?.nonce || 0) + 1,
+        },
       });
 
       // Priority: warm selected first; neighbor only after current has headroom
