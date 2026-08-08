@@ -28,6 +28,7 @@ database_name = "music-du-library"
 database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
 migrations_dir = "migrations"
 
-# Zone route + DNS for music.dubin.cc are managed in Cloudflare (already linked to this Worker).
-# Do not put zone routes here if the GitHub Actions token lacks zone edit — deploy still works via workers.dev.
+# Custom hostnames (DNS + Workers routes managed in CF dashboard/API, not wrangler routes):
+#   music.dubin.cc  ·  music.dubin.one  ·  music.dubin.vip
+# Debug: https://music-du.sonnemusk.workers.dev
 # Free tier: Cache API for covers/meta; no R2/paid KV; no audio body on CF.
