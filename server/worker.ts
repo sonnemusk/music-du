@@ -468,6 +468,56 @@ app.get("/api/library", async (c) => {
   return c.json({ ok: true, data: await loadLib(c.env.MUSIC_DU_DB) });
 });
 
+/**
+ * Merge library lists without accidental wipe.
+ * - forceClear*: client explicitly cleared → take incoming (may be empty)
+ * - else: incoming order first, then keep server-only rows (removals use DELETE)
+ * Prevents a thin client state (e.g. 1 favorite) from clobbering D1 (22 favorites).
+ */
+function mergeTrackList(
+  existing: any[],
+  incoming: any[] | undefined,
+  forceClear: boolean,
+  cap: number
+): any[] {
+  if (forceClear) {
+    const out: any[] = [];
+    const seen = new Set<string>();
+    for (const t of incoming || []) {
+      const id = t?.id ?? t?.sid;
+      if (id == null || id === "") continue;
+      const k = String(id);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ ...t, id: /^\d+$/.test(k) ? Number(k) : id });
+      if (out.length >= cap) break;
+    }
+    return out;
+  }
+  if (!incoming?.length) return existing || [];
+  const out: any[] = [];
+  const seen = new Set<string>();
+  for (const t of incoming) {
+    const id = t?.id ?? t?.sid;
+    if (id == null || id === "") continue;
+    const k = String(id);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ ...t, id: /^\d+$/.test(k) ? Number(k) : id });
+    if (out.length >= cap) break;
+  }
+  for (const t of existing || []) {
+    if (out.length >= cap) break;
+    const id = t?.id ?? t?.sid;
+    if (id == null || id === "") continue;
+    const k = String(id);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+  }
+  return out;
+}
+
 app.put("/api/library", async (c) => {
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
@@ -480,20 +530,16 @@ app.put("/api/library", async (c) => {
   const forcePl = Boolean(body.forceClearPlaylist);
   const forceFav = Boolean(body.forceClearFavorites);
   const forceHi = Boolean(body.forceClearHistory);
-  const pl =
-    forcePl || (body.playlist && body.playlist.length) ? body.playlist : existing.playlist;
-  const fav =
-    forceFav || (body.favorites && body.favorites.length)
-      ? body.favorites
-      : existing.favorites;
+  const pl = mergeTrackList(existing.playlist, body.playlist, forcePl, 500);
+  const fav = mergeTrackList(existing.favorites, body.favorites, forceFav, 500);
   let hi = existing.history;
   if (forceHi) hi = body.history || [];
   else if (body.history?.length) {
     const seen = new Set<string>();
     hi = [];
     for (const t of [...body.history, ...existing.history]) {
-      const k = String(t.id);
-      if (seen.has(k)) continue;
+      const k = String(t.id ?? t.sid ?? "");
+      if (!k || seen.has(k)) continue;
       seen.add(k);
       hi.push(t);
       if (hi.length >= 300) break;

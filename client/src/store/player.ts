@@ -471,6 +471,22 @@ export const usePlayer = create<State>((set, get) => ({
       favorites = (lib.favorites || []).map(norm).filter(Boolean) as Track[];
       history = (lib.history || []).map(norm).filter(Boolean) as Track[];
       curIdx = lib.curIdx ?? -1;
+      // If local has more favorites (stale thin D1 / wipe), prefer richer local and re-sync
+      try {
+        const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+        const localFav = ((local?.favorites || []) as Track[])
+          .map(norm)
+          .filter(Boolean) as Track[];
+        if (localFav.length > favorites.length) {
+          const seen = new Set(localFav.map((t) => String(t.id)));
+          favorites = [
+            ...localFav,
+            ...favorites.filter((t) => !seen.has(String(t.id))),
+          ];
+        }
+      } catch {
+        /* */
+      }
     } catch {
       try {
         const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");

@@ -196,11 +196,46 @@ export class SqliteLibrary {
     const inFav = dedupe(incoming.favorites || []);
     const inHi = dedupe(incoming.history || []);
 
-    let pl = existing.playlist;
-    if (force.forceClearPlaylist || inPl.length) pl = inPl.slice(0, LIST_CAPS.playlist);
+    /** Union-merge unless force-clear — removals go through deleteSid. */
+    const mergeKeep = (
+      prev: Track[],
+      next: Track[],
+      forceClear: boolean,
+      cap: number
+    ): Track[] => {
+      if (forceClear) return next.slice(0, cap);
+      if (!next.length) return prev;
+      const seen = new Set<string>();
+      const out: Track[] = [];
+      for (const t of next) {
+        const k = String(t.id);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(t);
+        if (out.length >= cap) return out;
+      }
+      for (const t of prev) {
+        const k = String(t.id);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(t);
+        if (out.length >= cap) break;
+      }
+      return out;
+    };
 
-    let fav = existing.favorites;
-    if (force.forceClearFavorites || inFav.length) fav = inFav.slice(0, LIST_CAPS.favorites);
+    const pl = mergeKeep(
+      existing.playlist,
+      inPl,
+      Boolean(force.forceClearPlaylist),
+      LIST_CAPS.playlist
+    );
+    const fav = mergeKeep(
+      existing.favorites,
+      inFav,
+      Boolean(force.forceClearFavorites),
+      LIST_CAPS.favorites
+    );
 
     let hi = existing.history;
     if (force.forceClearHistory) hi = inHi.slice(0, LIST_CAPS.history);
