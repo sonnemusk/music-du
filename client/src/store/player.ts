@@ -479,23 +479,25 @@ export const usePlayer = create<State>((set, get) => ({
     }
     const id = String(cur.id);
     const inList = (list: Track[]) => list.some((t) => String(t.id) === id);
-    // Prefer 收藏 when the track is favorited (user request); else active queue tab
-    let tab: PanelTab = get().tab;
+    // Prefer 收藏 when the track is favorited; else whichever list contains it
+    let tab: PanelTab | null = null;
     if (inList(get().favorites)) tab = "favorites";
     else if (inList(get().playlist)) tab = "playlist";
     else if (inList(get().history)) tab = "history";
     else if (inList(get().searchResults)) tab = "search";
     else if (inList(get().chartTracks)) tab = "charts";
-    else {
+    if (!tab) {
       get().showToast("播放中的歌曲不在当前列表里");
       return;
     }
     const nonce = (get().locateRequest?.nonce || 0) + 1;
-    set({ tab, locateRequest: { id, nonce } });
-    // Also align queue when landing on favorites/playlist/history
-    if (tab === "favorites" || tab === "playlist" || tab === "history") {
-      set({ queueSource: tab });
+    // Only switch visible tab for scrolling — do NOT touch queueSource
+    // (changing queue mid-play rewires next/prev and confuses the UI).
+    if (tab !== get().tab) {
+      // Use setTab for charts load / prefetch side-effects
+      get().setTab(tab);
     }
+    set({ locateRequest: { id, nonce } });
   },
   setTab: (t) => {
     set({ tab: t });

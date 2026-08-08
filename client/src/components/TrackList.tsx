@@ -12,6 +12,35 @@ type Props = {
   className?: string;
 };
 
+/** Scroll only the nearest overflow parent — avoid scrollIntoView breaking layout shell. */
+function scrollRowIntoList(el: HTMLElement) {
+  let parent: HTMLElement | null = el.parentElement;
+  while (parent && parent !== document.body) {
+    const st = getComputedStyle(parent);
+    const oy = st.overflowY;
+    const ox = st.overflowX;
+    const scrollableY =
+      (oy === "auto" || oy === "scroll" || oy === "overlay") &&
+      parent.scrollHeight > parent.clientHeight + 2;
+    const scrollableX =
+      (ox === "auto" || ox === "scroll" || ox === "overlay") &&
+      parent.scrollWidth > parent.clientWidth + 2;
+    if (scrollableY || scrollableX) {
+      const pRect = parent.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      if (scrollableY) {
+        const delta =
+          eRect.top + eRect.height / 2 - (pRect.top + pRect.height / 2);
+        parent.scrollBy({ top: delta, left: 0, behavior: "smooth" });
+      }
+      return;
+    }
+    parent = parent.parentElement;
+  }
+  // Last resort: nearest only (won't yank whole page to center)
+  el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+}
+
 export function TrackList({ tracks, mode, empty = "暂无内容", className }: Props) {
   const playTrack = usePlayer((s) => s.playTrack);
   const curTrack = usePlayer((s) => s.curTrack);
@@ -27,16 +56,32 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   // Scroll playing row into view when locateCurrentInList() fires
   useEffect(() => {
     if (!locateRequest?.id) return;
-    const el = rowRefs.current.get(String(locateRequest.id));
-    if (!el) return;
-    // Wait a frame so tab switch can paint the list first
-    const t = window.setTimeout(() => {
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    const wantId = String(locateRequest.id);
+    let cancelled = false;
+    let attempts = 0;
+
+    const run = () => {
+      if (cancelled) return;
+      const el = rowRefs.current.get(wantId);
+      if (!el) {
+        // Tab just switched — list may not have painted yet
+        if (attempts++ < 30) {
+          requestAnimationFrame(run);
+        }
+        return;
+      }
+      scrollRowIntoList(el);
       el.classList.add("track-row--flash");
       window.setTimeout(() => el.classList.remove("track-row--flash"), 900);
-    }, 40);
-    return () => window.clearTimeout(t);
-  }, [locateRequest?.id, locateRequest?.nonce, tracks]);
+    };
+
+    // Allow setTab + React commit before first paint
+    const t = window.setTimeout(() => requestAnimationFrame(run), 60);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [locateRequest?.id, locateRequest?.nonce]);
 
   const play = (t: Track) => {
     // Single entry — do NOT also fire on double-click (would cancel resolve mid-flight)
