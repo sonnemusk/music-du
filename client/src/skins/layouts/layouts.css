@@ -612,10 +612,35 @@
   opacity: 0.85;
   width: 100%;
 }
-.seek-row > span {
-  flex: 0 0 36px;
+.seek-row > .seek-time,
+.seek-row > span:not(.seek-track) {
+  flex: 0 0 auto;
+  min-width: 36px;
   text-align: center;
+  line-height: 1.15;
+}
+.seek-time--end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 40px;
+}
+.seek-dur {
+  display: block;
+}
+/* Instant buffer readout (no native title delay) */
+.seek-buf-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
   line-height: 1;
+  white-space: nowrap;
+}
+.seek-buf-label.is-full {
+  opacity: 0.75;
 }
 /* Custom seek: buffer (mid) + played (bright) under transparent range input */
 .seek-track {
@@ -651,13 +676,14 @@
 .seek-track__buffer {
   width: var(--seek-buf);
   background: color-mix(in srgb, currentColor 38%, transparent);
-  transition: width 0.15s linear;
+  /* Snappy: avoid laggy buffer rail */
+  transition: width 40ms linear;
 }
 /* Already played */
 .seek-track__played {
   width: var(--seek-play);
   background: color-mix(in srgb, currentColor 82%, transparent);
-  transition: width 0.08s linear;
+  transition: none;
 }
 .seek-row input[type="range"],
 .seek-track input[type="range"] {

@@ -73,7 +73,9 @@ export function Transport({ compact }: { compact?: boolean }) {
         </div>
       )}
       <div className="seek-row">
-        <span aria-hidden="true">{fmt(currentTime)}</span>
+        <span className="seek-time" aria-hidden="true">
+          {fmt(currentTime)}
+        </span>
         <div
           className="seek-track"
           style={
@@ -81,11 +83,6 @@ export function Transport({ compact }: { compact?: boolean }) {
               "--seek-play": `${playPct}%`,
               "--seek-buf": `${bufPct}%`,
             } as CSSProperties
-          }
-          title={
-            duration > 0
-              ? `已播放 ${Math.round(playPct)}% · 已缓冲 ${Math.round(bufPct)}%`
-              : undefined
           }
         >
           <div className="seek-track__rail" aria-hidden="true">
@@ -112,7 +109,18 @@ export function Transport({ compact }: { compact?: boolean }) {
             }
           />
         </div>
-        <span aria-hidden="true">{fmt(duration)}</span>
+        <span className="seek-time seek-time--end" aria-hidden="true">
+          <span className="seek-dur">{fmt(duration)}</span>
+          {/* Always-on buffer % — native title hover is too slow */}
+          {duration > 0 ? (
+            <span
+              className={`seek-buf-label${bufPct >= 99.5 ? " is-full" : ""}`}
+              title={undefined}
+            >
+              {Math.round(bufPct)}%
+            </span>
+          ) : null}
+        </span>
       </div>
       {!compact && (
         <div className="vol-row" role="group" aria-label="音量">
