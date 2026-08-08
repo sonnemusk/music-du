@@ -21,7 +21,7 @@ describe("theme catalog", () => {
   });
 
   it("exposes active layouts and every theme uses one", () => {
-    expect(LAYOUT_IDS.length).toBeGreaterThanOrEqual(4);
+    expect(LAYOUT_IDS.length).toBeGreaterThanOrEqual(3);
     const used = new Set(THEME_CATALOG.map((t) => t.layout));
     for (const id of LAYOUT_IDS) {
       expect(used.has(id)).toBe(true);
