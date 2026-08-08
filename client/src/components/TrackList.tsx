@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as api from "../lib/api";
+import { parseFavoritesImport } from "../lib/library-union";
 import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
 import { usePlayer } from "../store/player";
@@ -68,11 +69,26 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   const addToPlaylist = usePlayer((s) => s.addToPlaylist);
   const removeFromPlaylist = usePlayer((s) => s.removeFromPlaylist);
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
+  const importFavorites = usePlayer((s) => s.importFavorites);
+  const showToast = usePlayer((s) => s.showToast);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const importRef = useRef<HTMLInputElement>(null);
   /** Track previous mode so we detect entering 喜欢 (including first mount). */
   const prevModeRef = useRef<string | null>(null);
   /** Last curTrack we auto-located — next/prev while on 喜欢 should re-scroll. */
   const prevLocateCurIdRef = useRef<string | null>(null);
+
+  const onImportFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const raw = JSON.parse(text);
+      const list = parseFavoritesImport(raw);
+      importFavorites(list);
+    } catch {
+      showToast("导入失败：JSON 无效");
+    }
+  };
 
   // Locate: G/locateRequest, enter 喜欢, or curTrack change while already on 喜欢
   useEffect(() => {
@@ -184,6 +200,30 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
 
   return (
     <div className={className || "track-list"}>
+      {mode === "favorites" ? (
+        <div className="track-list-toolbar" role="toolbar" aria-label="收藏工具">
+          <span className="track-list-toolbar__count">{tracks.length} 首</span>
+          <button
+            type="button"
+            className="track-list-toolbar__btn"
+            title="从 JSON 导入收藏（与 /favs 导出格式相同）"
+            onClick={() => importRef.current?.click()}
+          >
+            导入
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0] || null;
+              void onImportFile(f);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      ) : null}
       {tracks.map((t, i) => {
         const active = curTrack && String(curTrack.id) === String(t.id);
         const rank = t.rank ?? (mode === "charts" ? i + 1 : 0);

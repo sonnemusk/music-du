@@ -6,7 +6,9 @@ import {
   nextLibraryRevision,
   planListUpserts,
   sanitizeLibTrack,
+  unionTracksById,
 } from "../server/library-merge.js";
+import { parseFavoritesImport } from "../client/src/lib/library-union.js";
 
 describe("library merge (D1 write path)", () => {
   it("merge keeps server-only rows when client is thinner", () => {
@@ -100,5 +102,48 @@ describe("library revision (optimistic concurrency)", () => {
   it("bumps monotone", () => {
     expect(nextLibraryRevision(0)).toBe(1);
     expect(nextLibraryRevision(9)).toBe(10);
+  });
+});
+
+describe("union + import", () => {
+  it("unionTracksById prefers primary order", () => {
+    const a = unionTracksById(
+      [{ id: 1, name: "A" }, { id: 2, name: "B" }],
+      [{ id: 2, name: "B2" }, { id: 3, name: "C" }]
+    );
+    expect(a.map((t) => t.id)).toEqual([1, 2, 3]);
+    expect(a[1].name).toBe("B");
+  });
+
+  it("parseFavoritesImport accepts export shape", () => {
+    const list = parseFavoritesImport({
+      count: 2,
+      favorites: [
+        { id: 10, name: "X", artist: "Y" },
+        { id: 10, name: "dup" },
+        { id: 11, name: "Z", artist: "W" },
+      ],
+    });
+    expect(list).toHaveLength(2);
+    expect(list[0].id).toBe(10);
+  });
+});
+
+/** Lightweight D1-shaped mock for revision conflict flow (no paid CF). */
+describe("mock D1 revision flow", () => {
+  it("conflict when client rev stale", () => {
+    let rev = 2;
+    const store = [{ id: 1, name: "A" }];
+    const put = (clientRev: number | null, incoming: { id: number; name: string }[]) => {
+      if (!libraryRevisionOk(rev, clientRev)) {
+        return { status: 409 as const, data: { favorites: store, revision: rev } };
+      }
+      store.splice(0, store.length, ...incoming);
+      rev = nextLibraryRevision(rev);
+      return { status: 200 as const, data: { favorites: [...store], revision: rev } };
+    };
+    expect(put(1, [{ id: 9, name: "Z" }]).status).toBe(409);
+    expect(put(2, [{ id: 9, name: "Z" }]).status).toBe(200);
+    expect(rev).toBe(3);
   });
 });

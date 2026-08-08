@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AudioEngine } from "./components/AudioEngine";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { MediaSession } from "./components/MediaSession";
 import { Toast } from "./components/Toast";
+import { attachSwipeNav } from "./lib/swipe-nav";
 import { getTheme } from "./skins/theme-catalog";
 import { SkinHost } from "./skins/SkinHost";
 import { usePlayer } from "./store/player";
@@ -12,10 +13,22 @@ export default function App() {
   const bootstrap = usePlayer((s) => s.bootstrap);
   const setSkinOpen = usePlayer((s) => s.setSkinOpen);
   const skinOpen = usePlayer((s) => s.skinOpen);
+  const next = usePlayer((s) => s.next);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  // Touch: swipe left = next, swipe right = prev (ignore vertical scroll)
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+    return attachSwipeNav(el, {
+      onSwipeLeft: () => next(1),
+      onSwipeRight: () => next(-1),
+    });
+  }, [next]);
 
   useEffect(() => {
     const meta = getTheme(skin);
@@ -43,7 +56,7 @@ export default function App() {
   }, [skinOpen, setSkinOpen]);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" ref={shellRef}>
       <SkinHost skin={skin} />
       <AudioEngine />
       <KeyboardShortcuts />

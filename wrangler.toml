@@ -9,9 +9,14 @@ name = "music-du"
 main = "server/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
-# Keep workers.dev URL for debugging (music-du.<account-subdomain>.workers.dev)
-workers_dev = true
-preview_urls = true
+# Disable public workers.dev (not behind CF Access custom hostnames)
+workers_dev = false
+preview_urls = false
+
+# Free Workers Observability (logs/metrics — no paid products)
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 [vars]
 # Primary gateway (always try first)

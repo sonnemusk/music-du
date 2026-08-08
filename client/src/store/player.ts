@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import * as api from "../lib/api";
+import { unionTracksById } from "../lib/library-union";
 import {
   abortNeighborBlobCaches,
   cacheAudioFromStream,
@@ -320,6 +321,8 @@ type State = {
   /** Effective preferred level string for resolve (from rank + available) */
   preferredQuality: string;
   toggleFavorite: (t?: Track | null) => void;
+  /** Merge imported favorites JSON into 喜欢 (revision-aware). */
+  importFavorites: (tracks: Track[]) => void;
   addToPlaylist: (t: Track) => void;
   removeFromPlaylist: (id: string | number) => void;
   removeFromHistory: (id: string | number) => void;
@@ -591,18 +594,27 @@ export const usePlayer = create<State>((set, get) => ({
       history = (lib.history || []).map(norm).filter(Boolean) as Track[];
       curIdx = lib.curIdx ?? -1;
       libraryRevision = Number(lib.revision ?? 0) || 0;
-      // If local has more favorites (stale thin D1 / wipe), prefer richer local and re-sync
+      // Union D1 + localStorage (D1 order first) — never drop either side's uniques
       try {
         const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
         const localFav = ((local?.favorites || []) as Track[])
           .map(norm)
           .filter(Boolean) as Track[];
-        if (localFav.length > favorites.length) {
-          const seen = new Set(localFav.map((t) => String(t.id)));
-          favorites = [
-            ...localFav,
-            ...favorites.filter((t) => !seen.has(String(t.id))),
-          ];
+        const localPl = ((local?.playlist || []) as Track[])
+          .map(norm)
+          .filter(Boolean) as Track[];
+        const localHi = ((local?.history || []) as Track[])
+          .map(norm)
+          .filter(Boolean) as Track[];
+        const before = favorites.length;
+        favorites = unionTracksById(favorites, localFav);
+        playlist = unionTracksById(playlist, localPl);
+        history = unionTracksById(history, localHi);
+        // Local had extras → push merge with server revision (409 → apply server)
+        if (favorites.length > before) {
+          window.setTimeout(() => {
+            persistSoon(get, {});
+          }, 400);
         }
       } catch {
         /* */
@@ -2034,14 +2046,24 @@ export const usePlayer = create<State>((set, get) => ({
       void api
         .deleteFromList("favorites", track.id, get().libraryRevision)
         .then(applyLib(set))
-        .catch((e) => {
+        .catch(async (e) => {
           if (e instanceof api.LibraryConflictError) {
             applyLib(set)(e.data);
             get().showToast("收藏已在其他设备更新，已同步");
             return;
           }
-          // Always force-clear on DELETE failure so merge cannot resurrect the row
-          persistSoon(get, { forceClearFavorites: true });
+          // Prefer re-fetch + rewrite with forceClear only after sync (avoids blind wipe)
+          try {
+            const lib = await api.loadLibrary();
+            applyLib(set)(lib);
+            const favorites = get().favorites.filter(
+              (x) => String(x.id) !== String(track.id)
+            );
+            set({ favorites });
+            persistSoon(get, { forceClearFavorites: true });
+          } catch {
+            persistSoon(get, { forceClearFavorites: true });
+          }
         });
     } else {
       favorites = [track, ...favorites.filter((x) => String(x.id) !== String(track.id))].slice(
@@ -2054,6 +2076,23 @@ export const usePlayer = create<State>((set, get) => ({
       // Eagerly cache newly favorited track audio (best-effort; CF 302 may block IDB)
       void cacheAudioFromStream(track.id, { level: String(track.level || "") });
     }
+  },
+
+  importFavorites: (tracks) => {
+    const incoming = (tracks || []).map(norm).filter(Boolean) as Track[];
+    if (!incoming.length) {
+      get().showToast("导入文件里没有有效歌曲");
+      return;
+    }
+    const before = get().favorites.length;
+    const favorites = unionTracksById(get().favorites, incoming).slice(0, 2000);
+    const added = favorites.length - before;
+    set({ favorites });
+    get().showToast(
+      added > 0 ? `已导入 ${added} 首（合计 ${favorites.length}）` : "没有新的收藏可导入"
+    );
+    // Merge write — never forceClear (protects multi-device)
+    void persistSoon(get, {});
   },
 
   addToPlaylist: (t) => {

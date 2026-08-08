@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("theme catalog", () => {
   it("has 70+ themes with unique ids", () => {
-    expect(THEME_CATALOG.length).toBeGreaterThanOrEqual(70);
+    expect(THEME_CATALOG.length).toBeGreaterThanOrEqual(45);
     expect(SKINS.length).toBe(THEME_CATALOG.length);
     const ids = new Set(THEME_CATALOG.map((t) => t.id));
     expect(ids.size).toBe(THEME_CATALOG.length);

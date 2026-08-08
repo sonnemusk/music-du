@@ -38,8 +38,17 @@ function withAuthHeaders(init?: RequestInit): RequestInit {
   return { credentials: "same-origin", ...init, headers };
 }
 
+function accessLoginHint(): string {
+  return "需要登录 Cloudflare Access 后使用（邮箱验证）";
+}
+
 async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
   const r = await fetch(path, withAuthHeaders(opts));
+  const ct = r.headers.get("content-type") || "";
+  // Session expired / whole-site Access — HTML login page instead of JSON
+  if (ct.includes("text/html") || r.status === 302) {
+    throw new Error(accessLoginHint());
+  }
   let j: any = null;
   try {
     j = await r.json();
@@ -47,7 +56,12 @@ async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
     j = null;
   }
   if (r.status === 401) {
-    throw new Error(j?.error || "unauthorized — library token required");
+    // Access challenge sometimes surfaces as 401 JSON/HTML
+    const msg = j?.error || "";
+    if (!msg || /access|cloudflare|login/i.test(msg)) {
+      throw new Error(accessLoginHint());
+    }
+    throw new Error(msg || "unauthorized — library token required");
   }
   if (r.status === 429) {
     throw new Error(j?.error || "HTTP 429 rate limited");

@@ -135,3 +135,28 @@ export function nextLibraryRevision(serverRev: number): number {
   if (!Number.isFinite(n) || n < 0) return 1;
   return Math.floor(n) + 1;
 }
+
+/**
+ * Union two track lists by id: prefer primary order, then append secondary-only.
+ * Used at bootstrap to reconcile localStorage with D1 without thin-client wipe.
+ */
+export function unionTracksById<T extends LibTrack>(
+  primary: T[],
+  secondary: T[]
+): T[] {
+  const out: T[] = [];
+  const seen = new Set<string>();
+  for (const t of primary || []) {
+    const k = trackId(t);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+  }
+  for (const t of secondary || []) {
+    const k = trackId(t);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+  }
+  return out;
+}

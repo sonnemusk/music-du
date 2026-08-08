@@ -2,7 +2,7 @@
   "name": "kazam",
   "version": "2.0.0",
   "private": true,
-  "description": "Music — personal music web app (Hono BFF + React SPA). Node VPS or Cloudflare Workers free tier.",
+  "description": "Music — personal music web app. Production: Cloudflare Workers free tier. Node: local/dev only.",
   "type": "module",
   "scripts": {
     "dev": "tsx watch server/node.ts",
