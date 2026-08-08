@@ -1465,7 +1465,7 @@ export const THEME_CATALOG: ThemeTokens[] = [
     id: "lattice",
     name: "宫墙",
     tagline: "粉霓宫格 · 封面墙感",
-    layout: "dock",
+    layout: "immersive",
     themeColor: "#18181b",
     bg: "#18181b",
     fg: "#fafafa",

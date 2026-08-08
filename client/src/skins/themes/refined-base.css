@@ -201,44 +201,6 @@
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
-/* —— dock —— */
-.skin-host .dock-mini {
-  background: color-mix(in srgb, var(--bg) 78%, var(--card));
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
-}
-.skin-host .dock-mini-cov {
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  border: 1px solid var(--line);
-}
-.skin-host .dock-mini-play {
-  background: linear-gradient(135deg, var(--accent), var(--accent2, var(--accent)));
-  color: var(--accent-fg);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 28%, transparent);
-}
-.skin-host .dock-seek .transport {
-  background: color-mix(in srgb, var(--bg) 72%, var(--card));
-  border-color: var(--line);
-  color: var(--fg);
-}
-.skin-host .dock-nav {
-  background: color-mix(in srgb, var(--bg) 94%, #000);
-  border-top: 1px solid var(--line);
-  backdrop-filter: blur(12px);
-}
-.skin-host .dock-nav button {
-  color: var(--muted);
-}
-.skin-host .dock-nav button.on {
-  color: var(--accent);
-}
-.skin-host .dock-title {
-  color: var(--fg);
-}
-
 /* —— immersive —— */
 .skin-host .imm-veil {
   background: linear-gradient(
@@ -282,8 +244,7 @@
 /* surface modifiers */
 .skin-host.surface-flat .side-player,
 .skin-host.surface-flat .imm-now,
-.skin-host.surface-flat .imm-sheet,
-.skin-host.surface-flat .dock-mini {
+.skin-host.surface-flat .imm-sheet {
   backdrop-filter: none;
 }
 .skin-host.surface-outline .side-player,
@@ -294,21 +255,17 @@
   box-shadow: none;
 }
 .skin-host.surface-raised .track-row.playing,
-.skin-host.surface-raised .dock-mini,
 .skin-host.surface-raised .side-player {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 
 .skin-host.radius-sharp .np-cover,
-.skin-host.radius-sharp .track-row .cov,
-.skin-host.radius-sharp .dock-mini,
-.skin-host.radius-sharp .dock-mini-cov {
+.skin-host.radius-sharp .track-row .cov {
   border-radius: 2px;
 }
 .skin-host.radius-pill .skin-search,
 .skin-host.radius-pill .skin-tabs button,
-.skin-host.radius-pill .t-btn.ghost,
-.skin-host.radius-pill .dock-mini {
+.skin-host.radius-pill .t-btn.ghost {
   border-radius: 999px;
 }
 .skin-host.radius-pill .t-btn:not(.ghost) {

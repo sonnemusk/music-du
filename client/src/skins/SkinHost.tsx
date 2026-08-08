@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { getTheme, themeToCssVars, type SkinId } from "./theme-catalog";
 import { CompactLayout } from "./layouts/CompactLayout";
-import { DockLayout } from "./layouts/DockLayout";
 import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
 import { SideLayout } from "./layouts/SideLayout";
 import "./layouts/layouts.css";
@@ -16,9 +15,6 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
   switch (meta.layout) {
     case "side":
       layout = <SideLayout brand={brand} />;
-      break;
-    case "dock":
-      layout = <DockLayout brand={brand} />;
       break;
     case "immersive":
       layout = <ImmersiveLayout brand={brand} />;

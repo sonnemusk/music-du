@@ -1,6 +1,6 @@
 /**
  * 15 additional layouts — each a distinct information architecture.
- * Existing: side / dock / immersive / split / compact (separate files).
+ * Existing: side / immersive / compact (separate files).
  */
 import { Transport } from "../../components/Transport";
 import { LyricsView } from "../../components/LyricsView";

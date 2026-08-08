@@ -120,7 +120,7 @@ export function NowPlaying({
 }
 
 /**
- * Unified top chrome for ALL layouts (side / compact / split / immersive / dock).
+ * Unified top chrome for ALL layouts (side / compact / immersive).
  * Row 1: brand · search · theme tools  (never a separate global bar)
  * Row 2: tabs (optional)
  */

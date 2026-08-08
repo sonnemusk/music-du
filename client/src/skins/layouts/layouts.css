@@ -115,29 +115,6 @@
   margin-left: 0;
 }
 
-/*
- * Dock-class themes only (樱花 / 蜂蜜 / …): head is narrow + pill chrome,
- * so put search on its own full-width row. Other layouts keep one row.
- */
-.layout-dock .skin-head__main {
-  flex-wrap: wrap;
-  row-gap: 10px;
-}
-.layout-dock .skin-brand {
-  order: 1;
-}
-.layout-dock .skin-head__tools {
-  order: 2;
-  margin-left: auto;
-}
-.layout-dock .skin-search {
-  order: 3;
-  flex: 1 1 100%;
-  width: 100%;
-  min-width: 0;
-  height: 42px;
-}
-
 .skin-head__title {
   margin: 0;
   font-size: 22px;
@@ -272,7 +249,6 @@ button.badge,
   filter: brightness(1.08);
 }
 .now-playing.loading .np-cover,
-.dock-mini.loading .dock-mini-cov,
 .compact-now.loading {
   opacity: 0.75;
 }
@@ -466,7 +442,6 @@ button.badge,
 /* When lyrics tab is open, host gives height so lyrics own the scroll.
    Cover ALL layout bodies (original 5 + new 15) so every theme can center-sync. */
 .side-panel:has(> .lyrics-scroller),
-.dock-main:has(> .lyrics-scroller),
 .compact-main:has(> .lyrics-scroller),
 .imm-body:has(> .lyrics-scroller),
 .split-list:has(> .lyrics-scroller),
@@ -492,7 +467,6 @@ button.badge,
   min-height: 0;
 }
 .side-panel > .lyrics-scroller,
-.dock-main > .lyrics-scroller,
 .compact-main > .lyrics-scroller,
 .imm-body > .lyrics-scroller,
 .split-list > .lyrics-scroller,
@@ -995,207 +969,6 @@ button.badge,
   overflow: auto;
   padding: 12px 14px 16px;
   -webkit-overflow-scrolling: touch;
-}
-
-/* ========== Dock ==========
-   Stack (bottom → top): nav | mini player | seek
-   6 tabs (含热榜+歌词) — must be 6 columns, single-line labels.
-*/
-.layout-dock {
-  --dock-nav-h: 56px;
-  --dock-mini-h: 58px;
-  --dock-seek-h: 34px;
-  --dock-gap: 8px;
-  padding-bottom: calc(
-    var(--dock-nav-h) + var(--dock-mini-h) + var(--dock-seek-h) + var(--dock-gap) * 2 +
-      env(safe-area-inset-bottom, 0px) + 8px
-  );
-}
-/* dock reuses .skin-head; title via .skin-head__title */
-.layout-dock .skin-head__title {
-  font-size: 22px;
-}
-/* dock: search still flexes in the head row (do not force 100% width) */
-.dock-main {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 4px 12px 12px;
-  -webkit-overflow-scrolling: touch;
-}
-/* Progress bar — sits above mini with clear gap, own chrome so bars don't fuse */
-.dock-seek {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(
-    var(--dock-nav-h) + var(--dock-mini-h) + var(--dock-gap) * 2 +
-      env(safe-area-inset-bottom, 0px)
-  );
-  z-index: 40;
-  pointer-events: none;
-  height: var(--dock-seek-h);
-  display: flex;
-  align-items: center;
-}
-.dock-seek .transport {
-  pointer-events: auto;
-  max-width: none;
-  width: 100%;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--card, #111) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--line, #fff2) 80%, transparent);
-  backdrop-filter: blur(12px);
-  box-sizing: border-box;
-}
-.dock-seek .transport.compact .seek-row {
-  margin-top: 0;
-  gap: 8px;
-}
-.dock-seek .seek-row > span {
-  flex: 0 0 34px;
-  font-size: 10px;
-}
-.dock-seek .seek-row input[type="range"] {
-  height: 22px;
-}
-/* Mini now-playing — between seek and bottom nav */
-.dock-mini {
-  position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: calc(var(--dock-nav-h) + var(--dock-gap) + env(safe-area-inset-bottom, 0px));
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  min-height: var(--dock-mini-h);
-  height: var(--dock-mini-h);
-  box-sizing: border-box;
-}
-.dock-mini-cov {
-  width: 42px;
-  height: 42px;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-.dock-mini-cov img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.dock-mini-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.dock-mini-meta .n {
-  font-weight: 800;
-  font-size: 13px;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dock-mini-meta .a {
-  font-size: 11px;
-  line-height: 1.25;
-  opacity: 0.55;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dock-mini-play {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  border-radius: 50%;
-  font-weight: 800;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  line-height: 1;
-}
-/* 6 tabs: search / charts / playlist / favorites / history / lyrics */
-.dock-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  padding: 4px 0 calc(4px + env(safe-area-inset-bottom, 0px));
-  min-height: calc(var(--dock-nav-h) + env(safe-area-inset-bottom, 0px));
-  box-sizing: border-box;
-}
-.dock-nav button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.45;
-  padding: 4px 1px;
-  min-height: 48px;
-  min-width: 0;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.dock-nav button.on {
-  opacity: 1;
-}
-/* One line only: hide short glyph, keep full label (避免「词 / 歌词」双行) */
-.dock-nav button > span:first-child {
-  display: none;
-}
-.dock-nav .lbl {
-  display: block;
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  letter-spacing: 0;
-}
-/* Very narrow phones: prefer single-char short labels */
-@media (max-width: 360px) {
-  .dock-nav button > span:first-child {
-    display: block;
-    font-size: 13px;
-    line-height: 1.2;
-  }
-  .dock-nav .lbl {
-    display: none;
-  }
-}
-@media (min-width: 900px) {
-  .layout-dock {
-    max-width: 440px;
-    margin: 0 auto;
-  }
-  .dock-mini,
-  .dock-seek {
-    max-width: 420px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    width: calc(100% - 20px);
-  }
-  .dock-nav {
-    max-width: 440px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
 }
 
 /* ========== Immersive ========== */
