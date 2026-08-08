@@ -604,6 +604,9 @@ button.badge,
   justify-content: center;
   flex-wrap: wrap;
   align-items: center;
+  /* Above seek by default so quality menu isn't trapped under seek-row */
+  position: relative;
+  z-index: 2;
 }
 .t-btn {
   width: 44px;
@@ -778,11 +781,19 @@ button.badge,
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 12px;
+  /* Room for hover tip above the bar (was 12px → tip sat under 沉浸/♥) */
+  margin-top: 28px;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
   width: 100%;
+  position: relative;
+  z-index: 1;
+}
+/* Hovering the bar: tip must paint over 沉浸 / ♥ (not under them) */
+.seek-row:has(.seek-track:hover),
+.seek-row:has(.seek-track:focus-within) {
+  z-index: 30;
 }
 .seek-row > span {
   flex: 0 0 36px;
@@ -807,25 +818,25 @@ button.badge,
   content: attr(data-tip);
   position: absolute;
   left: var(--seek-tip-x);
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   transform: translateX(-50%) translateY(2px);
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
   line-height: 1.2;
   color: #fff;
-  background: color-mix(in srgb, #111 88%, currentColor 12%);
-  box-shadow: 0 4px 14px color-mix(in srgb, #000 35%, transparent);
+  background: color-mix(in srgb, #111 92%, currentColor 8%);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 40%, transparent);
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
   transition: opacity 60ms ease, transform 60ms ease, visibility 60ms;
-  z-index: 20;
+  z-index: 50;
   /* Keep tip within track bounds when near edges */
-  max-width: min(100%, 220px);
+  max-width: min(100%, 240px);
 }
 .seek-track[data-tip]:hover::after,
 .seek-track[data-tip]:focus-within::after {
@@ -966,12 +977,18 @@ button.badge,
   justify-content: center; /* same as immersive .imm-now — vertical center */
   gap: 14px;
   padding: 20px 16px 18px;
-  overflow: auto;
+  /* visible: seek tip floats above bar; overflow:auto was clipping it under 沉浸/♥ */
+  overflow: visible;
   min-height: 0;
   align-self: stretch;
 }
 .side-player .transport {
   margin-top: 4px;
+  /* tip floats above seek bar; don't clip it inside the player column */
+  overflow: visible;
+}
+.imm-now .transport {
+  overflow: visible;
 }
 .side-panel {
   flex: 1;
@@ -1226,7 +1243,7 @@ button.badge,
   justify-content: center;
   gap: 14px;
   padding: 18px 16px;
-  overflow: auto;
+  overflow: visible; /* seek tip must not be clipped under transport buttons */
   min-width: 0;
 }
 .imm-now .transport {
