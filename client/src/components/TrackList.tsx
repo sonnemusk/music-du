@@ -26,9 +26,17 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
     void playTrack(t, { from: mode });
   };
 
+  const preferredQuality = usePlayer((s) => s.preferredQuality);
   const warmRow = (t: Track) => {
     // Hover/focus: pre-resolve this row so click uses cached CDN URL
-    prefetchSongResolveOne(t.id, (id) => api.resolveSong(id));
+    prefetchSongResolveOne(
+      t.id,
+      (id, opts) =>
+        api.resolveSong(id, {
+          level: opts?.level || preferredQuality,
+        }),
+      preferredQuality
+    );
   };
 
   if (!tracks.length) return <div className="empty">{empty}</div>;

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { QUALITY_OPTIONS, qualityOption } from "../lib/quality";
 import { usePlayer } from "../store/player";
 
 /** Shared transport controls — skins style via CSS scope. */
@@ -8,6 +9,9 @@ export function Transport({ compact }: { compact?: boolean }) {
   const next = usePlayer((s) => s.next);
   const cycleMode = usePlayer((s) => s.cycleMode);
   const modeLabel = usePlayer((s) => s.modeLabel);
+  const preferredQuality = usePlayer((s) => s.preferredQuality);
+  const cyclePreferredQuality = usePlayer((s) => s.cyclePreferredQuality);
+  const setPreferredQuality = usePlayer((s) => s.setPreferredQuality);
   const currentTime = usePlayer((s) => s.currentTime);
   const duration = usePlayer((s) => s.duration);
   const buffered = usePlayer((s) => s.buffered);
@@ -59,6 +63,37 @@ export function Transport({ compact }: { compact?: boolean }) {
           >
             {modeLabel()}
           </button>
+          <div className="quality-wrap" role="group" aria-label="音质">
+            <button
+              type="button"
+              className="t-btn ghost mode quality-btn"
+              onClick={cyclePreferredQuality}
+              title={`音质：${qualityOption(preferredQuality).label}（点击切换）`}
+              aria-label={`音质：${qualityOption(preferredQuality).label}`}
+            >
+              {qualityOption(preferredQuality).short}
+            </button>
+            <div className="quality-menu" role="listbox" aria-label="选择音质">
+              {QUALITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="option"
+                  aria-selected={preferredQuality === opt.id}
+                  className={
+                    preferredQuality === opt.id
+                      ? "quality-opt is-active"
+                      : "quality-opt"
+                  }
+                  onClick={() => setPreferredQuality(opt.id)}
+                  title={opt.hint}
+                >
+                  <span className="quality-opt__name">{opt.label}</span>
+                  <span className="quality-opt__id">{opt.short}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           {curTrack && (
             <button
               type="button"

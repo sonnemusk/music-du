@@ -3,12 +3,16 @@
  * 1) In-memory Map (fast, TTL short for hot re-clicks)
  * 2) localStorage durable (survives reload; longer TTL)
  *
- * CDN signed URLs expire; durable TTL is ~25 min so we re-resolve
- * before typical signed-link death without hammering the API.
+ * Keys are `${id}@@${preferredLevel}` so quality switches re-resolve cleanly.
+ * CDN signed URLs expire; durable TTL is ~25 min.
  */
+
+import { DEFAULT_QUALITY, songCacheKey } from "./quality";
 
 export type CachedSong = {
   id: string;
+  /** Preferred level used when this entry was resolved */
+  preferredLevel?: string;
   url: string;
   stream: string;
   level: string;
@@ -60,6 +64,10 @@ function writeDurableMap(map: Record<string, CachedSong>) {
   }
 }
 
+function resolveKey(id: string | number, preferredLevel?: string | null): string {
+  return songCacheKey(id, preferredLevel || DEFAULT_QUALITY);
+}
+
 /** Hydrate memory from localStorage once (call on bootstrap). */
 export function hydrateSongCache(): void {
   if (durableHydrated) return;
@@ -69,55 +77,98 @@ export function hydrateSongCache(): void {
   for (const [k, v] of Object.entries(map)) {
     if (!v || typeof v !== "object") continue;
     if (now - (v.ts || 0) > DURABLE_TTL_MS) continue;
-    if (!memory.has(k)) memory.set(k, { ...v, id: String(v.id || k) });
+    if (!memory.has(k)) memory.set(k, { ...v, id: String(v.id || k.split("@@")[0]) });
   }
 }
 
-export function getCachedSong(id: string | number): CachedSong | null {
-  const k = String(id);
-  const mem = memory.get(k);
-  if (mem) {
-    if (isFresh(mem, MEMORY_TTL_MS)) return mem;
-    // Memory expired but durable may still be OK — fall through check
-    if (!isFresh(mem, DURABLE_TTL_MS)) {
-      memory.delete(k);
-    } else {
-      return mem; // still usable for play (CDN may or may not work; stream fallback exists)
+export function getCachedSong(
+  id: string | number,
+  preferredLevel?: string | null
+): CachedSong | null {
+  const k = resolveKey(id, preferredLevel);
+  const tryKey = (key: string): CachedSong | null => {
+    const mem = memory.get(key);
+    if (mem) {
+      if (isFresh(mem, MEMORY_TTL_MS)) return mem;
+      if (!isFresh(mem, DURABLE_TTL_MS)) {
+        memory.delete(key);
+      } else {
+        return mem;
+      }
     }
-  }
+    const map = readDurableMap();
+    const hit = map[key];
+    if (!hit || !isFresh(hit, DURABLE_TTL_MS)) {
+      if (hit) {
+        delete map[key];
+        writeDurableMap(map);
+      }
+      return null;
+    }
+    memory.set(key, hit);
+    return hit;
+  };
 
-  // Lazy durable lookup (sync)
-  const map = readDurableMap();
-  const hit = map[k];
-  if (!hit || !isFresh(hit, DURABLE_TTL_MS)) {
-    if (hit) {
-      delete map[k];
-      writeDurableMap(map);
-    }
-    return null;
+  const hit = tryKey(k);
+  if (hit) return hit;
+  // Legacy entries keyed by bare id (pre-quality switch)
+  if (!String(id).includes("@@")) {
+    return tryKey(String(id));
   }
-  memory.set(k, hit);
-  return hit;
+  return null;
 }
 
-export function setCachedSong(data: Omit<CachedSong, "ts">) {
-  const entry: CachedSong = { ...data, id: String(data.id), ts: Date.now() };
-  memory.set(entry.id, entry);
+export function setCachedSong(
+  data: Omit<CachedSong, "ts">,
+  preferredLevel?: string | null
+) {
+  const pref = preferredLevel || data.preferredLevel || data.level || DEFAULT_QUALITY;
+  const k = resolveKey(data.id, pref);
+  const entry: CachedSong = {
+    ...data,
+    id: String(data.id),
+    preferredLevel: pref,
+    ts: Date.now(),
+  };
+  memory.set(k, entry);
   const map = readDurableMap();
-  map[entry.id] = entry;
+  map[k] = entry;
   writeDurableMap(map);
 }
 
 /** Drop one entry so the next play re-resolves (stale / dead CDN link). */
-export function invalidateCachedSong(id: string | number) {
-  const k = String(id);
-  memory.delete(k);
+export function invalidateCachedSong(
+  id: string | number,
+  preferredLevel?: string | null
+) {
+  const keys = [resolveKey(id, preferredLevel), String(id)];
+  if (preferredLevel == null) {
+    // wipe all quality variants for this song
+    const prefix = `${String(id)}@@`;
+    for (const k of memory.keys()) {
+      if (k === String(id) || k.startsWith(prefix)) keys.push(k);
+    }
+    try {
+      const map = readDurableMap();
+      for (const k of Object.keys(map)) {
+        if (k === String(id) || k.startsWith(prefix)) keys.push(k);
+      }
+    } catch {
+      /* */
+    }
+  }
+  const uniq = [...new Set(keys)];
+  for (const k of uniq) memory.delete(k);
   try {
     const map = readDurableMap();
-    if (map[k]) {
-      delete map[k];
-      writeDurableMap(map);
+    let changed = false;
+    for (const k of uniq) {
+      if (map[k]) {
+        delete map[k];
+        changed = true;
+      }
     }
+    if (changed) writeDurableMap(map);
   } catch {
     /* */
   }

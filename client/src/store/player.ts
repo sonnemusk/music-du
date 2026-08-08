@@ -35,6 +35,14 @@ import {
   playModeLabel,
   predictNextIndex,
 } from "../lib/player-core";
+import {
+  cycleQuality,
+  DEFAULT_QUALITY,
+  loadPreferredQuality,
+  qualityOption,
+  type QualityId,
+  savePreferredQuality,
+} from "../lib/quality";
 import { prefetchSongResolves } from "../lib/resolve-prefetch";
 import {
   getCachedSong,
@@ -167,6 +175,8 @@ type State = {
   /** 0–1 how far the current media is buffered (HTMLMediaElement.buffered) */
   buffered: number;
   quality: string;
+  /** Preferred resolve ladder top (jymaster / sky / jyeffect) */
+  preferredQuality: QualityId;
   playSource: string;
   lyrics: LyricLine[];
   lyricIdx: number;
@@ -203,6 +213,10 @@ type State = {
   toggleMute: () => void;
   tick: () => void;
   cycleMode: () => void;
+  /** Set preferred quality (top-3); re-resolves current track if playing */
+  setPreferredQuality: (q: QualityId) => void;
+  /** Cycle among top-3 quality options */
+  cyclePreferredQuality: () => void;
   toggleFavorite: (t?: Track | null) => void;
   addToPlaylist: (t: Track) => void;
   removeFromPlaylist: (id: string | number) => void;
@@ -313,6 +327,7 @@ export const usePlayer = create<State>((set, get) => ({
   duration: 0,
   buffered: 0,
   quality: "",
+  preferredQuality: typeof window !== "undefined" ? loadPreferredQuality() : DEFAULT_QUALITY,
   playSource: "",
   lyrics: [],
   lyricIdx: -1,
@@ -357,27 +372,28 @@ export const usePlayer = create<State>((set, get) => ({
     set({ tab: t });
     if (t === "charts") void get().loadCharts();
     // Switching tabs → pre-resolve visible list so click/play hits cache
-    const resolve = (id: string | number) => api.resolveSong(id);
+    const resolve = (id: string | number, opts?: { level?: string }) =>
+      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
     if (t === "favorites") {
-      prefetchSongResolves(get().favorites, resolve, {
+      prefetchSongResolves(get().favorites, resolve, { level: get().preferredQuality, 
         limit: 48,
         concurrency: 2,
         startDelayMs: 80,
       });
     } else if (t === "playlist") {
-      prefetchSongResolves(get().playlist, resolve, {
+      prefetchSongResolves(get().playlist, resolve, { level: get().preferredQuality, 
         limit: 40,
         concurrency: 2,
         startDelayMs: 80,
       });
     } else if (t === "history") {
-      prefetchSongResolves(get().history, resolve, {
+      prefetchSongResolves(get().history, resolve, { level: get().preferredQuality, 
         limit: 30,
         concurrency: 2,
         startDelayMs: 80,
       });
     } else if (t === "search") {
-      prefetchSongResolves(get().searchResults, resolve, {
+      prefetchSongResolves(get().searchResults, resolve, { level: get().preferredQuality, 
         limit: 12,
         concurrency: 2,
         startDelayMs: 80,
@@ -477,16 +493,15 @@ export const usePlayer = create<State>((set, get) => ({
       get().prefetchAround(start.id);
 
       // Pre-resolve favorites / playlist / history URLs in background (not full audio)
-      const resolve = (id: string | number) => api.resolveSong(id);
-      prefetchSongResolves(favorites, resolve, {
-        limit: 48,
+      const resolve = (id: string | number, opts?: { level?: string }) =>
+      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
+      prefetchSongResolves(favorites, resolve, { level: get().preferredQuality, limit: 48,
         concurrency: 2,
         startDelayMs: 350,
       });
       setTimeout(
         () =>
-          prefetchSongResolves(playlist, resolve, {
-            limit: 36,
+          prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 36,
             concurrency: 2,
             startDelayMs: 0,
           }),
@@ -494,8 +509,7 @@ export const usePlayer = create<State>((set, get) => ({
       );
       setTimeout(
         () =>
-          prefetchSongResolves(history, resolve, {
-            limit: 24,
+          prefetchSongResolves(history, resolve, { level: get().preferredQuality, limit: 24,
             concurrency: 2,
             startDelayMs: 0,
           }),
@@ -518,9 +532,10 @@ export const usePlayer = create<State>((set, get) => ({
         }
       }, 900);
     } else if (playlist.length || history.length) {
-      const resolve = (id: string | number) => api.resolveSong(id);
-      prefetchSongResolves(playlist, resolve, { limit: 36, concurrency: 2, startDelayMs: 400 });
-      prefetchSongResolves(history, resolve, { limit: 24, concurrency: 2, startDelayMs: 2000 });
+      const resolve = (id: string | number, opts?: { level?: string }) =>
+      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
+      prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 36, concurrency: 2, startDelayMs: 400 });
+      prefetchSongResolves(history, resolve, { level: get().preferredQuality, limit: 24, concurrency: 2, startDelayMs: 2000 });
     }
 
     // Prefetch default chart into memory from localStorage + background refresh
@@ -576,7 +591,7 @@ export const usePlayer = create<State>((set, get) => ({
           queueSource: "search",
         });
         // Warm URLs for list (and siblings) while playing the random pick
-        prefetchSongResolves(list, (id) => api.resolveSong(id), {
+        prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
           limit: 12,
           concurrency: 2,
         });
@@ -600,7 +615,7 @@ export const usePlayer = create<State>((set, get) => ({
       if (!data.length) get().showToast("没有结果");
       // List is ready — resolve top results in background so click/play is instant
       else {
-        prefetchSongResolves(list, (id) => api.resolveSong(id), {
+        prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
           limit: 12,
           concurrency: 2,
           startDelayMs: 200,
@@ -667,8 +682,7 @@ export const usePlayer = create<State>((set, get) => ({
       });
       prefetchCovers(localHit.payload.tracks, 40);
       prefetchSongResolves(
-        localHit.payload.tracks.map(norm).filter(Boolean) as Track[],
-        (id) => api.resolveSong(id),
+        localHit.payload.tracks.map(norm).filter(Boolean) as Track[], (id) => api.resolveSong(id, { level: get().preferredQuality }),
         { limit: 10, concurrency: 2, startDelayMs: 500 }
       );
       if (!localHit.stale && !force) return;
@@ -735,7 +749,7 @@ export const usePlayer = create<State>((set, get) => ({
       });
       prefetchCovers(tracks, 40);
       // Pre-resolve top chart tracks so first click doesn't wait on /api/song
-      prefetchSongResolves(tracks, (id) => api.resolveSong(id), {
+      prefetchSongResolves(tracks, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
         limit: 10,
         concurrency: 2,
         startDelayMs: 400,
@@ -826,19 +840,20 @@ export const usePlayer = create<State>((set, get) => ({
     void persistSoon(get);
 
     // Only toast when we actually need a network resolve (cache miss)
-    const hadResolveCache = Boolean(getCachedSong(t.id)?.url || getCachedSong(t.id)?.stream);
+    const hadResolveCache = Boolean(getCachedSong(t.id, get().preferredQuality)?.url || getCachedSong(t.id, get().preferredQuality)?.stream);
     const slowHint = window.setTimeout(() => {
       if (get().playToken === token && get().loadingPlay && !hadResolveCache) {
         get().showToast("正在解析音源…");
       }
     }, 900);
 
-    const stream = `/api/stream/${encodeURIComponent(String(t.id))}`;
+    const prefQ = get().preferredQuality;
+    const stream = `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(prefQ)}`;
     const clearSlow = () => window.clearTimeout(slowHint);
 
     /** Network resolve + write durable cache (only when cache miss or forced refresh). */
     const fetchAndStoreResolve = async () => {
-      const data = await api.resolveSong(t.id);
+      const data = await api.resolveSong(t.id, { level: get().preferredQuality });
       const remoteUrl =
         data.url && /^https?:\/\//i.test(String(data.url)) ? String(data.url) : "";
       const updated = {
@@ -862,7 +877,7 @@ export const usePlayer = create<State>((set, get) => ({
         cover: updated.cover || "",
         source: String(data.source || ""),
         play: data.play,
-      });
+      }, get().preferredQuality);
       return { data, remoteUrl, updated };
     };
 
@@ -884,7 +899,7 @@ export const usePlayer = create<State>((set, get) => ({
             audio.removeEventListener("error", onErr);
             void (async () => {
               try {
-                invalidateCachedSong(t.id);
+                invalidateCachedSong(t.id, get().preferredQuality);
                 const fresh = await fetchAndStoreResolve();
                 if (get().playToken !== token) return;
                 if (fresh.remoteUrl) {
@@ -927,7 +942,7 @@ export const usePlayer = create<State>((set, get) => ({
       // Cached CDN link often expires — re-resolve once, then stream
       if (fromCache || remoteUrl) {
         try {
-          invalidateCachedSong(t.id);
+          invalidateCachedSong(t.id, get().preferredQuality);
           const fresh = await fetchAndStoreResolve();
           if (get().playToken !== token) return false;
           set({
@@ -959,7 +974,7 @@ export const usePlayer = create<State>((set, get) => ({
     let playedFromBlob = false;
     let remote = "";
     let meta: any = null;
-    const songCached = getCachedSong(t.id);
+    const songCached = getCachedSong(t.id, get().preferredQuality);
 
     try {
       const blobUrl = await getAudioObjectURL(t.id);
@@ -968,7 +983,7 @@ export const usePlayer = create<State>((set, get) => ({
         return;
       }
       if (blobUrl) {
-        const cachedMeta = getCachedSong(t.id) || songCached;
+        const cachedMeta = getCachedSong(t.id, get().preferredQuality) || songCached;
         if (cachedMeta) {
           set({
             curTrack: {
@@ -1192,8 +1207,9 @@ export const usePlayer = create<State>((set, get) => ({
     void (async () => {
       let remote = "";
       let level = "";
-      const stream = `/api/stream/${encodeURIComponent(String(t.id))}`;
-      const cached = getCachedSong(t.id);
+      const prefQ = get().preferredQuality;
+    const stream = `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(prefQ)}`;
+      const cached = getCachedSong(t.id, get().preferredQuality);
       if (cached && (cached.url || cached.stream)) {
         remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
         level = cached.level || "";
@@ -1214,7 +1230,7 @@ export const usePlayer = create<State>((set, get) => ({
         }
       } else {
         try {
-          const meta = await api.resolveSong(t.id);
+          const meta = await api.resolveSong(t.id, { level: get().preferredQuality });
           // Abort if user already switched away
           if (get().curTrack && String(get().curTrack!.id) !== String(t.id)) return;
           remote =
@@ -1243,7 +1259,7 @@ export const usePlayer = create<State>((set, get) => ({
             cover: updated.cover || "",
             source: String(meta.source || ""),
             play: meta.play,
-          });
+          }, get().preferredQuality);
           if (
             get().curTrack &&
             String(get().curTrack!.id) === String(t.id) &&
@@ -1411,6 +1427,24 @@ export const usePlayer = create<State>((set, get) => ({
     if (idx !== get().lyricIdx) set({ lyricIdx: idx });
   },
 
+  setPreferredQuality: (q) => {
+    savePreferredQuality(q);
+    set({ preferredQuality: q });
+    const opt = qualityOption(q);
+    get().showToast(`音质：${opt.label}`);
+    const cur = get().curTrack;
+    if (cur) {
+      // Force re-resolve at new ladder step
+      invalidateCachedSong(cur.id); // all levels for this id? keep all - only current preferred matters
+      void get().playTrack(cur, { from: get().queueSource });
+    }
+  },
+
+  cyclePreferredQuality: () => {
+    const next = cycleQuality(get().preferredQuality);
+    get().setPreferredQuality(next);
+  },
+
   cycleMode: () => {
     const m = cyclePlayMode(get().playMode);
     try {
@@ -1494,13 +1528,13 @@ export const usePlayer = create<State>((set, get) => ({
         // Resolve meta if missing
         let remote = "";
         let level = "";
-        const cached = getCachedSong(n.id);
+        const cached = getCachedSong(n.id, get().preferredQuality);
         if (cached && (cached.url || cached.stream)) {
           remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
           level = cached.level || "";
         } else {
           try {
-            const meta = await api.resolveSong(n.id);
+            const meta = await api.resolveSong(n.id, { level: get().preferredQuality });
             remote =
               meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
             level = String(meta.level || "");
@@ -1516,7 +1550,7 @@ export const usePlayer = create<State>((set, get) => ({
               cover: meta.cover || n.cover || "",
               source: String(meta.source || ""),
               play: meta.play,
-            });
+            }, get().preferredQuality);
             if (meta.cover) prefetchCover(String(meta.cover), "thumb");
           } catch {
             return;

@@ -54,8 +54,17 @@ export async function fetchChart(
   return j.data as ChartPayload;
 }
 
-export async function resolveSong(id: string | number) {
-  const j = await json(`/api/song/${encodeURIComponent(String(id))}`);
+export async function resolveSong(
+  id: string | number,
+  opts?: { level?: string; force?: boolean }
+) {
+  const q = new URLSearchParams();
+  if (opts?.level) q.set("level", opts.level);
+  if (opts?.force) q.set("force", "1");
+  const qs = q.toString();
+  const j = await json(
+    `/api/song/${encodeURIComponent(String(id))}${qs ? `?${qs}` : ""}`
+  );
   return j.data;
 }
 

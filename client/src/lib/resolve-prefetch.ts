@@ -3,12 +3,16 @@
  * Fills durable song-cache so playTrack hits cache and skips slow /api/song wait.
  * Does NOT download audio — only metadata + CDN url.
  */
+import { DEFAULT_QUALITY } from "./quality";
 import { getCachedSong, setCachedSong } from "./song-cache";
 import type { Track } from "./types";
 
 const inflight = new Set<string>();
 
-export type ResolveFn = (id: string | number) => Promise<{
+export type ResolveFn = (
+  id: string | number,
+  opts?: { level?: string }
+) => Promise<{
   url?: string;
   stream?: string;
   level?: string;
@@ -37,8 +41,11 @@ export function prefetchSongResolves(
     staggerMs?: number;
     /** Delay before starting (default 280ms — let UI paint first) */
     startDelayMs?: number;
+    /** Preferred quality level (default highest) */
+    level?: string;
   }
 ): void {
+  const level = opts?.level || DEFAULT_QUALITY;
   const limit = opts?.limit ?? 24;
   const concurrency = Math.max(1, Math.min(4, opts?.concurrency ?? 2));
   const staggerMs = opts?.staggerMs ?? 100;
@@ -48,8 +55,8 @@ export function prefetchSongResolves(
     .filter((t) => t && t.id != null)
     .slice(0, limit)
     .filter((t) => {
-      const k = String(t.id);
-      if (getCachedSong(k)) return false;
+      const k = `${String(t.id)}@@${level}`;
+      if (getCachedSong(t.id, level)) return false;
       if (inflight.has(k)) return false;
       return true;
     });
@@ -62,28 +69,33 @@ export function prefetchSongResolves(
       while (idx < list.length) {
         const t = list[idx++];
         if (!t) break;
-        const k = String(t.id);
-        if (getCachedSong(k) || inflight.has(k)) continue;
+        const k = `${String(t.id)}@@${level}`;
+        if (getCachedSong(t.id, level) || inflight.has(k)) continue;
         inflight.add(k);
         try {
-          const meta = await resolveFn(t.id);
+          const meta = await resolveFn(t.id, { level });
           const remote =
             meta?.url && /^https?:\/\//i.test(String(meta.url))
               ? String(meta.url)
               : "";
-          setCachedSong({
-            id: k,
-            url: remote,
-            stream: meta?.stream || `/api/stream/${encodeURIComponent(k)}`,
-            level: String(meta?.level || ""),
-            br: Number(meta?.br || 0),
-            size: Number(meta?.size || 0),
-            name: meta?.name || t.name || "",
-            artist: meta?.artist || t.artist || "",
-            cover: meta?.cover || t.cover || "",
-            source: String(meta?.source || ""),
-            play: meta?.play,
-          });
+          setCachedSong(
+            {
+              id: String(t.id),
+              url: remote,
+              stream:
+                meta?.stream ||
+                `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(level)}`,
+              level: String(meta?.level || level),
+              br: Number(meta?.br || 0),
+              size: Number(meta?.size || 0),
+              name: meta?.name || t.name || "",
+              artist: meta?.artist || t.artist || "",
+              cover: meta?.cover || t.cover || "",
+              source: String(meta?.source || ""),
+              play: meta?.play,
+            },
+            level
+          );
         } catch {
           /* skip — play path will resolve again */
         } finally {
@@ -107,32 +119,38 @@ export function prefetchSongResolves(
 /** Hover / focus warm for a single row (search & charts). */
 export function prefetchSongResolveOne(
   id: string | number | null | undefined,
-  resolveFn: ResolveFn
+  resolveFn: ResolveFn,
+  level: string = DEFAULT_QUALITY
 ): void {
   if (id == null) return;
-  const k = String(id);
-  if (getCachedSong(k) || inflight.has(k)) return;
+  const k = `${String(id)}@@${level}`;
+  if (getCachedSong(id, level) || inflight.has(k)) return;
   inflight.add(k);
   void (async () => {
     try {
-      const meta = await resolveFn(id);
+      const meta = await resolveFn(id, { level });
       const remote =
         meta?.url && /^https?:\/\//i.test(String(meta.url))
           ? String(meta.url)
           : "";
-      setCachedSong({
-        id: k,
-        url: remote,
-        stream: meta?.stream || `/api/stream/${encodeURIComponent(k)}`,
-        level: String(meta?.level || ""),
-        br: Number(meta?.br || 0),
-        size: Number(meta?.size || 0),
-        name: String(meta?.name || ""),
-        artist: String(meta?.artist || ""),
-        cover: String(meta?.cover || ""),
-        source: String(meta?.source || ""),
-        play: meta?.play,
-      });
+      setCachedSong(
+        {
+          id: String(id),
+          url: remote,
+          stream:
+            meta?.stream ||
+            `/api/stream/${encodeURIComponent(String(id))}?level=${encodeURIComponent(level)}`,
+          level: String(meta?.level || level),
+          br: Number(meta?.br || 0),
+          size: Number(meta?.size || 0),
+          name: String(meta?.name || ""),
+          artist: String(meta?.artist || ""),
+          cover: String(meta?.cover || ""),
+          source: String(meta?.source || ""),
+          play: meta?.play,
+        },
+        level
+      );
     } catch {
       /* */
     } finally {
