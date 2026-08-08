@@ -128,20 +128,14 @@ export async function fetchAndCacheCover(url: string): Promise<CoverHit | null> 
   const cached = readCoverCache(url);
   if (cached) return cached;
   try {
-    const up = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        Referer: "https://music.163.com/",
-        Accept: "image/*,*/*",
-      },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!up.ok) return null;
-    const ab = await up.arrayBuffer();
-    const body = Buffer.from(ab);
-    const contentType = up.headers.get("Content-Type") || "image/jpeg";
-    writeCoverCache(url, body, contentType);
-    return { body, contentType, fromCache: false };
+    const { fetchCoverUpstream } = await import("./cover-fetch.js");
+    const hit = await fetchCoverUpstream(url, { timeoutMs: 12000 });
+    if (!hit) return null;
+    const body = Buffer.from(hit.body);
+    writeCoverCache(url, body, hit.contentType);
+    // Also cache under original url key when mirror succeeded
+    if (hit.finalUrl !== url) writeCoverCache(hit.finalUrl, body, hit.contentType);
+    return { body, contentType: hit.contentType, fromCache: false };
   } catch {
     return null;
   }

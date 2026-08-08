@@ -118,6 +118,7 @@ export function prefetchCovers(tracks: Track[], limit = 40) {
         const img = new Image();
         img.decoding = "async";
         img.loading = "eager";
+        img.referrerPolicy = "no-referrer";
         img.src = src;
       } catch {
         /* */
@@ -145,6 +146,7 @@ export function prefetchCover(url?: string, size: "thumb" | "medium" | "full" = 
   try {
     const img = new Image();
     img.decoding = "async";
+    img.referrerPolicy = "no-referrer";
     img.src = src;
   } catch {
     /* */

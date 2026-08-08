@@ -184,8 +184,20 @@ export function createApp(opts?: {
 
   app.get("/api/cover-proxy", async (c) => {
     const url = c.req.query("url") || "";
-    if (!url.startsWith("http")) return c.body(null, 400);
+    if (!url.startsWith("http")) {
+      return new Response(null, {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     try {
+      const { isAllowedCoverUrl } = await import("./cover-fetch.js");
+      if (!isAllowedCoverUrl(url)) {
+        return new Response(null, {
+          status: 403,
+          headers: { "Cache-Control": "no-store" },
+        });
+      }
       // Disk cache first (fast path for charts / replay)
       const disk = readCoverCache(url);
       // public + s-maxage: free CF orange-cloud CDN can cache if domain is proxied
@@ -202,12 +214,20 @@ export function createApp(opts?: {
         });
       }
       const hit = await fetchAndCacheCover(url);
-      if (!hit) return c.body(null, 404);
+      if (!hit) {
+        return new Response(null, {
+          status: 404,
+          headers: { "Cache-Control": "no-store", "CDN-Cache-Control": "no-store" },
+        });
+      }
       return new Response(new Uint8Array(hit.body), {
         headers: coverHeaders(hit.contentType, hit.fromCache ? "HIT" : "MISS"),
       });
     } catch {
-      return c.body(null, 404);
+      return new Response(null, {
+        status: 404,
+        headers: { "Cache-Control": "no-store" },
+      });
     }
   });
 

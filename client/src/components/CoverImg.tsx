@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { coverUrl, type CoverSize } from "../lib/player-core";
-import { resolveCoverDisplayUrl, warmCoverFromRemote } from "../lib/cover-browser-cache";
+import {
+  coverProxyUrl,
+  coverUrl,
+  type CoverSize,
+} from "../lib/player-core";
+import { warmCoverFromRemote } from "../lib/cover-browser-cache";
 
 type Props = {
   src?: string;
@@ -16,9 +20,12 @@ type Props = {
   size?: CoverSize;
 };
 
+type Stage = "direct" | "proxy" | "empty";
+
 /**
- * Cover image with size-aware proxy + browser Cache Storage.
- * List uses thumb; now-playing uses medium — never pull multi‑MB originals into lists.
+ * Cover image: direct CDN first (fast), then same-origin proxy, then empty.
+ * NetEase hotlink works with referrerPolicy=no-referrer; proxy is fallback
+ * when CDN edge fails or blocks.
  */
 export function CoverImg({
   src,
@@ -27,72 +34,56 @@ export function CoverImg({
   priority,
   size = "thumb",
 }: Props) {
-  const proxy = src ? coverUrl(src, size) : "";
-  const [display, setDisplay] = useState(proxy);
-  const blobRef = useRef<string | null>(null);
+  const direct = src ? coverUrl(src, size) : "";
+  const proxy = src ? coverProxyUrl(src, size) : "";
+  const [display, setDisplay] = useState(direct);
+  const [stage, setStage] = useState<Stage>("direct");
+  const stageRef = useRef<Stage>("direct");
 
   useLayoutEffect(() => {
     if (!src) {
       setDisplay("");
+      setStage("empty");
+      stageRef.current = "empty";
       return;
     }
-    setDisplay(coverUrl(src, size));
+    const d = coverUrl(src, size);
+    setDisplay(d);
+    setStage("direct");
+    stageRef.current = "direct";
   }, [src, size]);
 
   useEffect(() => {
-    if (!src) {
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current);
-        blobRef.current = null;
-      }
-      return;
-    }
-    const p = coverUrl(src, size);
-    let alive = true;
-
-    void (async () => {
-      const u = await resolveCoverDisplayUrl(src, size);
-      if (!alive) {
-        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
-        return;
-      }
-      if (u.startsWith("blob:")) {
-        if (blobRef.current) URL.revokeObjectURL(blobRef.current);
-        blobRef.current = u;
-        setDisplay(u);
-      } else {
-        setDisplay(u || p);
-        warmCoverFromRemote(src, size);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
+    if (!src) return;
+    // Background warm of proxy for offline / Cache Storage (non-blocking)
+    warmCoverFromRemote(src, size);
   }, [src, size]);
 
-  useEffect(() => {
-    return () => {
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current);
-        blobRef.current = null;
-      }
-    };
-  }, []);
-
-  if (!src || !display) {
+  if (!src || !display || stage === "empty") {
     return <div className={className || "cov"} aria-hidden />;
   }
 
   return (
     <img
-      key={proxy}
+      key={`${stage}:${display}`}
       className={className || "cov"}
       src={display}
       alt={alt}
       loading={priority ? "eager" : "lazy"}
       decoding={priority ? "sync" : "async"}
       fetchPriority={priority ? "high" : "auto"}
+      referrerPolicy="no-referrer"
+      onError={() => {
+        if (stageRef.current === "direct" && proxy) {
+          stageRef.current = "proxy";
+          setStage("proxy");
+          setDisplay(proxy);
+          return;
+        }
+        stageRef.current = "empty";
+        setStage("empty");
+        setDisplay("");
+      }}
     />
   );
 }

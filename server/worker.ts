@@ -18,6 +18,11 @@ import {
   type ChartPlatformId,
 } from "./charts.js";
 import * as chksz from "./chksz.js";
+import {
+  coverErrorResponse,
+  fetchCoverUpstream,
+  isAllowedCoverUrl,
+} from "./cover-fetch.js";
 import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, resolvePlay } from "./play.js";
@@ -386,34 +391,33 @@ app.get("/api/stream/:sid", async (c) => {
 
 app.get("/api/cover-proxy", async (c) => {
   const url = c.req.query("url") || "";
-  if (!url.startsWith("http")) return c.body(null, 400);
+  if (!url.startsWith("http")) return coverErrorResponse(400);
+  if (!isAllowedCoverUrl(url)) return coverErrorResponse(403);
 
-  // Free: Cloudflare Cache API (no R2/KV)
+  // Free: Cloudflare Cache API (no R2/KV). Only successful image bodies are stored.
   const cached = await edgeMatch(c.req.url);
-  if (cached) {
+  if (cached && cached.ok) {
     const headers = new Headers(cached.headers);
     headers.set("X-Cover-Cache", "CF-HIT");
     return new Response(cached.body, { status: cached.status, headers });
   }
 
   try {
-    const up = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0", Referer: "https://music.163.com/" },
-    });
-    if (!up.ok) return c.body(null, 404);
-    const buf = await up.arrayBuffer();
+    const hit = await fetchCoverUpstream(url, { timeoutMs: 10000 });
+    if (!hit) return coverErrorResponse(404);
     const headers = withCacheHeaders(
       {
-        "Content-Type": up.headers.get("Content-Type") || "image/jpeg",
+        "Content-Type": hit.contentType,
         "X-Cover-Cache": "MISS",
+        "X-Cover-Upstream": hit.finalUrl !== url ? "mirror" : "direct",
       },
       "cover"
     );
-    const res = new Response(buf, { status: 200, headers });
+    const res = new Response(hit.body, { status: 200, headers });
     edgePut(c.req.url, res, c.executionCtx);
     return res;
   } catch {
-    return c.body(null, 404);
+    return coverErrorResponse(502);
   }
 });
 

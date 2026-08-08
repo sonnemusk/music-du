@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clampSeek,
   clampVolume,
+  coverProxyUrl,
   coverUrl,
   cyclePlayMode,
   fmtTime,
@@ -103,8 +104,11 @@ describe("player-core", () => {
     expect(withCoverSize(u, "thumb")).toContain("param=120y120");
     expect(withCoverSize(u, "medium")).toContain("param=400y400");
     expect(withCoverSize(u, "full")).not.toContain("param=");
-    expect(coverUrl(u, "thumb")).toContain("param%3D120y120");
-    // list default is thumb
-    expect(coverUrl(u)).toContain("param%3D120y120");
+    // display prefers direct CDN (fast); proxy is encode fallback
+    expect(coverUrl(u, "thumb")).toContain("param=120y120");
+    expect(coverUrl(u, "thumb")).toContain("music.126.net");
+    expect(coverUrl(u)).not.toContain("/api/cover-proxy");
+    expect(coverProxyUrl(u, "thumb")).toContain("/api/cover-proxy");
+    expect(coverProxyUrl(u, "thumb")).toContain("param%3D120y120");
   });
 });

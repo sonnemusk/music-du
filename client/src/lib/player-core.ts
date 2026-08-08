@@ -127,11 +127,20 @@ export function withCoverSize(url: string, size: CoverSize = "thumb"): string {
 }
 
 /**
- * Same-origin cover proxy URL.
+ * Prefer direct CDN for display (fast in CN; NetEase allows no-referrer).
+ * Same-origin proxy is only used as fallback / Cache Storage key.
  * @param size default thumb — list-friendly; pass medium/full for large UI
  */
 export function coverUrl(url?: string, size: CoverSize = "thumb"): string {
   if (!url) return "";
+  if (url.startsWith("/")) return url;
+  return withCoverSize(url, size);
+}
+
+/** Same-origin proxy URL (fallback when direct CDN fails / blocked). */
+export function coverProxyUrl(url?: string, size: CoverSize = "thumb"): string {
+  if (!url) return "";
+  if (url.startsWith("/api/cover-proxy")) return url;
   if (url.startsWith("/")) return url;
   const remote = withCoverSize(url, size);
   return `/api/cover-proxy?url=${encodeURIComponent(remote)}`;
