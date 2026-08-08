@@ -87,11 +87,13 @@
   background: var(--card);
   border-color: var(--line);
 }
-.skin-host .now-playing.inline .np-badges .badge {
-  font-size: 10px;
-  padding: 2px 7px;
+.skin-host .now-playing.inline .np-badges .badge,
+.skin-host .now-playing.inline .np-badges button.badge {
+  font-size: 10px !important;
+  padding: 2px 7px !important;
 }
-.skin-host .badge {
+.skin-host .badge,
+.skin-host button.badge {
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
   background: var(--card);

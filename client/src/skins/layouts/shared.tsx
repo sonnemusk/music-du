@@ -6,6 +6,7 @@ import { SearchBar } from "../../components/SearchBar";
 import { SkinSwitcher } from "../../components/SkinSwitcher";
 import { TrackList } from "../../components/TrackList";
 import { Transport } from "../../components/Transport";
+import { qualityShortLabel } from "../../lib/quality";
 import type { PanelTab } from "../../lib/types";
 import { usePlayer } from "../../store/player";
 
@@ -77,6 +78,8 @@ export function NowPlaying({
 
   const showBadges = !hideBadges;
   const qShow = quality && quality !== "…" ? quality : preferredQuality;
+  // Prefer short Chinese chip (母带) over raw JYMASTER which blows badge width
+  const qLabel = qualityShortLabel(qShow) || String(qShow || "").toUpperCase();
   const badges = showBadges ? (
     <div className="np-badges">
       {loadingPlay ? <span className="badge">切换中…</span> : null}
@@ -90,7 +93,7 @@ export function NowPlaying({
             : "优先最高可用音质"
         }
       >
-        {String(qShow).toUpperCase()}
+        {qLabel}
       </button>
       {playSource ? (
         <span className="badge">{playSource === "remote" ? "直链" : "代理"}</span>
