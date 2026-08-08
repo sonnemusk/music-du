@@ -986,6 +986,15 @@ export const usePlayer = create<State>((set, get) => ({
     const rank0 = get().preferredRank;
     const sameTrack =
       get().curTrack != null && String(get().curTrack!.id) === String(t.id);
+
+    // Keep 喜欢 list scroll locked to the playing row (next/prev / auto-advance)
+    if (
+      get().tab === "favorites" &&
+      (get().queueSource === "favorites" || get().isFavorite(t.id))
+    ) {
+      const nonce = (get().locateRequest?.nonce || 0) + 1;
+      set({ locateRequest: { id: String(t.id), nonce } });
+    }
     const known0 = sameTrack ? get().availableQualities : [];
     const intentQ = intentLevelForRank(rank0);
     const stickyPref = sameTrack

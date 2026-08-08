@@ -260,32 +260,6 @@ button.badge,
   flex-direction: column;
   gap: 6px;
 }
-.track-list-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 2px 8px;
-  flex-shrink: 0;
-}
-.track-list-toolbar__count {
-  font-size: 12px;
-  font-weight: 700;
-  opacity: 0.55;
-  margin-right: auto;
-}
-.track-list-toolbar__btn {
-  font-size: 12px;
-  font-weight: 800;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm, 8px);
-  border: 1px solid var(--line, #fff2);
-  background: color-mix(in srgb, var(--card, #111) 80%, transparent);
-  color: var(--fg, inherit);
-  cursor: pointer;
-}
-.track-list-toolbar__btn:hover {
-  filter: brightness(1.08);
-}
 .track-row {
   display: flex;
   align-items: center;

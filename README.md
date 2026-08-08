@@ -65,7 +65,7 @@ Copy [`.env.example`](./.env.example). Variable **names** (not values) include:
 **Never commit** `.env`, tokens, or real keys. Production secrets live in the host env, Cloudflare Worker secrets, or GitHub Actions secrets (`MUSIC_ACCESS_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
 
 **Access:** whole site (`music.dubin.cc` / `.one` / `.vip`) is behind free **Cloudflare Access** (email login).  
-**Export:** `https://music.dubin.cc/favs` after Access login.  
+**Export:** `https://music.dubin.cc/favs` · **Import:** `https://music.dubin.cc/import` (Access 登录后；无 SPA 按钮).  
 **Library multi-device:** D1 `revision` optimistic lock (409 on conflict).  
 Details: [docs/ACCESS.md](./docs/ACCESS.md).
 

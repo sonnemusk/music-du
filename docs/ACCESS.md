@@ -11,8 +11,9 @@ Whole site + export are protected at the **edge** with Cloudflare Access
 | Browser users | Email OTP allow-list (same as NAS) |
 | CI smoke | Access **Service Token** (non-identity policy) |
 | `/api/library` | Additionally: app `MUSIC_ACCESS_TOKEN` (`X-Music-Token`) |
+| `/import` | Access only — upload favorites JSON to merge into D1 |
 
-`/favs` and `/export` no longer use the app token; they rely on Access  
+`/favs` `/export` `/import` no longer use the app token; they rely on Access  
 (login for humans, service token for automation).
 
 ## Applications (account)

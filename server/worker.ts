@@ -837,6 +837,132 @@ async function favoritesExportResponse(c: {
 app.get("/favs", (c) => favoritesExportResponse(c));
 app.get("/export", (c) => favoritesExportResponse(c));
 
+/** Import page — same Access gate as rest of site; no app token (like /favs). */
+function favoritesImportHtml(msg?: string) {
+  const notice = msg
+    ? `<p class="msg">${msg.replace(/</g, "&lt;")}</p>`
+    : `<p class="hint">选择由 <code>/favs</code> 导出的 JSON 文件，将与现有收藏合并（不删除已有项）。</p>`;
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>导入收藏 · Music</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #0b0b12; color: #f4f4f5; }
+    .card { width: min(420px, 92vw); padding: 28px 24px; border-radius: 16px;
+      background: #18181b; border: 1px solid #27272a; box-shadow: 0 20px 50px #0008; }
+    h1 { margin: 0 0 8px; font-size: 1.25rem; }
+    .hint, .msg { margin: 0 0 16px; opacity: .7; font-size: .9rem; line-height: 1.45; }
+    .msg { color: #6ee7b7; opacity: 1; }
+    code { font-size: .85em; opacity: .9; }
+    input[type=file] { width: 100%; margin: 12px 0 16px; }
+    button { width: 100%; padding: 12px 16px; border: 0; border-radius: 10px;
+      font-weight: 800; cursor: pointer; background: #a78bfa; color: #1e1b4b; }
+    button:hover { filter: brightness(1.06); }
+    a { color: #c4b5fd; }
+    .links { margin-top: 18px; font-size: .85rem; opacity: .65; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>导入收藏</h1>
+    ${notice}
+    <form method="post" action="/import" enctype="multipart/form-data">
+      <input type="file" name="file" accept="application/json,.json" required />
+      <button type="submit">合并导入</button>
+    </form>
+    <p class="links"><a href="/">← 返回播放器</a> · <a href="/favs">导出 /favs</a></p>
+  </div>
+</body>
+</html>`;
+}
+
+app.get("/import", (c) =>
+  c.html(favoritesImportHtml())
+);
+
+app.post("/import", async (c) => {
+  if (!c.env.MUSIC_DU_DB) {
+    return c.html(favoritesImportHtml("D1 未配置，无法导入"), 503);
+  }
+  try {
+    const ct = c.req.header("content-type") || "";
+    let raw: unknown = null;
+    if (ct.includes("multipart/form-data")) {
+      const body = await c.req.parseBody();
+      const file = body.file;
+      if (file && typeof file === "object" && "text" in file) {
+        raw = JSON.parse(await (file as File).text());
+      } else if (typeof file === "string") {
+        raw = JSON.parse(file);
+      }
+    } else {
+      raw = await c.req.json().catch(() => null);
+    }
+    if (!raw) {
+      return c.html(favoritesImportHtml("未收到有效 JSON 文件"), 400);
+    }
+    let list: any[] = [];
+    if (Array.isArray(raw)) list = raw;
+    else if (raw && typeof raw === "object") {
+      const o = raw as any;
+      list = o.favorites || o.tracks || o.data?.favorites || [];
+    }
+    const incoming: any[] = [];
+    const seen = new Set<string>();
+    for (const t of list) {
+      if (!t || t.id == null || t.id === "") continue;
+      const k = String(t.id);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      incoming.push({
+        id: /^\d+$/.test(k) ? Number(k) : t.id,
+        name: String(t.name || t.title || ""),
+        artist: String(t.artist || t.artists || t.singer || ""),
+        album: String(t.album || ""),
+        cover: String(t.cover || t.picUrl || ""),
+        duration: Number(t.duration || t.dt || 0) || 0,
+      });
+    }
+    if (!incoming.length) {
+      return c.html(favoritesImportHtml("文件中没有有效歌曲"), 400);
+    }
+    const existing = await loadLib(c.env.MUSIC_DU_DB);
+    const before = (existing.favorites || []).length;
+    const fav = mergeTrackList(existing.favorites || [], incoming, false, 2000);
+    const added = fav.length - before;
+    const result = await saveLib(
+      c.env.MUSIC_DU_DB,
+      {
+        playlist: existing.playlist,
+        favorites: fav,
+        history: existing.history,
+        curIdx: existing.curIdx,
+        // Import via Access page: accept current server rev (authoritative merge)
+        revision: existing.revision,
+      },
+      { expectedRevision: existing.revision ?? 0 }
+    );
+    if (result.conflict) {
+      return c.html(favoritesImportHtml("库正在被其他端写入，请重试"), 409);
+    }
+    const total = (result.data.favorites || []).length;
+    return c.html(
+      favoritesImportHtml(
+        `已合并导入 ${Math.max(0, added)} 首新歌，当前收藏共 ${total} 首。可返回播放器刷新。`
+      )
+    );
+  } catch (e: any) {
+    return c.html(
+      favoritesImportHtml(`导入失败：${e?.message || String(e)}`),
+      400
+    );
+  }
+});
+
 app.put("/api/library", async (c) => {
   const denied = libraryUnauthorized(c);
   if (denied) return denied;
