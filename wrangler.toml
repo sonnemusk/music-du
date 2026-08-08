@@ -28,11 +28,6 @@ database_name = "music-du-library"
 database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
 migrations_dir = "migrations"
 
-# Zone route for music.dubin.cc (DNS CNAME managed separately / already on zone)
-# Pattern uses /* for path match; script name is music-du
-[[routes]]
-pattern = "music.dubin.cc/*"
-zone_name = "dubin.cc"
-
-# Free tier only: Cache API for covers/meta; no R2/paid KV; no audio proxy body.
-# Secrets via dashboard or wrangler secret put. Deploy: npm run build && npx wrangler deploy
+# Zone route + DNS for music.dubin.cc are managed in Cloudflare (already linked to this Worker).
+# Do not put zone routes here if the GitHub Actions token lacks zone edit — deploy still works via workers.dev.
+# Free tier: Cache API for covers/meta; no R2/paid KV; no audio body on CF.
