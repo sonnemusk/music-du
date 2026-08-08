@@ -17,6 +17,7 @@ import {
   listChartPlatforms,
   type ChartPlatformId,
 } from "./charts.js";
+import { qualityLadder } from "./config.js";
 import * as chksz from "./chksz.js";
 import {
   coverErrorResponse,
@@ -26,6 +27,13 @@ import {
 import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, resolvePlay } from "./play.js";
+import {
+  ensureResolveCacheSchema,
+  getResolveCache,
+  listResolveCache,
+  pruneResolveCache,
+  putResolveCache,
+} from "./resolve-cache.js";
 
 export type Env = {
   CHKSZ_APIKEY?: string;
@@ -50,6 +58,7 @@ function injectEnv(env: Env) {
 
 // Minimal D1 library ops (inline to avoid node:sqlite)
 async function ensureSchema(db: D1Database) {
+  await ensureResolveCacheSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS library_tracks (
       list_type TEXT NOT NULL, sid TEXT NOT NULL, pos INTEGER NOT NULL,
@@ -271,22 +280,83 @@ app.get("/api/charts/:platform", async (c) => {
 app.get("/api/song/:sid/qualities", async (c) => {
   const sid = c.req.param("sid");
   const limit = Math.min(5, Math.max(1, Number(c.req.query("limit") || 3)));
+  const force = c.req.query("force") === "1";
   const cacheUrl = new URL(c.req.url);
   cacheUrl.searchParams.delete("force");
-  const hit = await edgeMatch(cacheUrl.toString());
-  if (hit) {
-    const headers = new Headers(hit.headers);
-    headers.set("X-Qualities-Cache", "CF-HIT");
-    return new Response(hit.body, { status: hit.status, headers });
+  if (!force) {
+    const hit = await edgeMatch(cacheUrl.toString());
+    if (hit) {
+      const headers = new Headers(hit.headers);
+      headers.set("X-Qualities-Cache", "CF-HIT");
+      return new Response(hit.body, { status: hit.status, headers });
+    }
   }
   try {
+    // D1: if we already have enough fresh levels, skip upstream probe
+    const db = c.env.MUSIC_DU_DB;
+    if (db && !force) {
+      await ensureResolveCacheSchema(db);
+      const cached = await listResolveCache(db, sid, 12);
+      if (cached.length >= Math.min(2, limit)) {
+        const ladder = qualityLadder();
+        const qualities = [...cached]
+          .map((r) => ({
+            level: r.level === "default" ? "jymaster" : r.level,
+            br: r.br,
+            size: r.size,
+            url: r.url,
+            name: r.name,
+            artist: r.artist,
+            cover: r.cover,
+          }))
+          .sort((a, b) => {
+            const ia = ladder.indexOf(a.level);
+            const ib = ladder.indexOf(b.level);
+            return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+          })
+          .slice(0, limit);
+        if (qualities.length >= Math.min(2, limit)) {
+          const body = JSON.stringify({
+            ok: true,
+            data: { id: sid, qualities, cache: "d1" },
+          });
+          const headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=60, s-maxage=180",
+            "X-Qualities-Cache": "D1-HIT",
+          };
+          const res = new Response(body, { status: 200, headers });
+          edgePut(cacheUrl.toString(), res, c.executionCtx);
+          return res;
+        }
+      }
+    }
+
     const qualities = await chksz.probeTopQualities(sid, limit, {
       apikey: withKey(c.env),
     });
+    // Persist each tier into D1 for instant later switches / multi-device
+    if (db && qualities.length) {
+      await ensureResolveCacheSchema(db);
+      for (const q of qualities) {
+        await putResolveCache(db, {
+          sid,
+          level: q.level,
+          url: q.url,
+          br: q.br,
+          size: q.size,
+          name: q.name,
+          artist: q.artist,
+          cover: q.cover,
+          source: "remote",
+        });
+      }
+      // Opportunistic prune (ignore errors)
+      c.executionCtx?.waitUntil?.(pruneResolveCache(db));
+    }
     const body = JSON.stringify({ ok: true, data: { id: sid, qualities } });
     const headers = {
       "Content-Type": "application/json; charset=utf-8",
-      // Short TTL — availability can change with VIP / CDN
       "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=300",
       "X-Qualities-Cache": "MISS",
     };
@@ -315,12 +385,50 @@ app.get("/api/song/:sid", async (c) => {
       return new Response(hit.body, { status: hit.status, headers });
     }
   }
+
+  const db = c.env.MUSIC_DU_DB;
+  // D1 short-TTL resolve cache (shared across devices / hard refresh)
+  if (db && !force) {
+    try {
+      await ensureResolveCacheSchema(db);
+      const d1hit = await getResolveCache(db, sid, level || "default");
+      if (d1hit?.url) {
+        const stream = `/api/stream/${sid}${level ? `?level=${encodeURIComponent(level)}` : ""}`;
+        const data = {
+          id: sid,
+          url: d1hit.url,
+          level: d1hit.level === "default" ? level || d1hit.level : d1hit.level,
+          br: d1hit.br,
+          size: d1hit.size,
+          name: d1hit.name,
+          artist: d1hit.artist,
+          cover: d1hit.cover,
+          source: d1hit.source || "remote",
+          stream,
+          play: chooseAudioSrc({ url: d1hit.url }, stream),
+          cache: "d1",
+        };
+        const body = JSON.stringify({ ok: true, data });
+        const headers = {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=60, s-maxage=300",
+          "X-Song-Cache": "D1-HIT",
+        };
+        const res = new Response(body, { status: 200, headers });
+        edgePut(cacheUrl.toString(), res, c.executionCtx);
+        return res;
+      }
+    } catch {
+      /* fall through to upstream */
+    }
+  }
+
   try {
     const src = await resolvePlay(sid, level || c.req.query("level"), {
       apikey: withKey(c.env),
     });
     if (src.source === "none" && !src.meta) return c.json({ ok: false, error: "no url" }, 404);
-    const stream = `/api/stream/${sid}`;
+    const stream = `/api/stream/${sid}${level ? `?level=${encodeURIComponent(level)}` : ""}`;
     const remoteUrl = src.source === "remote" ? src.url : "";
     const data = {
       id: sid,
@@ -335,8 +443,45 @@ app.get("/api/song/:sid", async (c) => {
       stream,
       play: chooseAudioSrc({ url: remoteUrl }, stream),
     };
+    // Write D1 for next request / multi-device
+    if (db && remoteUrl) {
+      c.executionCtx?.waitUntil?.(
+        (async () => {
+          try {
+            await ensureResolveCacheSchema(db);
+            await putResolveCache(db, {
+              sid,
+              level: src.level || level || "default",
+              url: remoteUrl,
+              br: src.br,
+              size: src.size,
+              name: src.name,
+              artist: src.artist,
+              cover: src.cover,
+              source: src.source,
+            });
+            // Also key under requested level so ?level=jymaster hits D1 next time
+            if (level && level !== src.level) {
+              await putResolveCache(db, {
+                sid,
+                level,
+                url: remoteUrl,
+                br: src.br,
+                size: src.size,
+                name: src.name,
+                artist: src.artist,
+                cover: src.cover,
+                source: src.source,
+              });
+            }
+            await pruneResolveCache(db);
+          } catch {
+            /* */
+          }
+        })()
+      );
+    }
     const body = JSON.stringify({ ok: true, data });
-    // ~10 min metadata at edge — browser still has its own durable resolve cache
     const headers = {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "public, max-age=120, s-maxage=600, stale-while-revalidate=300",
@@ -344,7 +489,6 @@ app.get("/api/song/:sid", async (c) => {
     };
     const res = new Response(body, { status: 200, headers });
     if (!force && remoteUrl) {
-      // Only edge-cache successful resolves that have a playable remote URL
       edgePut(cacheUrl.toString(), res, c.executionCtx);
     }
     return res;
@@ -398,12 +542,50 @@ app.get("/api/lyric/:sid", async (c) => {
  */
 app.get("/api/stream/:sid", async (c) => {
   try {
-    const raw = await chksz.fetchMusic(c.req.param("sid"), c.req.query("level"), {
+    const sid = c.req.param("sid");
+    const level = c.req.query("level") || "";
+    const db = c.env.MUSIC_DU_DB;
+    // Prefer fresh D1 URL before hitting upstream again
+    if (db) {
+      try {
+        await ensureResolveCacheSchema(db);
+        const hit = await getResolveCache(db, sid, level || "default");
+        if (hit?.url && chksz.isRemoteUrl(hit.url)) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              Location: hit.url,
+              "Cache-Control": "private, no-store",
+              "X-Play-Source": "redirect-d1",
+              "X-Audio-Cache": "disabled",
+            },
+          });
+        }
+      } catch {
+        /* */
+      }
+    }
+    const raw = await chksz.fetchMusic(sid, level, {
       apikey: withKey(c.env),
     });
     const audioUrl = raw?.url || "";
     if (!chksz.isRemoteUrl(audioUrl)) {
       return c.json({ ok: false, error: "no remote url" }, 404);
+    }
+    if (db) {
+      c.executionCtx?.waitUntil?.(
+        putResolveCache(db, {
+          sid,
+          level: raw.level || level || "default",
+          url: audioUrl,
+          br: Number(raw.br || 0),
+          size: Number(raw.size || 0),
+          name: String(raw.name || ""),
+          artist: String(raw.artist || ""),
+          cover: chksz.tryHttps(String(raw.picUrl || raw.cover || "")),
+          source: "remote",
+        })
+      );
     }
     // Browser follows redirect and plays from origin CDN — free for CF egress
     return new Response(null, {

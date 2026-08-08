@@ -26,8 +26,9 @@ export type CachedSong = {
   ts: number;
 };
 
-const MEMORY_TTL_MS = 8 * 60 * 1000;
-const DURABLE_TTL_MS = 25 * 60 * 1000;
+/** Align with D1 resolve_cache (~18m) so client doesn't outlive edge signed URLs too long */
+const MEMORY_TTL_MS = 10 * 60 * 1000;
+const DURABLE_TTL_MS = 20 * 60 * 1000;
 const LS_KEY = "kazam.v2.songResolve";
 const LS_MAX = 80;
 
