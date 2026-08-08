@@ -612,35 +612,10 @@
   opacity: 0.85;
   width: 100%;
 }
-.seek-row > .seek-time,
-.seek-row > span:not(.seek-track) {
-  flex: 0 0 auto;
-  min-width: 36px;
+.seek-row > span {
+  flex: 0 0 36px;
   text-align: center;
-  line-height: 1.15;
-}
-.seek-time--end {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 40px;
-}
-.seek-dur {
-  display: block;
-}
-/* Instant buffer readout (no native title delay) */
-.seek-buf-label {
-  display: block;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  opacity: 0.55;
   line-height: 1;
-  white-space: nowrap;
-}
-.seek-buf-label.is-full {
-  opacity: 0.75;
 }
 /* Custom seek: buffer (mid) + played (bright) under transparent range input */
 .seek-track {
@@ -652,6 +627,35 @@
   height: 28px;
   display: flex;
   align-items: center;
+}
+/* Instant hover tip (native title is ~1s delayed) */
+.seek-track[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%) translateY(2px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  line-height: 1.2;
+  color: #fff;
+  background: color-mix(in srgb, #111 88%, currentColor 12%);
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 35%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 60ms ease, transform 60ms ease, visibility 60ms;
+  z-index: 20;
+}
+.seek-track[data-tip]:hover::after,
+.seek-track[data-tip]:focus-within::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 .seek-track__rail {
   position: absolute;
