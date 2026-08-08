@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { stopPausedBufferPump } from "../lib/buffer-pump";
 import { usePlayer } from "../store/player";
 
 /** Hidden shared audio element — skins never own media. */
@@ -7,6 +8,8 @@ export function AudioEngine() {
   const setAudio = usePlayer((s) => s.setAudio);
   const tick = usePlayer((s) => s.tick);
   const next = usePlayer((s) => s.next);
+  const onPlayerPause = usePlayer((s) => s.onPlayerPause);
+  const onPlayerPlay = usePlayer((s) => s.onPlayerPlay);
 
   useEffect(() => {
     const el = ref.current;
@@ -17,16 +20,29 @@ export function AudioEngine() {
       el.setAttribute("webkit-playsinline", "true");
       el.setAttribute("x-webkit-airplay", "allow");
     }
-    return () => setAudio(null);
+    return () => {
+      stopPausedBufferPump();
+      setAudio(null);
+    };
   }, [setAudio]);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const onTime = () => tick();
-    const onEnd = () => next(1);
-    const onPlay = () => tick();
-    const onPause = () => tick();
+    const onEnd = () => {
+      stopPausedBufferPump();
+      next(1);
+    };
+    const onPlay = () => {
+      onPlayerPlay();
+      tick();
+    };
+    const onPause = () => {
+      tick();
+      // Continue buffering in background so seek bar keeps advancing
+      onPlayerPause();
+    };
     // Buffering progress for seek bar (HTMLMediaElement.buffered)
     const onProgress = () => tick();
     el.addEventListener("timeupdate", onTime);
@@ -38,6 +54,8 @@ export function AudioEngine() {
     el.addEventListener("canplay", onProgress);
     el.addEventListener("canplaythrough", onProgress);
     el.addEventListener("loadeddata", onProgress);
+    el.addEventListener("waiting", onProgress);
+    el.addEventListener("stalled", onProgress);
     return () => {
       el.removeEventListener("timeupdate", onTime);
       el.removeEventListener("ended", onEnd);
@@ -48,8 +66,10 @@ export function AudioEngine() {
       el.removeEventListener("canplay", onProgress);
       el.removeEventListener("canplaythrough", onProgress);
       el.removeEventListener("loadeddata", onProgress);
+      el.removeEventListener("waiting", onProgress);
+      el.removeEventListener("stalled", onProgress);
     };
-  }, [tick, next]);
+  }, [tick, next, onPlayerPause, onPlayerPlay]);
 
   return (
     // Do NOT use display:none — iOS Safari often drops remote / headphone

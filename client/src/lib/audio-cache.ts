@@ -219,11 +219,15 @@ export async function cacheAudioFromStream(
 
   const work = (async () => {
     try {
-      const streamUrl = `/api/stream/${encodeURIComponent(key)}`;
+      // Include preferred level so stream redirect matches playback quality
+      const lv = opts?.level ? `?level=${encodeURIComponent(opts.level)}` : "";
+      const streamUrl = `/api/stream/${encodeURIComponent(key)}${lv}`;
       const res = await fetch(streamUrl, {
         credentials: "same-origin",
         signal: opts?.signal,
         headers: { Accept: "audio/*,*/*" },
+        // Follow 302 to CDN when CORS allows; otherwise fails softly
+        redirect: "follow",
       });
       if (!res.ok) return false;
       const blob = await res.blob();

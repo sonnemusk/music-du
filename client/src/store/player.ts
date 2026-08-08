@@ -23,6 +23,10 @@ import {
   setCachedLyric,
 } from "../lib/lyric-cache";
 import {
+  startPausedBufferPump,
+  stopPausedBufferPump,
+} from "../lib/buffer-pump";
+import {
   bufferedRatio,
   clampSeek,
   clampVolume,
@@ -228,6 +232,11 @@ type State = {
   setVolume: (v: number) => void;
   toggleMute: () => void;
   tick: () => void;
+  /** Merge external buffer progress (e.g. paused background pump) */
+  reportBuffered: (ratio: number) => void;
+  /** Continue downloading current track while paused */
+  onPlayerPause: () => void;
+  onPlayerPlay: () => void;
   cycleMode: () => void;
   /** Rank 0/1/2 among current track's available top-3 */
   setPreferredRank: (rank: QualityRank) => void;
@@ -815,6 +824,7 @@ export const usePlayer = create<State>((set, get) => ({
       instantLyrics.length && t0 > 0 ? lyricIndexAt(instantLyrics, t0 * 1000) : -1;
 
     // UI first — search click must highlight immediately (before any await)
+    stopPausedBufferPump();
     set({
       playToken: token,
       playing: false,
@@ -1459,7 +1469,8 @@ export const usePlayer = create<State>((set, get) => ({
   tick: () => {
     const audio = get().audioEl;
     if (!audio) return;
-    const buf = bufferedRatio(audio);
+    // Never shrink buffer within a track (paused pump may be ahead of main)
+    const buf = Math.max(bufferedRatio(audio), get().buffered);
     if (!get().seeking) {
       set({
         currentTime: audio.currentTime || 0,
@@ -1467,12 +1478,38 @@ export const usePlayer = create<State>((set, get) => ({
         buffered: buf,
         playing: !audio.paused && !!audio.src,
       });
-    } else {
-      // Still update buffer while scrubbing
-      if (Math.abs(buf - get().buffered) > 0.005) set({ buffered: buf });
+    } else if (Math.abs(buf - get().buffered) > 0.005) {
+      set({ buffered: buf });
     }
     const idx = lyricIndexAt(get().lyrics, (audio.currentTime || 0) * 1000);
     if (idx !== get().lyricIdx) set({ lyricIdx: idx });
+  },
+
+  reportBuffered: (ratio) => {
+    const r = Math.max(0, Math.min(1, ratio));
+    if (r > get().buffered + 0.004) set({ buffered: r });
+  },
+
+  onPlayerPause: () => {
+    const audio = get().audioEl;
+    const cur = get().curTrack;
+    if (!audio || !cur) return;
+    const src = audio.currentSrc || audio.src || "";
+    if (!src) return;
+    // Browser often freezes main element network on pause — keep filling via pump
+    startPausedBufferPump({
+      trackId: cur.id,
+      src,
+      mainAudio: audio,
+      level: String(get().quality || get().preferredQuality || ""),
+      onProgress: (p) => get().reportBuffered(p.ratio),
+    });
+  },
+
+  onPlayerPlay: () => {
+    stopPausedBufferPump();
+    // Re-sync from main element after resume (HTTP cache may already be warm)
+    get().tick();
   },
 
   setPreferredRank: (rank) => {
