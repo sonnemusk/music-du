@@ -67,7 +67,8 @@
 .skin-search {
   display: flex;
   flex: 1 1 0;
-  min-width: 140px;
+  /* allow shrink so tools never overflow the head row */
+  min-width: 0;
   max-width: none;
   height: 40px;
   align-items: stretch;

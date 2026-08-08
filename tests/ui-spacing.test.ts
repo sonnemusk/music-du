@@ -20,9 +20,7 @@ const switcher = fs.readFileSync(
 
 const layoutFiles = [
   "SideLayout.tsx",
-  "DockLayout.tsx",
   "ImmersiveLayout.tsx",
-  "SplitLayout.tsx",
   "CompactLayout.tsx",
 ];
 
