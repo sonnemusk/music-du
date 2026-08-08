@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  libraryRevisionOk,
   libraryTokenOk,
   mergeTrackList,
+  nextLibraryRevision,
   planListUpserts,
   sanitizeLibTrack,
 } from "../server/library-merge.js";
@@ -77,5 +79,26 @@ describe("library token gate", () => {
     expect(libraryTokenOk("secret", "nope")).toBe(false);
     expect(libraryTokenOk("secret", "")).toBe(false);
     expect(libraryTokenOk("secret", undefined)).toBe(false);
+  });
+});
+
+describe("library revision (optimistic concurrency)", () => {
+  it("allows missing client revision (legacy)", () => {
+    expect(libraryRevisionOk(5, null)).toBe(true);
+    expect(libraryRevisionOk(5, undefined)).toBe(true);
+  });
+
+  it("allows matching revision", () => {
+    expect(libraryRevisionOk(3, 3)).toBe(true);
+  });
+
+  it("rejects stale client revision", () => {
+    expect(libraryRevisionOk(4, 3)).toBe(false);
+    expect(libraryRevisionOk(1, 0)).toBe(false);
+  });
+
+  it("bumps monotone", () => {
+    expect(nextLibraryRevision(0)).toBe(1);
+    expect(nextLibraryRevision(9)).toBe(10);
   });
 });

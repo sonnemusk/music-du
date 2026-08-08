@@ -27,7 +27,12 @@ import {
 import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, resolvePlay } from "./play.js";
-import { libraryTokenOk, mergeTrackList } from "./library-merge.js";
+import {
+  libraryRevisionOk,
+  libraryTokenOk,
+  mergeTrackList,
+  nextLibraryRevision,
+} from "./library-merge.js";
 import {
   ensureResolveCacheSchema,
   getResolveCache,
@@ -98,6 +103,33 @@ function sanitize(t: any) {
   };
 }
 
+async function getMeta(db: D1Database, key: string): Promise<string | null> {
+  const row = await db
+    .prepare(`SELECT value FROM library_meta WHERE key=?`)
+    .bind(key)
+    .first<{ value: string }>();
+  return row?.value ?? null;
+}
+
+async function setMeta(db: D1Database, key: string, value: string) {
+  await db
+    .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES(?,?)`)
+    .bind(key, value)
+    .run();
+}
+
+async function loadRevision(db: D1Database): Promise<number> {
+  const raw = await getMeta(db, "revision");
+  const n = raw != null ? parseInt(raw, 10) : 0;
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+async function bumpRevision(db: D1Database, from: number): Promise<number> {
+  const next = nextLibraryRevision(from);
+  await setMeta(db, "revision", String(next));
+  return next;
+}
+
 async function loadLib(db: D1Database) {
   await ensureSchema(db);
   const lists: any = { playlist: [], favorites: [], history: [] };
@@ -122,7 +154,8 @@ async function loadLib(db: D1Database) {
   if (Number.isNaN(curIdx) || curIdx >= lists.playlist.length) {
     curIdx = lists.playlist.length ? 0 : -1;
   }
-  return { ...lists, curIdx };
+  const revision = await loadRevision(db);
+  return { ...lists, curIdx, revision };
 }
 
 /**
@@ -183,20 +216,38 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
     .run();
 }
 
-async function saveLib(db: D1Database, data: any) {
+async function saveLib(db: D1Database, data: any, opts?: { expectedRevision?: number | null }) {
   await ensureSchema(db);
+  const serverRev = await loadRevision(db);
+  const clientRev =
+    opts?.expectedRevision !== undefined
+      ? opts.expectedRevision
+      : data.revision != null
+        ? Number(data.revision)
+        : null;
+  if (!libraryRevisionOk(serverRev, clientRev)) {
+    const current = await loadLib(db);
+    return { conflict: true as const, data: current };
+  }
   await writeList(db, "playlist", data.playlist || [], 2000);
   await writeList(db, "favorites", data.favorites || [], 2000);
   await writeList(db, "history", data.history || [], 2000);
-  await db
-    .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('curIdx',?)`)
-    .bind(String(data.curIdx ?? -1))
-    .run();
-  return loadLib(db);
+  await setMeta(db, "curIdx", String(data.curIdx ?? -1));
+  await bumpRevision(db, serverRev);
+  return { conflict: false as const, data: await loadLib(db) };
 }
 
-async function deleteSid(db: D1Database, listType: string, sid: string) {
+async function deleteSid(
+  db: D1Database,
+  listType: string,
+  sid: string,
+  expectedRevision?: number | null
+) {
   await ensureSchema(db);
+  const serverRev = await loadRevision(db);
+  if (!libraryRevisionOk(serverRev, expectedRevision)) {
+    return { conflict: true as const, data: await loadLib(db) };
+  }
   await db
     .prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`)
     .bind(listType, String(sid))
@@ -219,7 +270,8 @@ async function deleteSid(db: D1Database, listType: string, sid: string) {
     }
   }
   if (stmts.length) await db.batch(stmts);
-  return loadLib(db);
+  await bumpRevision(db, serverRev);
+  return { conflict: false as const, data: await loadLib(db) };
 }
 
 /** Library / export gate — requires MUSIC_ACCESS_TOKEN when configured. */
@@ -796,6 +848,22 @@ app.put("/api/library", async (c) => {
   }
   const body = await c.req.json().catch(() => ({}));
   const existing = await loadLib(c.env.MUSIC_DU_DB);
+  const clientRev =
+    body.revision != null && body.revision !== ""
+      ? Number(body.revision)
+      : null;
+  // Check revision before merge work so client can re-fetch cleanly
+  if (!libraryRevisionOk(existing.revision ?? 0, clientRev)) {
+    return c.json(
+      {
+        ok: false,
+        error: "library conflict — reload and retry",
+        conflict: true,
+        data: existing,
+      },
+      409
+    );
+  }
   const forcePl = Boolean(body.forceClearPlaylist);
   const forceFav = Boolean(body.forceClearFavorites);
   const forceHi = Boolean(body.forceClearHistory);
@@ -814,13 +882,29 @@ app.put("/api/library", async (c) => {
       if (hi.length >= 2000) break;
     }
   }
-  const data = await saveLib(c.env.MUSIC_DU_DB, {
-    playlist: pl,
-    favorites: fav,
-    history: hi,
-    curIdx: body.curIdx ?? existing.curIdx,
-  });
-  return c.json({ ok: true, data });
+  const result = await saveLib(
+    c.env.MUSIC_DU_DB,
+    {
+      playlist: pl,
+      favorites: fav,
+      history: hi,
+      curIdx: body.curIdx ?? existing.curIdx,
+      revision: clientRev,
+    },
+    { expectedRevision: clientRev }
+  );
+  if (result.conflict) {
+    return c.json(
+      {
+        ok: false,
+        error: "library conflict — reload and retry",
+        conflict: true,
+        data: result.data,
+      },
+      409
+    );
+  }
+  return c.json({ ok: true, data: result.data });
 });
 
 app.delete("/api/library/:listType/:sid", async (c) => {
@@ -836,8 +920,27 @@ app.delete("/api/library/:listType/:sid", async (c) => {
   if (!["playlist", "favorites", "history"].includes(listType)) {
     return c.json({ ok: false, error: "bad list" }, 400);
   }
-  const data = await deleteSid(c.env.MUSIC_DU_DB, listType, c.req.param("sid"));
-  return c.json({ ok: true, data });
+  const revRaw = c.req.query("revision");
+  const clientRev =
+    revRaw != null && revRaw !== "" ? Number(revRaw) : null;
+  const result = await deleteSid(
+    c.env.MUSIC_DU_DB,
+    listType,
+    c.req.param("sid"),
+    clientRev
+  );
+  if (result.conflict) {
+    return c.json(
+      {
+        ok: false,
+        error: "library conflict — reload and retry",
+        conflict: true,
+        data: result.data,
+      },
+      409
+    );
+  }
+  return c.json({ ok: true, data: result.data });
 });
 
 app.all("*", async (c) => {

@@ -59,4 +59,7 @@ jobs:
         env:
           SMOKE_BASE: https://music.dubin.cc
           MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
+          # Cloudflare Access service token (free Zero Trust) — bypasses login for CI
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: bash scripts/smoke-prod.sh

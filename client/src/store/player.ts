@@ -244,6 +244,8 @@ type State = {
   chartUpdatedAt: number;
   curTrack: Track | null;
   curIdx: number;
+  /** D1 library optimistic concurrency revision */
+  libraryRevision: number;
   playMode: PlayMode;
   playing: boolean;
   loadingPlay: boolean;
@@ -422,6 +424,7 @@ export const usePlayer = create<State>((set, get) => ({
   chartUpdatedAt: 0,
   curTrack: null,
   curIdx: -1,
+  libraryRevision: 0,
   playMode: typeof window !== "undefined" ? loadPlayMode() : "shuffle",
   playing: false,
   loadingPlay: false,
@@ -580,12 +583,14 @@ export const usePlayer = create<State>((set, get) => ({
     let playlist: Track[] = [];
     let history: Track[] = [];
     let curIdx = -1;
+    let libraryRevision = 0;
     try {
       const lib = await api.loadLibrary();
       playlist = (lib.playlist || []).map(norm).filter(Boolean) as Track[];
       favorites = (lib.favorites || []).map(norm).filter(Boolean) as Track[];
       history = (lib.history || []).map(norm).filter(Boolean) as Track[];
       curIdx = lib.curIdx ?? -1;
+      libraryRevision = Number(lib.revision ?? 0) || 0;
       // If local has more favorites (stale thin D1 / wipe), prefer richer local and re-sync
       try {
         const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
@@ -610,6 +615,7 @@ export const usePlayer = create<State>((set, get) => ({
           favorites = local.favorites || [];
           history = local.history || [];
           curIdx = local.curIdx ?? -1;
+          libraryRevision = Number(local.revision ?? 0) || 0;
         }
       } catch {
         /* */
@@ -622,6 +628,7 @@ export const usePlayer = create<State>((set, get) => ({
       favorites,
       history,
       curIdx,
+      libraryRevision,
       tab: "favorites",
       queueSource: "favorites",
     });
@@ -2025,10 +2032,17 @@ export const usePlayer = create<State>((set, get) => ({
       get().showToast(`已取消收藏: ${track.name}`);
       set({ favorites });
       void api
-        .deleteFromList("favorites", track.id)
+        .deleteFromList("favorites", track.id, get().libraryRevision)
         .then(applyLib(set))
-        // Always force-clear on DELETE failure so merge cannot resurrect the row
-        .catch(() => persistSoon(get, { forceClearFavorites: true }));
+        .catch((e) => {
+          if (e instanceof api.LibraryConflictError) {
+            applyLib(set)(e.data);
+            get().showToast("收藏已在其他设备更新，已同步");
+            return;
+          }
+          // Always force-clear on DELETE failure so merge cannot resurrect the row
+          persistSoon(get, { forceClearFavorites: true });
+        });
     } else {
       favorites = [track, ...favorites.filter((x) => String(x.id) !== String(track.id))].slice(
         0,
@@ -2058,9 +2072,16 @@ export const usePlayer = create<State>((set, get) => ({
     const playlist = get().playlist.filter((x) => String(x.id) !== String(id));
     set({ playlist });
     void api
-      .deleteFromList("playlist", id)
+      .deleteFromList("playlist", id, get().libraryRevision)
       .then(applyLib(set))
-      .catch(() => persistSoon(get, { forceClearPlaylist: true }));
+      .catch((e) => {
+        if (e instanceof api.LibraryConflictError) {
+          applyLib(set)(e.data);
+          get().showToast("列表已在其他设备更新，已同步");
+          return;
+        }
+        persistSoon(get, { forceClearPlaylist: true });
+      });
   },
 
   removeFromHistory: (id) => {
@@ -2068,9 +2089,16 @@ export const usePlayer = create<State>((set, get) => ({
     set({ history });
     get().showToast("已从历史移除");
     void api
-      .deleteFromList("history", id)
+      .deleteFromList("history", id, get().libraryRevision)
       .then(applyLib(set))
-      .catch(() => persistSoon(get, { forceClearHistory: true }));
+      .catch((e) => {
+        if (e instanceof api.LibraryConflictError) {
+          applyLib(set)(e.data);
+          get().showToast("历史已在其他设备更新，已同步");
+          return;
+        }
+        persistSoon(get, { forceClearHistory: true });
+      });
   },
 }));
 
@@ -2081,6 +2109,7 @@ function applyLib(set: (p: Partial<State>) => void) {
       favorites: (lib.favorites || []).map(norm).filter(Boolean) as Track[],
       history: (lib.history || []).map(norm).filter(Boolean) as Track[],
       curIdx: lib.curIdx ?? -1,
+      libraryRevision: Number(lib.revision ?? 0) || 0,
     });
   };
 }
@@ -2098,6 +2127,7 @@ function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
       favorites: s.favorites,
       history: s.history,
       curIdx: s.curIdx,
+      revision: s.libraryRevision,
       ...force,
     };
     try {
@@ -2108,7 +2138,13 @@ function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
     try {
       const lib = await api.saveLibrary(payload);
       applyLib(usePlayer.setState)(lib);
-    } catch {
+    } catch (e) {
+      if (e instanceof api.LibraryConflictError) {
+        // Server wins for structure; toast so user knows
+        applyLib(usePlayer.setState)(e.data);
+        get().showToast("收藏库已在其他设备更新，已同步最新");
+        return;
+      }
       /* offline ok */
     }
   }, 220);

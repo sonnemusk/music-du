@@ -144,26 +144,60 @@ export async function fetchLyric(
   };
 }
 
-export async function loadLibrary(): Promise<Library> {
-  const j = await json("/api/library");
+export class LibraryConflictError extends Error {
+  data: Library;
+  constructor(message: string, data: Library) {
+    super(message);
+    this.name = "LibraryConflictError";
+    this.data = data;
+  }
+}
+
+async function libraryJson(path: string, opts?: RequestInit): Promise<Library> {
+  const r = await fetch(path, withAuthHeaders(opts));
+  let j: any = null;
+  try {
+    j = await r.json();
+  } catch {
+    j = null;
+  }
+  if (r.status === 409 && j?.data) {
+    throw new LibraryConflictError(
+      j.error || "library conflict",
+      j.data as Library
+    );
+  }
+  if (r.status === 401) {
+    throw new Error(j?.error || "unauthorized — library token required");
+  }
+  if (!r.ok && j?.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+  if (j?.ok === false) throw new Error(j.error || "request failed");
   return j.data as Library;
 }
 
+export async function loadLibrary(): Promise<Library> {
+  return libraryJson("/api/library");
+}
+
 export async function saveLibrary(body: any): Promise<Library> {
-  const j = await json("/api/library", {
+  return libraryJson("/api/library", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return j.data as Library;
 }
 
 export async function deleteFromList(
   list: "playlist" | "favorites" | "history",
-  id: string | number
+  id: string | number,
+  revision?: number | null
 ): Promise<Library> {
-  const j = await json(`/api/library/${list}/${encodeURIComponent(String(id))}`, {
-    method: "DELETE",
-  });
-  return j.data as Library;
+  const q =
+    revision != null && Number.isFinite(revision)
+      ? `?revision=${encodeURIComponent(String(revision))}`
+      : "";
+  return libraryJson(
+    `/api/library/${list}/${encodeURIComponent(String(id))}${q}`,
+    { method: "DELETE" }
+  );
 }

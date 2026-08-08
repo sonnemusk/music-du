@@ -54,6 +54,8 @@ export type Library = {
   favorites: Track[];
   history: Track[];
   curIdx: number;
+  /** Optimistic concurrency token from D1 (monotone). */
+  revision?: number;
 };
 
 export type PlayMode = "list" | "single" | "shuffle";

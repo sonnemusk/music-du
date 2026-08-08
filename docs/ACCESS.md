@@ -1,48 +1,68 @@
-# Cloudflare Access for favorites export
+# Cloudflare Access (free Zero Trust)
 
-`/favs` and `/export` intentionally **do not** use the app `MUSIC_ACCESS_TOKEN`.  
-They are protected at the edge with **Cloudflare Zero Trust Access** (same pattern as `nas.dubin.cc`).
+Whole site + export are protected at the **edge** with Cloudflare Access  
+(no paid products — free Zero Trust seats / Access policies).
 
-`/api/library` still uses the SPA header `X-Music-Token` (Worker secret `MUSIC_ACCESS_TOKEN`).
+## What is protected
 
-## What you get
+| Resource | How |
+|----------|-----|
+| `music.dubin.cc` / `.one` / `.vip` **entire site** | Access app **`music-site`** |
+| Browser users | Email OTP allow-list (same as NAS) |
+| CI smoke | Access **Service Token** (non-identity policy) |
+| `/api/library` | Additionally: app `MUSIC_ACCESS_TOKEN` (`X-Music-Token`) |
 
-| Path | Auth |
-|------|------|
-| `https://music.dubin.cc/favs` | Cloudflare Access (email OTP / your policy) |
-| `https://music.dubin.cc/export` | same |
-| `GET/PUT/DELETE /api/library` | `X-Music-Token` (SPA) |
+`/favs` and `/export` no longer use the app token; they rely on Access  
+(login for humans, service token for automation).
 
-## Dashboard setup (manual)
+## Applications (account)
 
-1. Zero Trust → **Access** → **Applications** → **Add an application** → Self-hosted  
-2. Application name: `music-favorites-export`  
-3. Application domain / path (add both if UI allows multi-destination):
-   - `music.dubin.cc/favs`
-   - `music.dubin.cc/export`  
-   Optional: `music.dubin.one/favs`, `music.dubin.vip/favs`  
-4. Session duration: e.g. `24h`  
-5. Policy: **Allow** → include your emails (same as NAS app), e.g.:
-   - `sonnemusk@gmail.com`
-   - `beanbest@outlook.com`
-   - `admin@dubin.cc`  
-6. Identity provider: One-time PIN (already on account) or Google/GitHub  
+1. **`music-site`** — self-hosted domains:
+   - `music.dubin.cc`
+   - `music.dubin.one`
+   - `music.dubin.vip`
+2. **`music-favorites-export`** — path-level (legacy, still fine as extra layer):
+   - `…/favs`, `…/export`
 
-Unauthenticated browsers hit the CF login page; after login the JSON downloads.
+## Policies
 
-## API setup (idempotent)
+**Allow music owners** (identity):
 
-If Access apps were created by deploy tooling, they look like:
+- `sonnemusk@gmail.com`
+- `beanbest@outlook.com`
+- `admin@dubin.cc`
 
-- name: `music-favorites-export`
-- destinations: `music.dubin.cc/favs`, `music.dubin.cc/export`
-- policy: allow listed emails
+**CI service token** (non_identity):
 
-## Smoke
+- Service token name: `music-du-ci-smoke`
+- Headers on requests:
+  - `CF-Access-Client-Id`
+  - `CF-Access-Client-Secret`
+
+GitHub Actions secrets:
+
+- `CF_ACCESS_CLIENT_ID`
+- `CF_ACCESS_CLIENT_SECRET`
+- `MUSIC_ACCESS_TOKEN` (library API only)
+
+## Local smoke
 
 ```bash
-# unauthenticated → 302 to Access login (or 401 from CF), not 5xx
-curl -sI https://music.dubin.cc/favs | head -5
-
-# after Access session cookie (browser), file downloads with count
+export CF_ACCESS_CLIENT_ID=...
+export CF_ACCESS_CLIENT_SECRET=...
+export MUSIC_ACCESS_TOKEN=...
+bash scripts/smoke-prod.sh
 ```
+
+Without the service token, unauthenticated `curl` to the site gets **302** to  
+`*.cloudflareaccess.com` login — expected.
+
+## Library multi-device (app layer)
+
+Independent of Access: D1 stores `library_meta.revision`.
+
+- `GET /api/library` → `{ …, revision }`
+- `PUT /api/library` with body `revision` — mismatch → **409** + current data
+- `DELETE …?revision=` — same
+
+Client applies 409 payload and toasts “已在其他设备更新”.

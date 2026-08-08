@@ -115,3 +115,23 @@ export function libraryTokenOk(expected: string | undefined, got: string | undef
   if (!exp) return true;
   return Boolean(got && got.trim() === exp);
 }
+
+/**
+ * Optimistic concurrency: client sends revision it last loaded.
+ * - clientRev missing / null → allow (legacy clients), still bump server
+ * - clientRev === serverRev → allow
+ * - else conflict
+ */
+export function libraryRevisionOk(
+  serverRev: number,
+  clientRev: number | null | undefined
+): boolean {
+  if (clientRev == null || Number.isNaN(Number(clientRev))) return true;
+  return Number(clientRev) === Number(serverRev);
+}
+
+export function nextLibraryRevision(serverRev: number): number {
+  const n = Number(serverRev);
+  if (!Number.isFinite(n) || n < 0) return 1;
+  return Math.floor(n) + 1;
+}
