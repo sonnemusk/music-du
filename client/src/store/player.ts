@@ -511,11 +511,17 @@ export const usePlayer = create<State>((set, get) => ({
         concurrency: 2,
         startDelayMs: 80,
       });
-      // Auto-scroll to now-playing / paused track when opening 喜欢
+      // Auto-scroll after list has a chance to mount (defer nonce so TrackList effect re-runs)
       const cur = get().curTrack;
       if (cur && get().favorites.some((x) => String(x.id) === String(cur.id))) {
-        const nonce = (get().locateRequest?.nonce || 0) + 1;
-        set({ locateRequest: { id: String(cur.id), nonce } });
+        const id = String(cur.id);
+        window.setTimeout(() => {
+          // Still on favorites and same track?
+          if (get().tab !== "favorites") return;
+          if (!get().curTrack || String(get().curTrack.id) !== id) return;
+          const nonce = (get().locateRequest?.nonce || 0) + 1;
+          set({ locateRequest: { id, nonce } });
+        }, 100);
       }
     } else if (t === "playlist") {
       prefetchSongResolves(get().playlist, resolve, { level: get().preferredQuality, 

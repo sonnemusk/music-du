@@ -12,33 +12,50 @@ type Props = {
   className?: string;
 };
 
-/** Scroll only the nearest overflow parent — avoid scrollIntoView breaking layout shell. */
-function scrollRowIntoList(el: HTMLElement) {
+/** Pick the most roomy scrollable ancestor (list panel), never document/body. */
+function findListScroller(el: HTMLElement): HTMLElement | null {
+  let best: HTMLElement | null = null;
+  let bestRoom = 0;
   let parent: HTMLElement | null = el.parentElement;
-  while (parent && parent !== document.body) {
+  while (parent && parent !== document.documentElement && parent !== document.body) {
     const st = getComputedStyle(parent);
     const oy = st.overflowY;
-    const ox = st.overflowX;
-    const scrollableY =
-      (oy === "auto" || oy === "scroll" || oy === "overlay") &&
-      parent.scrollHeight > parent.clientHeight + 2;
-    const scrollableX =
-      (ox === "auto" || ox === "scroll" || ox === "overlay") &&
-      parent.scrollWidth > parent.clientWidth + 2;
-    if (scrollableY || scrollableX) {
-      const pRect = parent.getBoundingClientRect();
-      const eRect = el.getBoundingClientRect();
-      if (scrollableY) {
-        const delta =
-          eRect.top + eRect.height / 2 - (pRect.top + pRect.height / 2);
-        parent.scrollBy({ top: delta, left: 0, behavior: "smooth" });
+    const overflow = st.overflow;
+    const yOk =
+      oy === "auto" ||
+      oy === "scroll" ||
+      oy === "overlay" ||
+      overflow === "auto" ||
+      overflow === "scroll";
+    if (yOk) {
+      const room = parent.scrollHeight - parent.clientHeight;
+      if (room > bestRoom) {
+        bestRoom = room;
+        best = parent;
       }
-      return;
     }
     parent = parent.parentElement;
   }
-  // Last resort: nearest only (won't yank whole page to center)
-  el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  return bestRoom > 2 ? best : null;
+}
+
+/** Scroll row to vertical center of list scroller — no layout shell jump. */
+function scrollRowIntoList(el: HTMLElement) {
+  const scroller = findListScroller(el);
+  if (scroller) {
+    const pRect = scroller.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const delta = eRect.top + eRect.height / 2 - (pRect.top + pRect.height / 2);
+    // Instant jump is more reliable than smooth when list just mounted
+    scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+    return true;
+  }
+  return false;
+}
+
+function flashRow(el: HTMLElement) {
+  el.classList.add("track-row--flash");
+  window.setTimeout(() => el.classList.remove("track-row--flash"), 900);
 }
 
 export function TrackList({ tracks, mode, empty = "暂无内容", className }: Props) {
@@ -52,36 +69,69 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   const removeFromPlaylist = usePlayer((s) => s.removeFromPlaylist);
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  /** Track previous mode so we detect entering 喜欢 (including first mount). */
+  const prevModeRef = useRef<string | null>(null);
 
-  // Scroll playing row into view when locateCurrentInList() fires
+  // Locate: explicit G/locateRequest, or auto when entering favorites with curTrack in list
   useEffect(() => {
-    if (!locateRequest?.id) return;
-    const wantId = String(locateRequest.id);
+    const prev = prevModeRef.current;
+    const enteredFavorites = mode === "favorites" && prev !== "favorites";
+    prevModeRef.current = mode;
+
+    let wantId: string | null = null;
+    if (locateRequest?.id) {
+      // Only honor request if this list actually contains the track
+      const id = String(locateRequest.id);
+      if (tracks.some((t) => String(t.id) === id)) wantId = id;
+    }
+    if (
+      !wantId &&
+      mode === "favorites" &&
+      (enteredFavorites || prev === null) &&
+      curTrack &&
+      tracks.some((t) => String(t.id) === String(curTrack.id))
+    ) {
+      wantId = String(curTrack.id);
+    }
+    if (!wantId) return;
+
     let cancelled = false;
     let attempts = 0;
+    const maxAttempts = 40; // ~2s with 50ms steps
 
     const run = () => {
       if (cancelled) return;
-      const el = rowRefs.current.get(wantId);
+      const el = rowRefs.current.get(wantId!);
       if (!el) {
-        // Tab just switched — list may not have painted yet
-        if (attempts++ < 30) {
-          requestAnimationFrame(run);
+        if (attempts++ < maxAttempts) {
+          window.setTimeout(run, 50);
         }
         return;
       }
-      scrollRowIntoList(el);
-      el.classList.add("track-row--flash");
-      window.setTimeout(() => el.classList.remove("track-row--flash"), 900);
+      // Layout may still be settling — try twice
+      const ok = scrollRowIntoList(el);
+      flashRow(el);
+      if (!ok || attempts < 2) {
+        attempts++;
+        window.setTimeout(() => {
+          if (cancelled) return;
+          const again = rowRefs.current.get(wantId!);
+          if (again) {
+            scrollRowIntoList(again);
+            flashRow(again);
+          }
+        }, 120);
+      }
     };
 
-    // Allow setTab + React commit before first paint
-    const t = window.setTimeout(() => requestAnimationFrame(run), 60);
+    // Defer past tab paint + large list commit
+    const t = window.setTimeout(run, 80);
     return () => {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [locateRequest?.id, locateRequest?.nonce]);
+    // tracks.length only — avoid re-scroll on every parent re-render of same list
+  }, [mode, locateRequest?.id, locateRequest?.nonce, curTrack?.id, tracks.length]);
 
   const play = (t: Track) => {
     // Single entry — do NOT also fire on double-click (would cancel resolve mid-flight)
