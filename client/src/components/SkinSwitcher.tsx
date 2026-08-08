@@ -29,6 +29,11 @@ export function SkinSwitcher() {
     );
   }, [q]);
 
+  const layoutCount = useMemo(
+    () => new Set(SKINS.map((t) => t.layout)).size,
+    []
+  );
+
   // Measure button group for portal panel position
   useEffect(() => {
     if (!open) {
@@ -74,7 +79,7 @@ export function SkinSwitcher() {
             }
           >
             <div className="skin-panel__hint">
-              共 {SKINS.length} 套 · 20 种布局 · 点选切换
+              共 {SKINS.length} 套 · {layoutCount} 种布局 · 点选切换
             </div>
             <input
               className="skin-panel__search"
