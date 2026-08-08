@@ -215,8 +215,10 @@ app.get("/api/health", (c) =>
     service: "music",
     provider: "chksz",
     runtime: "cloudflare-workers",
-    has_apikey: Boolean(c.env.CHKSZ_APIKEY),
-    has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS),
+    // .top is free (no key). Keys are only for .com backup.
+    has_apikey: Boolean(c.env.CHKSZ_APIKEY || c.env.CHKSZ_FALLBACK_APIKEYS),
+    has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS || c.env.CHKSZ_APIKEY),
+    primary_needs_key: false,
     api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
     fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
     has_d1: Boolean(c.env.MUSIC_DU_DB),

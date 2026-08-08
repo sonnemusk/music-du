@@ -52,13 +52,27 @@ describe("Hono app API", () => {
     expect(j.ok).toBe(false);
   });
 
-  it("search without key returns 401 structured", async () => {
+  it("search without key is allowed (free .top primary)", async () => {
+    // free primary needs no apikey; without transport, real upstream may 200 or soft-fail
     const app = createApp({ library: tmpLib(), apikey: "" });
-    const r = await app.request("/api/search?q=test");
-    expect(r.status).toBe(401);
-    const j = await r.json();
-    expect(j.ok).toBe(false);
-    expect(j.error).toBeTruthy();
+    // inject transport so test is offline-stable
+    const chksz = await import("../server/chksz.js");
+    chksz.setHttpTransport(async () => ({
+      status: 200,
+      json: async () => ({
+        code: 200,
+        data: [{ id: 1, name: "T", ar: [{ name: "A" }], al: { name: "", picUrl: "" }, duration: 1 }],
+      }),
+    }));
+    try {
+      const r = await app.request("/api/search?q=test");
+      expect(r.status).toBe(200);
+      const j = await r.json();
+      expect(j.ok).toBe(true);
+      expect(Array.isArray(j.data)).toBe(true);
+    } finally {
+      chksz.setHttpTransport(null);
+    }
   });
 
   it("library history DELETE sticks", async () => {

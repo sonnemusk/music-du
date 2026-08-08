@@ -1,15 +1,14 @@
 /**
  * ChKSz NetEase adapter.
  *
- * Primary:  CHKSZ_API_BASE (default https://api.chksz.top) + primary key(s)
- * Fallback: CHKSZ_FALLBACK_BASE (default https://api.chksz.com) + fallback keys round-robin
+ * Primary:  https://api.chksz.top  — free, NO apikey
+ * Fallback: https://api.chksz.com — needs apikey(s), round-robin
  */
 import {
   CHKSZ_APIKEY,
+  chkszComKeys,
   chkszFallbackBase,
-  chkszFallbackKeys,
   chkszPrimaryBase,
-  chkszPrimaryKeys,
   qualityLevels,
 } from "./config.js";
 import type { Track } from "./types.js";
@@ -31,8 +30,8 @@ export type Transport = (
 
 let transport: Transport | null = null;
 
-/** Round-robin cursor for fallback keys (module-level; Workers isolate per isolate). */
-let fallbackKeyCursor = 0;
+/** Round-robin cursor for .com keys (module-level; Workers isolate per isolate). */
+let comKeyCursor = 0;
 
 export function setHttpTransport(fn: Transport | null) {
   transport = fn;
@@ -40,7 +39,7 @@ export function setHttpTransport(fn: Transport | null) {
 
 /** Test helper — reset RR cursor. */
 export function resetKeyRotationForTests() {
-  fallbackKeyCursor = 0;
+  comKeyCursor = 0;
 }
 
 export function tryHttps(url: string): string {
@@ -51,10 +50,11 @@ export function tryHttps(url: string): string {
   return u;
 }
 
+/** Only for .com backup paths that truly need a key. */
 export function requireApikey(key = CHKSZ_APIKEY): string {
   if (!key) {
     throw new ChkszError(
-      "CHKSZ_APIKEY not configured (set env CHKSZ_APIKEY)",
+      "CHKSZ_FALLBACK_APIKEYS not configured (needed for api.chksz.com)",
       401
     );
   }
@@ -72,7 +72,8 @@ function buildUrl(
   if (base.endsWith("/api") && p.startsWith("/api/")) p = p.slice(4);
   const u = new URL(base + p);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
-  u.searchParams.set("apikey", apikey);
+  // Free .top: never attach apikey. Paid .com: only when key present.
+  if (apikey) u.searchParams.set("apikey", apikey);
   return u.toString();
 }
 
@@ -91,62 +92,42 @@ function splitOptKeys(raw: string): string[] {
 }
 
 /**
- * Build try order:
- * 1) primary base × primary key(s)
- * 2) fallback base × fallback keys (RR start advances each call)
+ * Try order:
+ * 1) free primary base (.top) — always no apikey
+ * 2) paid fallback (.com) × com keys, round-robin start each call
  *
- * Explicit empty apikey → 401 (tests). Mock transport → primary only (no multi-host).
+ * Mock transport (unit tests): only primary, no key (unless test forces opts.apikey
+ * solely for asserting param plumbing — still not required).
  */
 function buildAttempts(opts?: { apikey?: string }): Attempt[] {
   const primary = chkszPrimaryBase();
   const fallback = chkszFallbackBase();
 
-  let primaryKeys: string[];
-  if (opts && "apikey" in opts) {
-    const raw = String(opts.apikey ?? "");
-    // empty string must 401 (unit tests)
-    if (!raw.trim()) {
-      throw new ChkszError(
-        "CHKSZ_APIKEY not configured (set env CHKSZ_APIKEY)",
-        401
-      );
-    }
-    primaryKeys = splitOptKeys(raw);
-  } else {
-    primaryKeys = chkszPrimaryKeys();
-  }
+  // Primary free gateway: never requires / sends key
+  const out: Attempt[] = [{ base: primary, key: "", label: "primary-free" }];
 
-  if (!primaryKeys.length) {
-    throw new ChkszError(
-      "CHKSZ_APIKEY not configured (set env CHKSZ_APIKEY)",
-      401
-    );
-  }
-
-  const out: Attempt[] = primaryKeys.map((key, i) => ({
-    base: primary,
-    key,
-    label: primaryKeys.length > 1 ? `primary#${i + 1}` : "primary",
-  }));
-
-  // Unit tests inject transport — keep single-host, no fallback fan-out
+  // Unit tests with injected transport: free primary only (no .com fan-out)
   if (transport) return out;
 
-  if (fallback) {
-    // Dedicated fallback keys (.com RR); if unset, chkszFallbackKeys reuses primary keys
-    const fbKeys = chkszFallbackKeys();
-    if (fbKeys.length) {
-      const start = fallbackKeyCursor % fbKeys.length;
-      fallbackKeyCursor += 1;
-      for (let i = 0; i < fbKeys.length; i++) {
-        const key = fbKeys[(start + i) % fbKeys.length]!;
-        out.push({
-          base: fallback,
-          key,
-          label: `fallback#${i + 1}`,
-        });
-      }
-    }
+  if (!fallback) return out;
+
+  // .com keys from env; opts.apikey only fills in when env has none
+  let comKeys = chkszComKeys();
+  if (!comKeys.length && opts?.apikey?.trim()) {
+    comKeys = splitOptKeys(opts.apikey);
+  }
+
+  if (!comKeys.length) return out; // free-only mode when no com keys configured
+
+  const start = comKeyCursor % comKeys.length;
+  comKeyCursor += 1;
+  for (let i = 0; i < comKeys.length; i++) {
+    const key = comKeys[(start + i) % comKeys.length]!;
+    out.push({
+      base: fallback,
+      key,
+      label: `com#${i + 1}`,
+    });
   }
   return out;
 }
@@ -164,8 +145,10 @@ async function rawGet(
 ): Promise<{ status: number; body: any }> {
   const url = buildUrl(base, path, params, key);
   if (transport) {
+    const transportParams: Record<string, string | number> = { ...params };
+    if (key) transportParams.apikey = key;
     const r = await transport("GET", url, {
-      params: { ...params, apikey: key },
+      params: transportParams,
       timeout,
     });
     return { status: r.status, body: await r.json() };
@@ -174,7 +157,11 @@ async function rawGet(
   const t = setTimeout(() => ac.abort(), timeout);
   try {
     const r = await fetch(url, {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        // .com sits behind CF bot score; bare fetch UA can 403 even with a valid key
+        "User-Agent": "music-du/2.0 (+https://music.dubin.cc)",
+      },
       signal: ac.signal,
     });
     let body: any = {};

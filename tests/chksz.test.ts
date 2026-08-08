@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as chksz from "../server/chksz.js";
 
 afterEach(() => {
   chksz.setHttpTransport(null);
+  chksz.resetKeyRotationForTests();
+  delete process.env.CHKSZ_FALLBACK_APIKEYS;
+  delete process.env.CHKSZ_APIKEY;
+  delete process.env.CHKSZ_TOKEN;
 });
 
 describe("chksz adapter", () => {
@@ -21,13 +25,14 @@ describe("chksz adapter", () => {
     expect(n.album).toBe("AL");
   });
 
-  it("search normalizes list and uses apikey only", async () => {
+  it("search on free primary works without apikey", async () => {
     let seenParams: any = null;
+    let seenUrl = "";
     chksz.setHttpTransport(async (_m, url, init) => {
-      expect(url.includes("163_search") || (init?.params as any)).toBeTruthy();
+      seenUrl = url;
       seenParams = init?.params;
-      expect(seenParams.apikey).toBe("chksz_test_fixture_key");
-      expect(seenParams.token).toBeUndefined();
+      expect(seenParams?.apikey).toBeUndefined();
+      expect(String(url)).not.toMatch(/apikey=/);
       return {
         status: 200,
         json: async () => ({
@@ -44,18 +49,13 @@ describe("chksz adapter", () => {
         }),
       };
     });
-    const songs = await chksz.search("孤勇者", 5, { apikey: "chksz_test_fixture_key" });
+    const songs = await chksz.search("孤勇者", 5);
     expect(songs).toHaveLength(1);
     expect(songs[0].id).toBe(1901371647);
     expect(songs[0].name).toBe("孤勇者");
     expect(songs[0].artist).toContain("陈奕迅");
     expect(songs[0].cover.startsWith("https://")).toBe(true);
-  });
-
-  it("search requires apikey", async () => {
-    await expect(chksz.search("x", 5, { apikey: "" })).rejects.toMatchObject({
-      status: 401,
-    });
+    expect(seenUrl).toContain("163_search");
   });
 
   it("fetch_music quality ladder prefers first working https url", async () => {
@@ -63,6 +63,7 @@ describe("chksz adapter", () => {
     chksz.setHttpTransport(async (_m, _url, init) => {
       const lv = String(init?.params?.level || "");
       calls.push(lv);
+      expect(init?.params?.apikey).toBeUndefined();
       if (lv === "jymaster") {
         return { status: 200, json: async () => ({ code: 200, data: { url: "" } }) };
       }
@@ -88,7 +89,7 @@ describe("chksz adapter", () => {
         }),
       };
     });
-    const raw = await chksz.fetchMusic(1, null, { apikey: "chksz_test_fixture_key" });
+    const raw = await chksz.fetchMusic(1, null);
     expect(raw.url.startsWith("https://")).toBe(true);
     expect(raw.url).toContain("sky.flac");
     expect(raw._requested_level).toBe("sky");
@@ -100,7 +101,6 @@ describe("chksz adapter", () => {
   it("probeTopQualities keeps first 3 that have urls", async () => {
     chksz.setHttpTransport(async (_m, _url, init) => {
       const lv = String(init?.params?.level || "");
-      // no jymaster/sky
       if (lv === "jymaster" || lv === "sky") {
         return { status: 200, json: async () => ({ code: 200, data: { url: "" } }) };
       }
@@ -119,9 +119,7 @@ describe("chksz adapter", () => {
       }
       return { status: 200, json: async () => ({ code: 200, data: { url: "" } }) };
     });
-    const top = await chksz.probeTopQualities(9, 3, {
-      apikey: "chksz_test_fixture_key",
-    });
+    const top = await chksz.probeTopQualities(9, 3);
     expect(top.map((x) => x.level)).toEqual(["jyeffect", "hires", "exhigh"]);
     expect(top[0].url).toContain("jyeffect");
   });
@@ -134,19 +132,16 @@ describe("chksz adapter", () => {
         data: { lrc: "[00:01.00]hello", tlyric: "[00:01.00]hi" },
       }),
     }));
-    const d = await chksz.fetchLyric(1, { apikey: "chksz_test_fixture_key" });
+    const d = await chksz.fetchLyric(1);
     expect(d.lrc).toContain("hello");
     expect(d.tlrc).toContain("hi");
   });
 
-  it("primary 429 then succeeds on next attempt order (transport single-host)", async () => {
-    // With mock transport we only hit primary once per design; auth error surfaces
+  it("primary free failure surfaces when transport is single-host", async () => {
     chksz.setHttpTransport(async () => ({
       status: 429,
       json: async () => ({ msg: "rate limited" }),
     }));
-    await expect(
-      chksz.search("x", 1, { apikey: "chksz_test_fixture_key" })
-    ).rejects.toMatchObject({ status: 429 });
+    await expect(chksz.search("x", 1)).rejects.toMatchObject({ status: 429 });
   });
 });

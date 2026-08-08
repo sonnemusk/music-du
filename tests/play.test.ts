@@ -29,9 +29,9 @@ describe("play path", () => {
     });
   });
 
-  it("resolvePlay remote via transport", async () => {
+  it("resolvePlay remote via transport without apikey on free primary", async () => {
     chksz.setHttpTransport(async (_m, _u, init) => {
-      expect(init?.params?.apikey).toBeTruthy();
+      expect(init?.params?.apikey).toBeUndefined();
       return {
         status: 200,
         json: async () => ({
@@ -46,7 +46,7 @@ describe("play path", () => {
         }),
       };
     });
-    const src = await resolvePlay(1, null, { apikey: "chksz_test_fixture_key" });
+    const src = await resolvePlay(1, null);
     expect(src.source).toBe("remote");
     expect(src.url.startsWith("https://")).toBe(true);
   });
@@ -56,7 +56,7 @@ describe("play path", () => {
       status: 200,
       json: async () => ({ code: 200, data: { url: "" } }),
     }));
-    const src = await resolvePlay(2, null, { apikey: "chksz_test_fixture_key" });
+    const src = await resolvePlay(2, null);
     expect(["stream", "none"]).toContain(src.source);
     expect(src.url.startsWith("/api/stream/")).toBe(true);
   });

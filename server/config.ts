@@ -93,8 +93,19 @@ export function chkszFallbackBase(): string {
   return base;
 }
 
-/** Keys for primary base (.top). Comma-separated supported. */
-export function chkszPrimaryKeys(): string[] {
+/**
+ * API keys for paid backup host (.com) only.
+ * Free primary (.top) does not use keys.
+ * Prefer CHKSZ_FALLBACK_APIKEYS; also accept CHKSZ_APIKEY / TOKEN as .com keys.
+ */
+export function chkszComKeys(): string[] {
+  const dedicated = splitKeys(
+    process.env.CHKSZ_FALLBACK_APIKEYS ||
+      process.env.CHKSZ_BACKUP_APIKEYS ||
+      process.env.CHKSZ_APIKEY_2 ||
+      ""
+  );
+  if (dedicated.length) return dedicated;
   return splitKeys(
     process.env.CHKSZ_APIKEY ||
       process.env.CHKSZ_TOKEN ||
@@ -103,27 +114,16 @@ export function chkszPrimaryKeys(): string[] {
   );
 }
 
-/**
- * Keys for fallback base (.com), round-robin.
- * Prefer CHKSZ_FALLBACK_APIKEYS / CHKSZ_BACKUP_APIKEYS / CHKSZ_APIKEY_2;
- * if unset, reuse primary keys so a single secret still works on .com.
- */
+/** @deprecated alias — keys are for .com backup, not free .top */
 export function chkszFallbackKeys(): string[] {
-  const dedicated = splitKeys(
-    process.env.CHKSZ_FALLBACK_APIKEYS ||
-      process.env.CHKSZ_BACKUP_APIKEYS ||
-      process.env.CHKSZ_APIKEY_2 ||
-      ""
-  );
-  if (dedicated.length) return dedicated;
-  return chkszPrimaryKeys();
+  return chkszComKeys();
 }
 
 /** @deprecated use chkszPrimaryBase() — kept for import sites that expect a const. */
 export const CHKSZ_API_BASE = chkszPrimaryBase();
 
-/** First primary key (compat). Prefer chkszPrimaryKeys() for multi-key. */
-export const CHKSZ_APIKEY = chkszPrimaryKeys()[0] || "";
+/** First .com key (compat). Free .top does not require this. */
+export const CHKSZ_APIKEY = chkszComKeys()[0] || "";
 
 /** High → low. Used to pick “top 3 that actually have a URL” per track. */
 export const DEFAULT_QUALITY = [
