@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cycleRank,
   DEFAULT_QUALITY,
+  intentLevelForRank,
   labelForLevel,
   normalizeChoices,
   pickLevelForRank,
@@ -38,6 +39,9 @@ describe("quality selection (dynamic top-3)", () => {
     expect(pickLevelForRank(choices, 1)).toBe("standard");
     expect(pickLevelForRank(choices, 2)).toBe("standard"); // clamp
     expect(pickLevelForRank([], 0)).toBe("jymaster");
+    expect(pickLevelForRank([], 1)).toBe("sky");
+    expect(pickLevelForRank([], 2)).toBe("jyeffect");
+    expect(intentLevelForRank(1)).toBe("sky");
   });
 
   it("cycles rank within available count", () => {

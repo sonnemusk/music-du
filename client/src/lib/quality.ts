@@ -90,12 +90,22 @@ export function savePreferredRank(rank: QualityRank): void {
   }
 }
 
-/** Pick level for play: rank among available; fall back to best (0). */
+/**
+ * Sticky intent level when we don't yet know a song's real ladder.
+ * Rank 0/1/2 map to the global top-3 names so UI never flashes "母带" for a rank-1 user.
+ */
+export function intentLevelForRank(rank: QualityRank): string {
+  if (rank === 1) return "sky";
+  if (rank === 2) return "jyeffect";
+  return DEFAULT_QUALITY;
+}
+
+/** Pick level for play: rank among available; empty → sticky intent for that rank. */
 export function pickLevelForRank(
   choices: QualityChoice[],
   rank: QualityRank
 ): string {
-  if (!choices.length) return DEFAULT_QUALITY;
+  if (!choices.length) return intentLevelForRank(rank);
   const i = Math.min(Math.max(0, rank), choices.length - 1);
   return choices[i].level;
 }

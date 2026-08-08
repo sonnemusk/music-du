@@ -250,27 +250,42 @@ export async function cacheAudioFromStream(
 
 /**
  * Warm browser media buffer for a URL without storing a blob.
- * Good for CDN remote URLs (no CORS needed). Low priority, abortable.
+ * Low priority vs current playback — max 1 warmer so next-track never crowds current.
  */
 const warmers = new Map<string, HTMLAudioElement>();
+
+/** Background blob downloads for neighbors (not the track currently playing). */
+let neighborBlobAbort: AbortController | null = null;
+
+export function abortNeighborBlobCaches(): void {
+  try {
+    neighborBlobAbort?.abort();
+  } catch {
+    /* */
+  }
+  neighborBlobAbort = new AbortController();
+}
+
+export function neighborBlobSignal(): AbortSignal | undefined {
+  if (!neighborBlobAbort) neighborBlobAbort = new AbortController();
+  return neighborBlobAbort.signal;
+}
 
 export function warmMediaUrl(id: string | number, url: string): void {
   if (!url || typeof Audio === "undefined") return;
   const key = String(id);
   if (warmers.has(key)) return;
   try {
+    // Only keep the newest warmer (predicted next). Drop others so current stream wins.
+    for (const k of [...warmers.keys()]) {
+      if (k !== key) disposeWarmer(k);
+    }
     const a = new Audio();
     a.preload = "auto";
     a.muted = true;
     a.src = url;
-    // Kick buffering; ignore play failures (autoplay policies)
     void a.load();
     warmers.set(key, a);
-    // Cap concurrent warmers
-    if (warmers.size > 4) {
-      const first = warmers.keys().next().value as string;
-      disposeWarmer(first);
-    }
   } catch {
     /* */
   }

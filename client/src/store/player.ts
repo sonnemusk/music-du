@@ -1,10 +1,14 @@
 import { create } from "zustand";
 import * as api from "../lib/api";
 import {
+  abortNeighborBlobCaches,
   cacheAudioFromStream,
+  disposeAllWarmers,
   disposeWarmer,
+  getAudioBlob,
   getAudioObjectURL,
   hasAudioBlob,
+  neighborBlobSignal,
   warmMediaUrl,
 } from "../lib/audio-cache";
 import {
@@ -42,6 +46,7 @@ import {
 import {
   cycleRank,
   DEFAULT_QUALITY,
+  intentLevelForRank,
   labelForLevel,
   loadPreferredRank,
   normalizeChoices,
@@ -87,6 +92,63 @@ function effectivePreferredLevel(
   return pickLevelForRank(choices, rank);
 }
 
+/** Neighbor prefetch must wait so current track owns the network. */
+const PREFETCH_START_DELAY_MS = 900;
+const PREFETCH_POLL_MS = 400;
+const PREFETCH_FORCE_MS = 7000;
+const PREFETCH_MIN_RATIO = 0.12;
+const PREFETCH_MIN_AHEAD_SEC = 12;
+
+let neighborPrefetchTimer: ReturnType<typeof setTimeout> | null = null;
+let neighborPrefetchGen = 0;
+let neighborPrefetchDoneKey = "";
+
+function cancelNeighborPrefetch(): void {
+  if (neighborPrefetchTimer != null) {
+    clearTimeout(neighborPrefetchTimer);
+    neighborPrefetchTimer = null;
+  }
+  neighborPrefetchGen += 1;
+  abortNeighborBlobCaches();
+  disposeAllWarmers();
+}
+
+function bufferAheadSec(audio: HTMLAudioElement): number {
+  try {
+    const b = audio.buffered;
+    if (!b.length) return 0;
+    const t = audio.currentTime || 0;
+    let end = 0;
+    for (let i = 0; i < b.length; i++) {
+      if (b.start(i) <= t + 0.5) end = Math.max(end, b.end(i));
+    }
+    return Math.max(0, end - t);
+  } catch {
+    return 0;
+  }
+}
+
+function currentTrackReadyForNeighborPrefetch(audio: HTMLAudioElement | null): boolean {
+  if (!audio || !audio.src) return false;
+  const ratio = bufferedRatio(audio);
+  if (ratio >= PREFETCH_MIN_RATIO) return true;
+  if (bufferAheadSec(audio) >= PREFETCH_MIN_AHEAD_SEC) return true;
+  // Already near end — free to warm next
+  const dur = audio.duration || 0;
+  const t = audio.currentTime || 0;
+  if (dur > 0 && t / dur >= 0.85) return true;
+  return false;
+}
+
+function levelsCompatible(a: string, b: string): boolean {
+  const x = String(a || "").toLowerCase();
+  const y = String(b || "").toLowerCase();
+  if (!x || !y) return true;
+  if (x === y) return true;
+  // treat 缓存 / … as wildcards
+  if (x === "缓存" || x === "…" || y === "缓存" || y === "…") return true;
+  return false;
+}
 
 function norm(t: Track | null | undefined): Track | null {
   if (!t || t.id == null) return null;
@@ -258,6 +320,8 @@ type State = {
   modeLabel: () => string;
   /** Resolve + buffer a track without starting playback (home cold-start). */
   warmTrack: (t: Track) => void;
+  /** Gate + run neighbor warm after current track has buffer headroom. */
+  schedulePrefetchAround: (id: string | number) => void;
   prefetchAround: (id: string | number) => void;
   recomputePredictedNext: () => void;
 };
@@ -534,10 +598,10 @@ export const usePlayer = create<State>((set, get) => ({
         duration: 0,
       });
 
-      // Priority: warm the selected first track + sticky next (same stack as mid-session)
+      // Priority: warm selected first; neighbor only after current has headroom
       get().warmTrack(start);
       get().recomputePredictedNext();
-      get().prefetchAround(start.id);
+      get().schedulePrefetchAround(start.id);
 
       // Pre-resolve favorites / playlist / history URLs in background (not full audio)
       const resolve = (id: string | number, opts?: { level?: string }) =>
@@ -825,7 +889,9 @@ export const usePlayer = create<State>((set, get) => ({
     // 1) Instant cut: kill previous audio BEFORE any network
     const token = get().playToken + 1;
     hardStopAudio(audio);
-    disposeWarmer(t.id); // if we were warming this as "next", drop the warmer
+    // Free bandwidth for the new current track (drop next-warm + neighbor blobs)
+    cancelNeighborPrefetch();
+    disposeWarmer(t.id);
 
     // Lyrics: apply from local cache SYNCHRONOUSLY so UI never waits/re-fetches
     const cachedLyrics =
@@ -839,10 +905,28 @@ export const usePlayer = create<State>((set, get) => ({
     const instantIdx =
       instantLyrics.length && t0 > 0 ? lyricIndexAt(instantLyrics, t0 * 1000) : -1;
 
-    // UI first — search click must highlight immediately (before any await)
-    stopPausedBufferPump();
+    // Sticky quality: rank intent is source of truth across tracks (no 母带↔沉浸 flash).
+    // Pre-warmed next is always resolved under this intent, so next() reuses the same level.
+    const rank0 = get().preferredRank;
     const sameTrack =
       get().curTrack != null && String(get().curTrack!.id) === String(t.id);
+    const known0 = sameTrack ? get().availableQualities : [];
+    const intentQ = intentLevelForRank(rank0);
+    const stickyPref = sameTrack
+      ? pickLevelForRank(known0, rank0) || get().preferredQuality || intentQ
+      : intentQ;
+    // Prefer pre-resolved meta for this track at sticky / intent level
+    const preMeta =
+      getCachedSong(t.id, stickyPref) ||
+      getCachedSong(t.id, intentQ) ||
+      getCachedSong(t.id, get().preferredQuality);
+    // UI label: use pre-warmed actual level if cache hit, else sticky intent (never "…")
+    const stickyLevel = String(
+      preMeta?.level || stickyPref || intentQ || DEFAULT_QUALITY
+    );
+
+    // UI first — search click must highlight immediately (before any await)
+    stopPausedBufferPump();
     set({
       playToken: token,
       playing: false,
@@ -850,12 +934,10 @@ export const usePlayer = create<State>((set, get) => ({
       currentTime: 0,
       duration: 0,
       buffered: 0,
-      quality: "…",
-      // Keep quality menu + pre-resolved URLs when only switching level on same track
+      // Keep pre-warmed level visible — no "…" → 母带 → 沉浸 flicker
+      quality: stickyLevel,
       availableQualities: sameTrack ? get().availableQualities : [],
-      preferredQuality: sameTrack
-        ? get().preferredQuality || pickLevelForRank([], get().preferredRank)
-        : pickLevelForRank([], get().preferredRank),
+      preferredQuality: stickyLevel,
       playSource: "",
       lyrics: instantLyrics,
       lyricIdx: instantIdx,
@@ -894,51 +976,43 @@ export const usePlayer = create<State>((set, get) => ({
     if (t.cover) prefetchCover(t.cover, "medium");
     void persistSoon(get);
 
-    // Intent level: rank 0 → jymaster (server falls through to best available).
-    // Do NOT block first paint on full qualities probe (that was 3–6s cold).
+    // Play at sticky / pre-warmed level (rank intent). Server falls through if missing.
+    // Do NOT block first paint on full qualities probe.
     const rank = get().preferredRank;
     const known = get().availableQualities;
-    let prefQ =
-      known.length > 0
-        ? pickLevelForRank(known, rank)
-        : rank === 1
-          ? "sky"
-          : rank === 2
-            ? "jyeffect"
-            : DEFAULT_QUALITY;
+    // Always request by rank intent (or known ladder pick). preferred stays sticky for next warm.
+    const prefQ =
+      known.length > 0 ? pickLevelForRank(known, rank) : intentLevelForRank(rank);
     set({ preferredQuality: prefQ });
 
-    // Background: probe top-3 + cache each level's CDN URL for instant quality switch
+    // Background: probe top-3 URLs for the menu only — do NOT warm other levels (bandwidth)
+    // and do NOT rewrite quality/preferred mid-play (that caused 母带↔沉浸 jumps).
     void (async () => {
       try {
-        // Reuse menu if already probed for this track
         if (sameTrack && get().availableQualities.length >= 1) {
           for (const c of get().availableQualities) {
-            if (c.url) {
-              setCachedSong(
-                {
-                  id: String(t.id),
-                  url: c.url,
-                  stream: `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(c.level)}`,
-                  level: c.level,
-                  br: c.br,
-                  size: c.size,
-                  name: t.name,
-                  artist: t.artist,
-                  cover: t.cover || "",
-                  source: "remote",
-                },
-                c.level
-              );
-              warmMediaUrl(`${t.id}-${c.level}`, c.url);
-            }
+            if (!c.url) continue;
+            setCachedSong(
+              {
+                id: String(t.id),
+                url: c.url,
+                stream: `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(c.level)}`,
+                level: c.level,
+                br: c.br,
+                size: c.size,
+                name: t.name,
+                artist: t.artist,
+                cover: t.cover || "",
+                source: "remote",
+              },
+              c.level
+            );
           }
           return;
         }
         const raw = await api.fetchSongQualities(t.id, 3);
         if (get().playToken !== token) return;
         const choices = normalizeChoices(raw);
-        // Pre-cache every available quality URL so menu switch is instant
         for (const c of choices) {
           if (!c.url) continue;
           setCachedSong(
@@ -956,11 +1030,12 @@ export const usePlayer = create<State>((set, get) => ({
             },
             c.level
           );
-          // Warm browser media buffer for non-current levels (low priority)
-          if (c.level !== prefQ) warmMediaUrl(`${t.id}-${c.level}`, c.url);
         }
-        const level = pickLevelForRank(choices, get().preferredRank);
-        set({ availableQualities: choices, preferredQuality: level });
+        // Menu only. Prefer mapping rank→this song's ladder without changing the playing label
+        // unless UI still shows a generic intent that matches.
+        // Menu only — never rewrite preferredQuality (rank intent) so next track
+        // keeps warming the same slot the user chose (no 沉浸→母带 jump).
+        set({ availableQualities: choices });
       } catch {
         /* menu stays empty; playback uses ladder fallthrough */
       }
@@ -1101,50 +1176,68 @@ export const usePlayer = create<State>((set, get) => ({
       return false;
     };
 
-    // 2a) Offline blob (favorites previously cached) — instant
+    // 2a) Offline blob — only if level matches sticky pref (avoid 母带 blob under 沉浸 UI)
     let playedFromBlob = false;
     let remote = "";
     let meta: any = null;
-    const songCached = getCachedSong(t.id, prefQ);
+    const songCached =
+      getCachedSong(t.id, prefQ) ||
+      getCachedSong(t.id, stickyLevel) ||
+      preMeta ||
+      null;
 
     try {
-      const blobUrl = await getAudioObjectURL(t.id);
+      const blobHit = await getAudioBlob(t.id);
       if (get().playToken !== token) {
         clearSlow();
         return;
       }
-      if (blobUrl) {
-        const cachedMeta = getCachedSong(t.id, prefQ) || songCached;
-        if (cachedMeta) {
-          set({
-            curTrack: {
-              ...t,
-              name: cachedMeta.name || t.name,
-              artist: cachedMeta.artist || t.artist,
-              cover: cachedMeta.cover || t.cover,
-              level: cachedMeta.level,
-              br: cachedMeta.br,
-              size: cachedMeta.size,
-            },
-            quality: cachedMeta.level || "缓存",
-            playSource: "cache",
-          });
-        } else {
-          set({ quality: "缓存", playSource: "cache" });
-        }
-        try {
-          audio.src = blobUrl;
-          applyAudioVolume(audio, get().volume, get().muted);
-          await audio.play();
-          if (get().playToken !== token) {
-            clearSlow();
-            return;
-          }
-          set({ playing: true, loadingPlay: false });
-          playedFromBlob = true;
+      const blobLevel = String(blobHit?.level || "");
+      const blobOk =
+        blobHit &&
+        levelsCompatible(blobLevel, prefQ) &&
+        levelsCompatible(blobLevel, stickyLevel);
+      if (blobOk) {
+        const blobUrl = await getAudioObjectURL(t.id);
+        if (get().playToken !== token) {
           clearSlow();
-        } catch {
-          playedFromBlob = false;
+          return;
+        }
+        if (blobUrl) {
+          const cachedMeta = getCachedSong(t.id, prefQ) || songCached;
+          const showLevel = blobLevel || cachedMeta?.level || prefQ;
+          if (cachedMeta) {
+            set({
+              curTrack: {
+                ...t,
+                name: cachedMeta.name || t.name,
+                artist: cachedMeta.artist || t.artist,
+                cover: cachedMeta.cover || t.cover,
+                level: showLevel,
+                br: cachedMeta.br,
+                size: cachedMeta.size,
+              },
+              quality: showLevel,
+              preferredQuality: showLevel,
+              playSource: "cache",
+            });
+          } else {
+            set({ quality: showLevel || "缓存", preferredQuality: showLevel || prefQ, playSource: "cache" });
+          }
+          try {
+            audio.src = blobUrl;
+            applyAudioVolume(audio, get().volume, get().muted);
+            await audio.play();
+            if (get().playToken !== token) {
+              clearSlow();
+              return;
+            }
+            set({ playing: true, loadingPlay: false, quality: showLevel });
+            playedFromBlob = true;
+            clearSlow();
+          } catch {
+            playedFromBlob = false;
+          }
         }
       }
     } catch {
@@ -1159,17 +1252,20 @@ export const usePlayer = create<State>((set, get) => ({
         remote =
           songCached.url && /^https?:\/\//i.test(songCached.url) ? songCached.url : "";
         meta = songCached;
+        const playLevel = String(songCached.level || prefQ || stickyLevel);
         set({
           curTrack: {
             ...t,
             name: songCached.name || t.name,
             artist: songCached.artist || t.artist,
             cover: songCached.cover || t.cover,
-            level: songCached.level,
+            level: playLevel,
             br: songCached.br,
             size: songCached.size,
           },
-          quality: songCached.level || "",
+          quality: playLevel,
+          // preferred stays on prefQ (rank intent) so next warm doesn't drift
+          preferredQuality: prefQ,
           playSource: remote ? "remote" : "stream",
         });
         const ok = await playRemoteOrStream(remote, true);
@@ -1193,9 +1289,11 @@ export const usePlayer = create<State>((set, get) => ({
           }
           remote = fresh.remoteUrl;
           meta = fresh.data;
+          const playLevel = String(fresh.data.level || prefQ || stickyLevel);
           set({
             curTrack: fresh.updated,
-            quality: String(fresh.data.level || ""),
+            quality: playLevel,
+            preferredQuality: prefQ,
             playSource:
               fresh.data.play?.mode ||
               fresh.data.source ||
@@ -1276,15 +1374,28 @@ export const usePlayer = create<State>((set, get) => ({
       })();
     }
 
-    // Persist favorite / current track audio to IDB for instant re-play
+    // Persist favorite audio to IDB only after current stream has a head start
+    // (full fetch competes with playback — defer via neighbor gate timer path)
     const isFav = get().isFavorite(t.id);
     if (isFav || get().queueSource === "favorites") {
-      void cacheAudioFromStream(t.id, { level: String(meta?.level || get().quality || "") });
+      const lvl = String(meta?.level || get().quality || prefQ || "");
+      window.setTimeout(() => {
+        if (get().playToken !== token) return;
+        if (!currentTrackReadyForNeighborPrefetch(get().audioEl)) {
+          // retry once later
+          window.setTimeout(() => {
+            if (get().playToken !== token) return;
+            void cacheAudioFromStream(t.id, { level: lvl });
+          }, PREFETCH_FORCE_MS);
+          return;
+        }
+        void cacheAudioFromStream(t.id, { level: lvl });
+      }, PREFETCH_START_DELAY_MS + 600);
     }
 
-    // Predict + warm next track (resolve + audio advance)
+    // Predict next; warm only after current track owns enough buffer
     get().recomputePredictedNext();
-    get().prefetchAround(t.id);
+    get().schedulePrefetchAround(t.id);
   },
 
   togglePlay: () => {
@@ -1306,13 +1417,15 @@ export const usePlayer = create<State>((set, get) => ({
         .then(() => {
           set({ playing: true, loadingPlay: false });
           if (warmOk && cur) {
-            // Same post-play work as playTrack (next warm stays unchanged)
             get().recomputePredictedNext();
-            get().prefetchAround(cur.id);
+            get().schedulePrefetchAround(cur.id);
             if (get().isFavorite(cur.id) || get().queueSource === "favorites") {
-              void cacheAudioFromStream(cur.id, {
-                level: String(get().quality || ""),
-              });
+              window.setTimeout(() => {
+                if (String(get().curTrack?.id) !== String(cur.id)) return;
+                void cacheAudioFromStream(cur.id, {
+                  level: String(get().quality || get().preferredQuality || ""),
+                });
+              }, PREFETCH_START_DELAY_MS + 600);
             }
           }
         })
@@ -1659,7 +1772,7 @@ export const usePlayer = create<State>((set, get) => ({
             quality: lv,
           });
           get().recomputePredictedNext();
-          get().prefetchAround(t.id);
+          get().schedulePrefetchAround(t.id);
         } catch {
           // Fallback to full play path (re-resolve)
           if (get().playToken === token) {
@@ -1682,10 +1795,10 @@ export const usePlayer = create<State>((set, get) => ({
     }
     set({ playMode: m, predictedNextId: null });
     get().showToast(playModeLabel(m));
-    // Mode change → re-pick next and re-warm
+    // Mode change → re-pick next and re-warm (gated)
     if (get().curTrack) {
       get().recomputePredictedNext();
-      get().prefetchAround(get().curTrack!.id);
+      get().schedulePrefetchAround(get().curTrack!.id);
     }
   },
 
@@ -1707,97 +1820,90 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   /**
-   * Advance cache while current song plays:
-   * 1) Resolve URL for predicted next (+ prev / list +2)
-   * 2) Warm media buffer (hidden Audio) for remote URL
-   * 3) Download full blob for favorites / predicted next (IDB)
+   * Wait until current track has buffer headroom, then warm ONLY predicted next
+   * at the sticky preferred level (no multi-quality media download).
+   */
+  schedulePrefetchAround: (id) => {
+    const sid = String(id);
+    // Drop previous schedule/warmers so a new current track wins the network
+    if (neighborPrefetchTimer != null) {
+      clearTimeout(neighborPrefetchTimer);
+      neighborPrefetchTimer = null;
+    }
+    const gen = ++neighborPrefetchGen;
+    const startedAt = Date.now();
+    const doneKeyPrefix = `${sid}@${get().playToken}`;
+
+    const tick = () => {
+      if (gen !== neighborPrefetchGen) return;
+      if (String(get().curTrack?.id) !== sid) return;
+      const audio = get().audioEl;
+      const forced = Date.now() - startedAt >= PREFETCH_FORCE_MS;
+      const ready = forced || currentTrackReadyForNeighborPrefetch(audio);
+      if (!ready) {
+        neighborPrefetchTimer = setTimeout(tick, PREFETCH_POLL_MS);
+        return;
+      }
+      const key = `${doneKeyPrefix}:${get().predictedNextId || ""}`;
+      if (neighborPrefetchDoneKey === key) return;
+      neighborPrefetchDoneKey = key;
+      get().prefetchAround(sid);
+    };
+
+    neighborPrefetchTimer = setTimeout(tick, PREFETCH_START_DELAY_MS);
+  },
+
+  /**
+   * Light advance cache (called only after schedulePrefetchAround gate):
+   * 1) Resolve preferred level for predicted next only
+   * 2) One media warmer for that single URL
+   * 3) Optional blob for next if favorite (abortable, low priority)
    */
   prefetchAround: (id) => {
     const q = get().queue();
-    const i = q.findIndex((x) => String(x.id) === String(id));
-    if (i < 0 && !get().predictedNextId) return;
-
-    const targets: Track[] = [];
-    const seen = new Set<string>();
-    const push = (t?: Track | null) => {
-      if (!t || t.id == null) return;
-      const k = String(t.id);
-      if (k === String(id) || seen.has(k)) return;
-      seen.add(k);
-      targets.push(t);
-    };
-
-    // Primary: sticky predicted next (list order OR pre-picked shuffle)
     const predId = get().predictedNextId;
-    if (predId) {
-      push(q.find((x) => String(x.id) === String(predId)) || null);
+    if (!predId) {
+      // Fallback: list next only
+      const i = q.findIndex((x) => String(x.id) === String(id));
+      if (i < 0 || !q[i + 1]) return;
     }
 
-    // Secondary neighbors for list mode / prev button
-    if (i >= 0) {
-      push(q[i + 1]);
-      push(q[i - 1]);
-      if (get().playMode === "list") push(q[i + 2]);
-    }
+    const n =
+      (predId && q.find((x) => String(x.id) === String(predId))) ||
+      (() => {
+        const i = q.findIndex((x) => String(x.id) === String(id));
+        return i >= 0 ? q[i + 1] : null;
+      })();
+    if (!n || n.id == null || String(n.id) === String(id)) return;
 
-    // Cap concurrent advance work
-    const list = targets.slice(0, 3);
-    const favSet = new Set(get().favorites.map((f) => String(f.id)));
-    const preferBlob = get().queueSource === "favorites";
+    // Stick to the same quality intent the user is on (pre-warm = what next() will play)
+    const prefLevel =
+      get().preferredQuality || intentLevelForRank(get().preferredRank);
 
-    for (const n of list) {
-      const isPrimary = predId != null && String(n.id) === String(predId);
-      const shouldBlob = preferBlob || favSet.has(String(n.id)) || isPrimary;
+    if (n.cover) prefetchCover(n.cover, "thumb");
 
-      // Cover first — thumb for list paint (cheap)
-      if (n.cover) prefetchCover(n.cover, "thumb");
-
-      // Primary next: pre-probe all top-3 quality URLs so quality switch is warm
-      if (isPrimary) {
-        void (async () => {
-          try {
-            const raw = await api.fetchSongQualities(n.id, 3);
-            const choices = normalizeChoices(raw);
-            for (const c of choices) {
-              if (!c.url) continue;
-              setCachedSong(
-                {
-                  id: String(n.id),
-                  url: c.url,
-                  stream: `/api/stream/${encodeURIComponent(String(n.id))}?level=${encodeURIComponent(c.level)}`,
-                  level: c.level,
-                  br: c.br,
-                  size: c.size,
-                  name: n.name || "",
-                  artist: n.artist || "",
-                  cover: n.cover || "",
-                  source: "remote",
-                },
-                c.level
-              );
-              warmMediaUrl(`${n.id}-${c.level}`, c.url);
-            }
-          } catch {
-            /* */
-          }
-        })();
+    void (async () => {
+      // Abort if user already moved on
+      if (String(get().curTrack?.id) === String(n.id)) return;
+      if (get().predictedNextId && String(get().predictedNextId) !== String(n.id)) {
+        // predicted changed — still ok if this is that id
       }
 
-      void (async () => {
-        // Resolve meta if missing
-        let remote = "";
-        let level = "";
-        const cached = getCachedSong(n.id, get().preferredQuality);
-        if (cached && (cached.url || cached.stream)) {
-          remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
-          level = cached.level || "";
-        } else {
-          try {
-            const meta = await api.resolveSong(n.id, { level: get().preferredQuality });
-            remote =
-              meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
-            level = String(meta.level || "");
-            setCachedSong({
+      let remote = "";
+      let level = prefLevel;
+      const cached = getCachedSong(n.id, prefLevel);
+      if (cached && (cached.url || cached.stream)) {
+        remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
+        level = cached.level || prefLevel;
+      } else {
+        try {
+          const meta = await api.resolveSong(n.id, { level: prefLevel });
+          if (String(get().curTrack?.id) === String(n.id)) return;
+          remote =
+            meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
+          level = String(meta.level || prefLevel);
+          setCachedSong(
+            {
               id: String(n.id),
               url: remote,
               stream: meta.stream || `/api/stream/${n.id}`,
@@ -1809,42 +1915,67 @@ export const usePlayer = create<State>((set, get) => ({
               cover: meta.cover || n.cover || "",
               source: String(meta.source || ""),
               play: meta.play,
-            }, get().preferredQuality);
-            if (meta.cover) prefetchCover(String(meta.cover), "thumb");
-          } catch {
-            return;
+            },
+            // Key under both sticky pref and resolved level so next play hits cache
+            prefLevel
+          );
+          if (level && level !== prefLevel) {
+            setCachedSong(
+              {
+                id: String(n.id),
+                url: remote,
+                stream: meta.stream || `/api/stream/${n.id}`,
+                level,
+                br: Number(meta.br || 0),
+                size: Number(meta.size || 0),
+                name: meta.name || n.name,
+                artist: meta.artist || n.artist,
+                cover: meta.cover || n.cover || "",
+                source: String(meta.source || ""),
+                play: meta.play,
+              },
+              level
+            );
           }
+          if (meta.cover) prefetchCover(String(meta.cover), "thumb");
+        } catch {
+          return;
         }
+      }
 
-        // Layer 1: warm browser media cache (CDN remote or stream)
-        const warmUrl = remote || `/api/stream/${encodeURIComponent(String(n.id))}`;
-        warmMediaUrl(n.id, warmUrl);
+      // Single warmer for preferred level only — never all top-3
+      const warmUrl =
+        remote ||
+        `/api/stream/${encodeURIComponent(String(n.id))}?level=${encodeURIComponent(level || prefLevel)}`;
+      warmMediaUrl(n.id, warmUrl);
 
-        // Layer 2: durable blob for snappy next / offline-ish re-play
-        if (shouldBlob) {
-          const already = await hasAudioBlob(n.id);
-          if (!already) {
-            // slight stagger so current stream isn't starved on mobile
-            const delay = isPrimary ? 400 : 1200;
-            await new Promise((r) => setTimeout(r, delay));
-            // abort if user already switched away to something else entirely
-            if (get().curTrack && String(get().curTrack!.id) === String(n.id)) return;
-            await cacheAudioFromStream(n.id, { level });
-          }
+      // Durable blob only for predicted next when in favorites context (abortable)
+      const shouldBlob =
+        get().queueSource === "favorites" ||
+        get().favorites.some((f) => String(f.id) === String(n.id));
+      if (shouldBlob) {
+        const already = await hasAudioBlob(n.id);
+        if (!already) {
+          await new Promise((r) => setTimeout(r, 1500));
+          if (String(get().curTrack?.id) === String(n.id)) return;
+          if (String(get().curTrack?.id) !== String(id)) return;
+          await cacheAudioFromStream(n.id, {
+            level: level || prefLevel,
+            signal: neighborBlobSignal(),
+          });
         }
+      }
 
-        // Layer 3: prefetch lyrics for next/prev (all neighbors, not only primary)
-        prefetchLyric(
-          n.id,
-          {
-            name: n.name,
-            artist: n.artist,
-            duration: Number(n.duration || 0) || undefined,
-          },
-          (id, o) => api.fetchLyric(id, o)
-        );
-      })();
-    }
+      prefetchLyric(
+        n.id,
+        {
+          name: n.name,
+          artist: n.artist,
+          duration: Number(n.duration || 0) || undefined,
+        },
+        (id2, o) => api.fetchLyric(id2, o)
+      );
+    })();
   },
 
   toggleFavorite: (t) => {
