@@ -170,45 +170,95 @@ export async function search(
   return out;
 }
 
+/** Try a single quality level only (no fallthrough). */
+export async function fetchMusicExact(
+  sid: string | number,
+  level: string,
+  opts?: { apikey?: string }
+): Promise<Record<string, any> | null> {
+  const lv = String(level || "").trim();
+  if (!lv) return null;
+  try {
+    const { status, body } = await apiGet(
+      "/api/163_music",
+      { id: String(sid), level: lv },
+      { ...opts, timeout: 10000 }
+    );
+    if ([401, 402, 403, 429].includes(status)) checkAuth(status, body);
+    if (status >= 500) return null;
+    let raw = body?.data;
+    if (Array.isArray(raw)) raw = raw[0] || {};
+    if (!raw || typeof raw !== "object") {
+      if (body?.url) raw = body;
+      else return null;
+    }
+    const code = body?.code;
+    if (code != null && code !== 200 && code !== 0) return null;
+    const url = tryHttps(String(raw.url || "").trim());
+    if (!url.startsWith("http")) return null;
+    return {
+      ...raw,
+      url,
+      level: raw.level || lv,
+      _requested_level: lv,
+      id: raw.id || sid,
+      picUrl: raw.picUrl ? tryHttps(String(raw.picUrl)) : raw.picUrl,
+      cover: raw.cover ? tryHttps(String(raw.cover)) : raw.cover,
+    };
+  } catch (e) {
+    if (e instanceof ChkszError) throw e;
+    return null;
+  }
+}
+
 export async function fetchMusic(
   sid: string | number,
   level?: string | null,
   opts?: { apikey?: string }
 ): Promise<Record<string, any>> {
   for (const lv of qualityLevels(level)) {
-    try {
-      const { status, body } = await apiGet(
-        "/api/163_music",
-        { id: String(sid), level: lv },
-        { ...opts, timeout: 12000 }
-      );
-      if ([401, 402, 403, 429].includes(status)) checkAuth(status, body);
-      if (status >= 500) continue;
-      let raw = body?.data;
-      if (Array.isArray(raw)) raw = raw[0] || {};
-      if (!raw || typeof raw !== "object") {
-        if (body?.url) raw = body;
-        else continue;
-      }
-      const code = body?.code;
-      if (code != null && code !== 200 && code !== 0) continue;
-      const url = tryHttps(String(raw.url || "").trim());
-      if (!url.startsWith("http")) continue;
-      return {
-        ...raw,
-        url,
-        level: raw.level || lv,
-        _requested_level: lv,
-        id: raw.id || sid,
-        picUrl: raw.picUrl ? tryHttps(String(raw.picUrl)) : raw.picUrl,
-        cover: raw.cover ? tryHttps(String(raw.cover)) : raw.cover,
-      };
-    } catch (e) {
-      if (e instanceof ChkszError) throw e;
-      continue;
-    }
+    const hit = await fetchMusicExact(sid, lv, opts);
+    if (hit) return hit;
   }
   return {};
+}
+
+export type ProbedQuality = {
+  level: string;
+  br: number;
+  size: number;
+  url: string;
+  name?: string;
+  artist?: string;
+  cover?: string;
+};
+
+/**
+ * Walk high→low ladder; keep first `limit` levels that actually return a URL.
+ * Songs without 母带/沉浸 still get the best 3 that exist (e.g. hires/exhigh/standard).
+ */
+export async function probeTopQualities(
+  sid: string | number,
+  limit = 3,
+  opts?: { apikey?: string }
+): Promise<ProbedQuality[]> {
+  const max = Math.max(1, Math.min(5, limit || 3));
+  const out: ProbedQuality[] = [];
+  for (const lv of qualityLevels(null)) {
+    if (out.length >= max) break;
+    const hit = await fetchMusicExact(sid, lv, opts);
+    if (!hit?.url) continue;
+    out.push({
+      level: String(hit.level || lv),
+      br: Number(hit.br || 0),
+      size: Number(hit.size || 0),
+      url: String(hit.url),
+      name: hit.name ? String(hit.name) : undefined,
+      artist: hit.artist ? String(hit.artist) : undefined,
+      cover: hit.picUrl || hit.cover ? tryHttps(String(hit.picUrl || hit.cover)) : undefined,
+    });
+  }
+  return out;
 }
 
 export async function fetchLyric(

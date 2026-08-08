@@ -97,6 +97,35 @@ describe("chksz adapter", () => {
     expect(calls).not.toContain("standard");
   });
 
+  it("probeTopQualities keeps first 3 that have urls", async () => {
+    chksz.setHttpTransport(async (_m, _url, init) => {
+      const lv = String(init?.params?.level || "");
+      // no jymaster/sky
+      if (lv === "jymaster" || lv === "sky") {
+        return { status: 200, json: async () => ({ code: 200, data: { url: "" } }) };
+      }
+      if (lv === "jyeffect" || lv === "hires" || lv === "exhigh") {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            data: {
+              url: `http://m7.music.126.net/${lv}.flac`,
+              br: 320000,
+              level: lv,
+            },
+          }),
+        };
+      }
+      return { status: 200, json: async () => ({ code: 200, data: { url: "" } }) };
+    });
+    const top = await chksz.probeTopQualities(9, 3, {
+      apikey: "chksz_test_fixture_key",
+    });
+    expect(top.map((x) => x.level)).toEqual(["jyeffect", "hires", "exhigh"]);
+    expect(top[0].url).toContain("jyeffect");
+  });
+
   it("fetch_lyric returns lrc fields", async () => {
     chksz.setHttpTransport(async () => ({
       status: 200,

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { QUALITY_OPTIONS, qualityOption } from "../lib/quality";
+import { labelForLevel, qualityShortLabel } from "../lib/quality";
 import { usePlayer } from "../store/player";
 
 /** Shared transport controls — skins style via CSS scope. */
@@ -10,8 +10,11 @@ export function Transport({ compact }: { compact?: boolean }) {
   const cycleMode = usePlayer((s) => s.cycleMode);
   const modeLabel = usePlayer((s) => s.modeLabel);
   const preferredQuality = usePlayer((s) => s.preferredQuality);
+  const preferredRank = usePlayer((s) => s.preferredRank);
+  const availableQualities = usePlayer((s) => s.availableQualities);
   const cyclePreferredQuality = usePlayer((s) => s.cyclePreferredQuality);
-  const setPreferredQuality = usePlayer((s) => s.setPreferredQuality);
+  const setQualityLevel = usePlayer((s) => s.setQualityLevel);
+  const quality = usePlayer((s) => s.quality);
   const currentTime = usePlayer((s) => s.currentTime);
   const duration = usePlayer((s) => s.duration);
   const buffered = usePlayer((s) => s.buffered);
@@ -68,30 +71,46 @@ export function Transport({ compact }: { compact?: boolean }) {
               type="button"
               className="t-btn ghost mode quality-btn"
               onClick={cyclePreferredQuality}
-              title={`音质：${qualityOption(preferredQuality).label}（点击切换）`}
-              aria-label={`音质：${qualityOption(preferredQuality).label}`}
+              title={
+                availableQualities.length
+                  ? `音质：${labelForLevel(quality || preferredQuality).label}（本曲可选前 ${availableQualities.length} 档）`
+                  : "音质：优先最高可用（本曲探测中…）"
+              }
+              aria-label={`音质：${labelForLevel(quality || preferredQuality).label}`}
             >
-              {qualityOption(preferredQuality).short}
+              {qualityShortLabel(quality || preferredQuality) || "音质"}
             </button>
             <div className="quality-menu" role="listbox" aria-label="选择音质">
-              {QUALITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  role="option"
-                  aria-selected={preferredQuality === opt.id}
-                  className={
-                    preferredQuality === opt.id
-                      ? "quality-opt is-active"
-                      : "quality-opt"
-                  }
-                  onClick={() => setPreferredQuality(opt.id)}
-                  title={opt.hint}
-                >
-                  <span className="quality-opt__name">{opt.label}</span>
-                  <span className="quality-opt__id">{opt.short}</span>
-                </button>
-              ))}
+              {availableQualities.length > 0 ? (
+                availableQualities.map((opt, i) => (
+                  <button
+                    key={opt.level}
+                    type="button"
+                    role="option"
+                    aria-selected={
+                      preferredRank === i ||
+                      (quality || preferredQuality) === opt.level
+                    }
+                    className={
+                      preferredRank === i ||
+                      (quality || preferredQuality) === opt.level
+                        ? "quality-opt is-active"
+                        : "quality-opt"
+                    }
+                    onClick={() => setQualityLevel(opt.level)}
+                    title={`${opt.label} · ${opt.level}${opt.br ? ` · ${Math.round(opt.br / 1000)}kbps` : ""}`}
+                  >
+                    <span className="quality-opt__name">{opt.label}</span>
+                    <span className="quality-opt__id">{opt.short}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="quality-opt quality-opt--hint">
+                  播放后探测本曲可用音质
+                  <br />
+                  <span className="quality-opt__id">默认优先最高档</span>
+                </div>
+              )}
             </div>
           </div>
           {curTrack && (

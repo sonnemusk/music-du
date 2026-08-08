@@ -109,6 +109,7 @@ export function createApp(opts?: {
   app.get("/api/song/:sid", async (c) => {
     const sid = c.req.param("sid");
     const level = c.req.query("level");
+    const withQualities = c.req.query("qualities") === "1";
     try {
       const src = await resolvePlay(sid, level, { apikey: keyOf() });
       if (src.source === "none" && !src.meta) {
@@ -116,6 +117,10 @@ export function createApp(opts?: {
       }
       const stream = `/api/stream/${sid}`;
       const remoteUrl = src.source === "remote" ? src.url : "";
+      let qualities: chksz.ProbedQuality[] | undefined;
+      if (withQualities) {
+        qualities = await chksz.probeTopQualities(sid, 3, { apikey: keyOf() });
+      }
       return c.json({
         ok: true,
         data: {
@@ -130,8 +135,22 @@ export function createApp(opts?: {
           source: src.source,
           stream,
           play: chooseAudioSrc({ url: remoteUrl }, stream),
+          ...(qualities ? { qualities } : {}),
         },
       });
+    } catch (e: any) {
+      const status = e instanceof chksz.ChkszError ? e.status : 500;
+      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    }
+  });
+
+  /** Top N qualities that actually have a URL for this track (ladder high→low). */
+  app.get("/api/song/:sid/qualities", async (c) => {
+    const sid = c.req.param("sid");
+    const limit = Math.min(5, Math.max(1, Number(c.req.query("limit") || 3)));
+    try {
+      const qualities = await chksz.probeTopQualities(sid, limit, { apikey: keyOf() });
+      return c.json({ ok: true, data: { id: sid, qualities } });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 500;
       return c.json({ ok: false, error: e?.message || String(e) }, status as any);

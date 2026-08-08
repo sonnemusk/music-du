@@ -72,7 +72,8 @@ export const CHKSZ_APIKEY = (
   ""
 ).trim();
 
-const DEFAULT_QUALITY = [
+/** High → low. Used to pick “top 3 that actually have a URL” per track. */
+export const DEFAULT_QUALITY = [
   "jymaster",
   "sky",
   "jyeffect",
@@ -83,11 +84,16 @@ const DEFAULT_QUALITY = [
   "standard",
 ] as const;
 
-export function qualityLevels(preferred?: string | null): string[] {
+export type QualityLevelId = (typeof DEFAULT_QUALITY)[number];
+
+export function qualityLadder(): string[] {
   const env = (process.env.CHKSZ_QUALITY_LEVELS || "").trim();
-  let levels = env
-    ? env.split(",").map((x) => x.trim()).filter(Boolean)
-    : [...DEFAULT_QUALITY];
+  if (env) return env.split(",").map((x) => x.trim()).filter(Boolean);
+  return [...DEFAULT_QUALITY];
+}
+
+export function qualityLevels(preferred?: string | null): string[] {
+  let levels = qualityLadder();
   if (preferred?.trim()) {
     const pref = preferred.trim().toLowerCase();
     levels = [pref, ...levels.filter((x) => x !== pref)];

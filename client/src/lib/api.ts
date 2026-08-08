@@ -68,6 +68,19 @@ export async function resolveSong(
   return j.data;
 }
 
+/** Top qualities that actually have a CDN URL for this track (≤3). */
+export async function fetchSongQualities(id: string | number, limit = 3) {
+  const j = await json(
+    `/api/song/${encodeURIComponent(String(id))}/qualities?limit=${limit}`
+  );
+  return (j.data?.qualities || []) as Array<{
+    level: string;
+    br: number;
+    size: number;
+    url: string;
+  }>;
+}
+
 export async function fetchLyric(
   id: string | number,
   opts?: { name?: string; artist?: string; duration?: number; force?: boolean }

@@ -267,6 +267,38 @@ app.get("/api/charts/:platform", async (c) => {
   }
 });
 
+/** Top N ladder levels that actually return a URL for this track. */
+app.get("/api/song/:sid/qualities", async (c) => {
+  const sid = c.req.param("sid");
+  const limit = Math.min(5, Math.max(1, Number(c.req.query("limit") || 3)));
+  const cacheUrl = new URL(c.req.url);
+  cacheUrl.searchParams.delete("force");
+  const hit = await edgeMatch(cacheUrl.toString());
+  if (hit) {
+    const headers = new Headers(hit.headers);
+    headers.set("X-Qualities-Cache", "CF-HIT");
+    return new Response(hit.body, { status: hit.status, headers });
+  }
+  try {
+    const qualities = await chksz.probeTopQualities(sid, limit, {
+      apikey: withKey(c.env),
+    });
+    const body = JSON.stringify({ ok: true, data: { id: sid, qualities } });
+    const headers = {
+      "Content-Type": "application/json; charset=utf-8",
+      // Short TTL — availability can change with VIP / CDN
+      "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=300",
+      "X-Qualities-Cache": "MISS",
+    };
+    const res = new Response(body, { status: 200, headers });
+    if (qualities.length) edgePut(cacheUrl.toString(), res, c.executionCtx);
+    return res;
+  } catch (e: any) {
+    const status = e instanceof chksz.ChkszError ? e.status : 500;
+    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+  }
+});
+
 app.get("/api/song/:sid", async (c) => {
   const sid = c.req.param("sid");
   const level = c.req.query("level") || "";

@@ -70,11 +70,13 @@ export function NowPlaying({
   const curTrack = usePlayer((s) => s.curTrack);
   const quality = usePlayer((s) => s.quality);
   const preferredQuality = usePlayer((s) => s.preferredQuality);
+  const availableQualities = usePlayer((s) => s.availableQualities);
   const cyclePreferredQuality = usePlayer((s) => s.cyclePreferredQuality);
   const playSource = usePlayer((s) => s.playSource);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
 
   const showBadges = !hideBadges;
+  const qShow = quality && quality !== "…" ? quality : preferredQuality;
   const badges = showBadges ? (
     <div className="np-badges">
       {loadingPlay ? <span className="badge">切换中…</span> : null}
@@ -82,11 +84,13 @@ export function NowPlaying({
         type="button"
         className="badge badge-btn"
         onClick={cyclePreferredQuality}
-        title="点击切换音质（母带 / 沉浸 / 高清）"
+        title={
+          availableQualities.length
+            ? `本曲可选 ${availableQualities.map((c) => c.short).join(" / ")}（点击切换）`
+            : "优先最高可用音质"
+        }
       >
-        {quality && quality !== "…"
-          ? String(quality).toUpperCase()
-          : preferredQuality.toUpperCase()}
+        {String(qShow).toUpperCase()}
       </button>
       {playSource ? (
         <span className="badge">{playSource === "remote" ? "直链" : "代理"}</span>
