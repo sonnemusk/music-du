@@ -96,10 +96,45 @@ export function fmtTime(sec: number): string {
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
-export function coverUrl(url?: string): string {
+/**
+ * Cover display size for NetEase CDNs (music.126.net):
+ * - thumb  ~ list rows (≈40–56px UI → 120px 2x)
+ * - medium ~ now-playing / dock / media session
+ * - full   ~ immersive background (original, no param)
+ */
+export type CoverSize = "thumb" | "medium" | "full";
+
+const COVER_PX: Record<CoverSize, number | null> = {
+  thumb: 120,
+  medium: 400,
+  full: null,
+};
+
+/** Rewrite remote cover URL to a sized variant when the CDN supports it. */
+export function withCoverSize(url: string, size: CoverSize = "thumb"): string {
+  if (!url || !/^https?:\/\//i.test(url)) return url || "";
+  // Strip existing NetEase-style param=
+  let base = url.replace(/([?&])param=\d+y\d+/gi, "$1").replace(/[?&]$/, "");
+  base = base.replace(/\?&/, "?").replace(/\?$/, "");
+
+  const px = COVER_PX[size];
+  // Only music.126.net reliably supports ?param=NyN
+  if (px == null || !/music\.126\.net/i.test(base)) {
+    return size === "full" ? base : base; // non-NE: keep as-is for all sizes
+  }
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}param=${px}y${px}`;
+}
+
+/**
+ * Same-origin cover proxy URL.
+ * @param size default thumb — list-friendly; pass medium/full for large UI
+ */
+export function coverUrl(url?: string, size: CoverSize = "thumb"): string {
   if (!url) return "";
   if (url.startsWith("/")) return url;
-  return `/api/cover-proxy?url=${encodeURIComponent(url)}`;
+  const remote = withCoverSize(url, size);
+  return `/api/cover-proxy?url=${encodeURIComponent(remote)}`;
 }
 
 /** True when keyboard shortcuts must not hijack keys (typing / form controls). */

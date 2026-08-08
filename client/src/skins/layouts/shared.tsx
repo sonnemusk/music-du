@@ -95,6 +95,7 @@ export function NowPlaying({
             key={String(curTrack.id)}
             src={curTrack.cover}
             className="np-cover-img"
+            size="medium"
             priority
           />
         ) : (

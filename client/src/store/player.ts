@@ -817,7 +817,7 @@ export const usePlayer = create<State>((set, get) => ({
         200
       ),
     });
-    if (t.cover) prefetchCover(t.cover);
+    if (t.cover) prefetchCover(t.cover, "medium");
     void persistSoon(get);
 
     // Only toast when we actually need a network resolve (cache miss)
@@ -1477,8 +1477,8 @@ export const usePlayer = create<State>((set, get) => ({
       const isPrimary = predId != null && String(n.id) === String(predId);
       const shouldBlob = preferBlob || favSet.has(String(n.id)) || isPrimary;
 
-      // Cover first (cheap) so next track doesn't flash the previous album art
-      if (n.cover) prefetchCover(n.cover);
+      // Cover first — thumb for list paint (cheap)
+      if (n.cover) prefetchCover(n.cover, "thumb");
 
       void (async () => {
         // Resolve meta if missing
@@ -1507,8 +1507,7 @@ export const usePlayer = create<State>((set, get) => ({
               source: String(meta.source || ""),
               play: meta.play,
             });
-            // Resolve may fill a better cover URL — warm it too
-            if (meta.cover) prefetchCover(String(meta.cover));
+            if (meta.cover) prefetchCover(String(meta.cover), "thumb");
           } catch {
             return;
           }

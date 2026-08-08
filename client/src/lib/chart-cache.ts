@@ -103,14 +103,14 @@ export function setCachedPlatforms(list: ChartPlatform[]) {
 const warmed = new Set<string>();
 
 export function prefetchCovers(tracks: Track[], limit = 40) {
-  // Durable Cache Storage (survives reload) + HTTP cache warm
+  // Always thumb — never warm multi‑MB album art for lists
   warmTrackCovers(tracks, limit);
   if (typeof window === "undefined" || typeof Image === "undefined") return;
   const list = tracks.slice(0, limit);
   list.forEach((t, i) => {
     const raw = t.cover || "";
     if (!raw) return;
-    const src = coverUrl(raw);
+    const src = coverUrl(raw, "thumb");
     if (!src || warmed.has(src)) return;
     warmed.add(src);
     const kick = () => {
@@ -123,8 +123,8 @@ export function prefetchCovers(tracks: Track[], limit = 40) {
         /* */
       }
     };
-    if (i < 8) kick();
-    else setTimeout(kick, 80 * (i - 7));
+    if (i < 6) kick();
+    else setTimeout(kick, 90 * (i - 5));
   });
   if (warmed.size > 300) {
     const arr = [...warmed];
@@ -133,8 +133,20 @@ export function prefetchCovers(tracks: Track[], limit = 40) {
   }
 }
 
-/** Warm a single cover (e.g. current track). */
-export function prefetchCover(url?: string) {
+/** Warm a single cover. size=medium for now-playing; thumb for list neighbors. */
+export function prefetchCover(url?: string, size: "thumb" | "medium" | "full" = "thumb") {
   if (!url) return;
-  prefetchCovers([{ id: 0, name: "", artist: "", cover: url }], 1);
+  if (size === "thumb") {
+    prefetchCovers([{ id: 0, name: "", artist: "", cover: url }], 1);
+    return;
+  }
+  const src = coverUrl(url, size);
+  if (!src || typeof Image === "undefined") return;
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = src;
+  } catch {
+    /* */
+  }
 }

@@ -33,7 +33,7 @@ export function DockLayout({ brand }: { brand: string }) {
         tabIndex={0}
       >
         <div className="dock-mini-cov">
-          {curTrack?.cover ? <img src={cover(curTrack.cover)} alt="" /> : <span>♪</span>}
+          {curTrack?.cover ? <img src={cover(curTrack.cover, "thumb")} alt="" /> : <span>♪</span>}
         </div>
         <div className="dock-mini-meta">
           <div className="n">{curTrack?.name || "未在播放"}</div>

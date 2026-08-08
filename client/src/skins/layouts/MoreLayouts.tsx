@@ -16,7 +16,8 @@ import {
 function useCoverBg() {
   const cur = usePlayer((s) => s.curTrack);
   const cover = usePlayer((s) => s.cover);
-  return cur?.cover ? cover(cur.cover) : "";
+  // Full-bleed backgrounds only
+  return cur?.cover ? cover(cur.cover, "full") : "";
 }
 
 /** 6 · stack — big cover on top, transport, then scrollable list */
@@ -125,7 +126,7 @@ export function MagazineLayout({ brand }: { brand: string }) {
         <p className="mag-byline">{cur?.artist || "—"}</p>
         <div className="mag-row">
           <div className="mag-cover">
-            {cur?.cover ? <img src={cover(cur.cover)} alt="" /> : <span>♪</span>}
+            {cur?.cover ? <img src={cover(cur.cover, "medium")} alt="" /> : <span>♪</span>}
           </div>
           <div className="mag-controls">
             <Transport />
@@ -192,7 +193,7 @@ export function StripLayout({ brand }: { brand: string }) {
       <main className="strip-body">{body}</main>
       <footer className="strip-bar">
         <div className="strip-cov">
-          {cur?.cover ? <img src={cover(cur.cover)} alt="" /> : <span>♪</span>}
+          {cur?.cover ? <img src={cover(cur.cover, "thumb")} alt="" /> : <span>♪</span>}
         </div>
         <div className="strip-meta">
           <div className="n">{cur?.name || "未在播放"}</div>
@@ -226,7 +227,7 @@ export function PosterLayout({ brand }: { brand: string }) {
     <div className="layout layout-poster">
       <div className="poster-art">
         {cur?.cover ? (
-          <img src={cover(cur.cover)} alt="" />
+          <img src={cover(cur.cover, "full")} alt="" />
         ) : (
           <div className="poster-ph">♪</div>
         )}
@@ -345,7 +346,7 @@ export function ZenLayout({ brand }: { brand: string }) {
       <SkinHead brand={brand} tabs="none" />
       <div className="zen-core">
         <button type="button" className="zen-disc" onClick={() => togglePlay()} title="播放/暂停">
-          {cur?.cover ? <img src={cover(cur.cover)} alt="" /> : <span>♪</span>}
+          {cur?.cover ? <img src={cover(cur.cover, "medium")} alt="" /> : <span>♪</span>}
         </button>
         <h1>{cur?.name || "静"}</h1>
         <p>{cur?.artist || ""}</p>
@@ -437,7 +438,7 @@ export function MosaicLayout({ brand }: { brand: string }) {
       <SkinHead brand={brand} tabs="short" />
       <div className="mosaic-bento">
         <div className="mosaic-tile mosaic-cover">
-          {cur?.cover ? <img src={cover(cur.cover)} alt="" /> : <span className="ph">♪</span>}
+          {cur?.cover ? <img src={cover(cur.cover, "medium")} alt="" /> : <span className="ph">♪</span>}
         </div>
         <div className="mosaic-tile mosaic-meta">
           <span className="eyebrow">{quality || "MUSIC"}</span>

@@ -63,7 +63,11 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                 {rank}
               </span>
             ) : null}
-            {t.cover ? <CoverImg src={t.cover} className="cov" /> : <div className="cov" />}
+            {t.cover ? (
+              <CoverImg src={t.cover} className="cov" size="thumb" />
+            ) : (
+              <div className="cov" />
+            )}
             <div className="track-meta">
               <div className="track-name">{t.name}</div>
               <div className="track-sub">

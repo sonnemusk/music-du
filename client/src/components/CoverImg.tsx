@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { coverUrl } from "../lib/player-core";
+import { coverUrl, type CoverSize } from "../lib/player-core";
 import { resolveCoverDisplayUrl, warmCoverFromRemote } from "../lib/cover-browser-cache";
 
 type Props = {
@@ -8,29 +8,36 @@ type Props = {
   className?: string;
   /** Prefer eager for now-playing */
   priority?: boolean;
+  /**
+   * thumb  — list rows (default)
+   * medium — player / dock
+   * full   — rare; prefer medium unless true full-bleed background
+   */
+  size?: CoverSize;
 };
 
 /**
- * Cover image with browser Cache Storage warm.
- *
- * Critical for track switches: never keep the previous song's bitmap.
- * - `src` change → sync reset to new proxy (layout effect, before paint)
- * - `key` on <img> forces a fresh element so browsers don't paint the old frame
- * - optional Cache Storage blob for instant hit after warm
+ * Cover image with size-aware proxy + browser Cache Storage.
+ * List uses thumb; now-playing uses medium — never pull multi‑MB originals into lists.
  */
-export function CoverImg({ src, alt = "", className, priority }: Props) {
-  const proxy = src ? coverUrl(src) : "";
+export function CoverImg({
+  src,
+  alt = "",
+  className,
+  priority,
+  size = "thumb",
+}: Props) {
+  const proxy = src ? coverUrl(src, size) : "";
   const [display, setDisplay] = useState(proxy);
   const blobRef = useRef<string | null>(null);
 
-  // Before paint: drop any stale display when track/cover URL changes
   useLayoutEffect(() => {
     if (!src) {
       setDisplay("");
       return;
     }
-    setDisplay(coverUrl(src));
-  }, [src]);
+    setDisplay(coverUrl(src, size));
+  }, [src, size]);
 
   useEffect(() => {
     if (!src) {
@@ -40,11 +47,11 @@ export function CoverImg({ src, alt = "", className, priority }: Props) {
       }
       return;
     }
-    const p = coverUrl(src);
+    const p = coverUrl(src, size);
     let alive = true;
 
     void (async () => {
-      const u = await resolveCoverDisplayUrl(src);
+      const u = await resolveCoverDisplayUrl(src, size);
       if (!alive) {
         if (u.startsWith("blob:")) URL.revokeObjectURL(u);
         return;
@@ -54,18 +61,16 @@ export function CoverImg({ src, alt = "", className, priority }: Props) {
         blobRef.current = u;
         setDisplay(u);
       } else {
-        // Still on this src? show proxy / resolved URL (never leave old song)
         setDisplay(u || p);
-        warmCoverFromRemote(src);
+        warmCoverFromRemote(src, size);
       }
     })();
 
     return () => {
       alive = false;
     };
-  }, [src]);
+  }, [src, size]);
 
-  // Unmount: free last blob
   useEffect(() => {
     return () => {
       if (blobRef.current) {
@@ -75,11 +80,12 @@ export function CoverImg({ src, alt = "", className, priority }: Props) {
     };
   }, []);
 
-  if (!src || !display) return <div className={className || "cov"} aria-hidden />;
+  if (!src || !display) {
+    return <div className={className || "cov"} aria-hidden />;
+  }
 
   return (
     <img
-      // Force new element per cover URL — prevents "wrong album for a few seconds"
       key={proxy}
       className={className || "cov"}
       src={display}

@@ -21,7 +21,7 @@ export function SplitLayout({ brand }: { brand: string }) {
         <section className="split-hero">
           <div className="split-cover">
             {curTrack?.cover ? (
-              <img src={cover(curTrack.cover)} alt="" />
+              <img src={cover(curTrack.cover, "medium")} alt="" />
             ) : (
               <div className="ph">♪</div>
             )}

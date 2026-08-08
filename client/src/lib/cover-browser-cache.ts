@@ -1,11 +1,12 @@
 /**
  * Browser cover cache — free, no server product required.
  * Uses Cache Storage API (same origin /api/cover-proxy?...).
+ * Always prefer thumb/medium sized proxy URLs — never warm multi‑MB originals for lists.
  */
-import { coverUrl } from "./player-core";
+import { coverUrl, type CoverSize } from "./player-core";
 import type { Track } from "./types";
 
-const CACHE_NAME = "kazam-covers-v1";
+const CACHE_NAME = "kazam-covers-v2";
 const warmed = new Set<string>();
 
 function canCache(): boolean {
@@ -33,7 +34,6 @@ export async function warmCoverProxy(proxySrc: string): Promise<void> {
     }
     const res = await fetch(proxySrc, {
       credentials: "same-origin",
-      // prefer cache when browser has HTTP cache
       cache: "force-cache",
     }).catch(async () =>
       fetch(proxySrc, { credentials: "same-origin", cache: "default" })
@@ -51,22 +51,26 @@ export async function warmCoverProxy(proxySrc: string): Promise<void> {
   }
 }
 
-export function warmCoverFromRemote(remoteUrl?: string): void {
+export function warmCoverFromRemote(
+  remoteUrl?: string,
+  size: CoverSize = "thumb"
+): void {
   if (!remoteUrl) return;
-  const src = coverUrl(remoteUrl);
+  const src = coverUrl(remoteUrl, size);
   if (!src) return;
   void warmCoverProxy(src);
 }
 
-/** Warm many track covers (favorites / charts / queue). */
+/** Warm many track covers — always thumb (list / chart / queue). */
 export function warmTrackCovers(tracks: Track[], limit = 40): void {
   const list = tracks.slice(0, limit);
   list.forEach((t, i) => {
     if (!t.cover) return;
-    const src = coverUrl(t.cover);
+    const src = coverUrl(t.cover, "thumb");
     if (!src || warmed.has(src)) return;
-    if (i < 10) void warmCoverProxy(src);
-    else setTimeout(() => void warmCoverProxy(src), 60 * (i - 9));
+    // Cap concurrency: first 6 immediate, rest staggered
+    if (i < 6) void warmCoverProxy(src);
+    else setTimeout(() => void warmCoverProxy(src), 80 * (i - 5));
   });
 }
 
@@ -74,11 +78,14 @@ export function warmTrackCovers(tracks: Track[], limit = 40): void {
  * Prefer Cache Storage blob for instant paint; falls back to network URL.
  * Returns object URL that caller should revoke when done (or leave until unmount).
  */
-export async function resolveCoverDisplayUrl(remoteOrProxy: string): Promise<string> {
+export async function resolveCoverDisplayUrl(
+  remoteOrProxy: string,
+  size: CoverSize = "thumb"
+): Promise<string> {
   if (!remoteOrProxy) return "";
   const src = remoteOrProxy.startsWith("/")
     ? remoteOrProxy
-    : coverUrl(remoteOrProxy);
+    : coverUrl(remoteOrProxy, size);
   if (!src) return "";
   const cache = await openCache();
   if (cache) {
@@ -92,7 +99,6 @@ export async function resolveCoverDisplayUrl(remoteOrProxy: string): Promise<str
       /* */
     }
   }
-  // Kick warm in background
   void warmCoverProxy(src);
   return src;
 }

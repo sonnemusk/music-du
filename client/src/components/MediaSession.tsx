@@ -28,7 +28,7 @@ export function MediaSession() {
     if (curTrack) {
       const artwork: MediaImage[] = [];
       if (curTrack.cover) {
-        const src = coverUrl(curTrack.cover);
+        const src = coverUrl(curTrack.cover, "medium");
         if (src) {
           artwork.push({ src: src.startsWith("http") ? src : `${location.origin}${src}`, sizes: "512x512", type: "image/jpeg" });
         }

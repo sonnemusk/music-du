@@ -6,7 +6,8 @@ export function ImmersiveLayout({ brand }: { brand: string }) {
   const body = usePanelBody();
   const curTrack = usePlayer((s) => s.curTrack);
   const cover = usePlayer((s) => s.cover);
-  const bg = curTrack?.cover ? cover(curTrack.cover) : "";
+  // Full-bleed background — original / large art (not list thumb)
+  const bg = curTrack?.cover ? cover(curTrack.cover, "full") : "";
 
   return (
     <div className="layout layout-immersive">

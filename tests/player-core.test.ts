@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clampSeek,
   clampVolume,
+  coverUrl,
   cyclePlayMode,
   fmtTime,
   isEditableTarget,
@@ -10,6 +11,7 @@ import {
   parseLyric,
   playModeLabel,
   predictNextIndex,
+  withCoverSize,
 } from "../client/src/lib/player-core.js";
 
 describe("player-core", () => {
@@ -93,5 +95,16 @@ describe("player-core", () => {
     void fakeInput;
     void fakeDiv;
     expect(isEditableTarget(null)).toBe(false);
+  });
+
+  it("sizes NetEase covers: thumb/medium/full", () => {
+    const u =
+      "https://p4.music.126.net/RicH6-Q0z6lSerW1H5yWBw==/109951169200522014.jpg";
+    expect(withCoverSize(u, "thumb")).toContain("param=120y120");
+    expect(withCoverSize(u, "medium")).toContain("param=400y400");
+    expect(withCoverSize(u, "full")).not.toContain("param=");
+    expect(coverUrl(u, "thumb")).toContain("param%3D120y120");
+    // list default is thumb
+    expect(coverUrl(u)).toContain("param%3D120y120");
   });
 });
