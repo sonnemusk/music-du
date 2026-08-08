@@ -575,11 +575,11 @@ export const usePlayer = create<State>((set, get) => ({
       queueSource: "favorites",
     });
 
-    // Select first favorite + pre-warm (resolve / media / lyrics) — do NOT autoplay.
-    // User hits Space or play button when ready; first play then feels like "next track".
+    // Pick a random favorite + pre-warm — do NOT autoplay.
+    // Default playMode is already shuffle, so play/next continues randomly in 收藏.
     if (favorites.length) {
-      const start = favorites[0];
-      const startIdx = favorites.findIndex((x) => String(x.id) === String(start.id));
+      const startIdx = Math.floor(Math.random() * favorites.length);
+      const start = favorites[startIdx];
       const cachedLyrics =
         getCachedLyric(start.id) || getCachedLyricByMeta(start.name, start.artist);
       const instantLyrics =
@@ -589,13 +589,14 @@ export const usePlayer = create<State>((set, get) => ({
 
       set({
         curTrack: start,
-        curIdx: startIdx >= 0 ? startIdx : 0,
+        curIdx: startIdx,
         playing: false,
         loadingPlay: false,
         lyrics: instantLyrics,
         lyricIdx: -1,
         currentTime: 0,
         duration: 0,
+        predictedNextId: null,
       });
 
       // Priority: warm selected first; neighbor only after current has headroom
