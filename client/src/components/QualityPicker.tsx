@@ -3,9 +3,8 @@ import { labelForLevel, qualityShortLabel } from "../lib/quality";
 import { usePlayer } from "../store/player";
 
 /**
- * One quality control: button shows current short label; click opens menu.
- * Menu lists this track's real top-3 available levels (probe result).
- * Active = currently playing level only (not rank OR level dual-match).
+ * Quality control: button shows current short label; click opens menu.
+ * Menu = this track's real top-3 levels (with pre-cached URLs for instant switch).
  */
 export function QualityPicker({ className }: { className?: string }) {
   const quality = usePlayer((s) => s.quality);
@@ -20,6 +19,7 @@ export function QualityPicker({ className }: { className?: string }) {
     quality && quality !== "…" ? quality : preferredQuality || "";
   const short = qualityShortLabel(currentLevel) || "音质";
   const full = labelForLevel(currentLevel).label;
+  const probing = Boolean(curTrack) && availableQualities.length === 0;
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +39,6 @@ export function QualityPicker({ className }: { className?: string }) {
     };
   }, [open]);
 
-  // Close when track changes
   useEffect(() => {
     setOpen(false);
   }, [curTrack?.id]);
@@ -62,8 +61,8 @@ export function QualityPicker({ className }: { className?: string }) {
         aria-label={`音质：${full}`}
         title={
           availableQualities.length
-            ? `音质：${full}（点击选择本曲可用档位）`
-            : `音质：${full}（播放后可查看本曲可选档位）`
+            ? `音质：${full}（已预解析 ${availableQualities.length} 档，点击切换）`
+            : `音质：${full}`
         }
         onClick={() => setOpen((v) => !v)}
       >
@@ -74,6 +73,7 @@ export function QualityPicker({ className }: { className?: string }) {
           {availableQualities.length > 0 ? (
             availableQualities.map((opt) => {
               const active = opt.level === currentLevel;
+              const ready = Boolean(opt.url);
               return (
                 <button
                   key={opt.level}
@@ -84,21 +84,18 @@ export function QualityPicker({ className }: { className?: string }) {
                   onClick={() => pick(opt.level)}
                 >
                   <span className="quality-opt__name">{opt.label}</span>
-                  {opt.br > 0 ? (
-                    <span className="quality-opt__id">
-                      {Math.round(opt.br / 1000)}k
-                    </span>
-                  ) : null}
+                  <span className="quality-opt__id">
+                    {opt.br > 0 ? `${Math.round(opt.br / 1000)}k` : ready ? "就绪" : ""}
+                  </span>
                 </button>
               );
             })
           ) : (
-            <div className="quality-opt quality-opt--hint">
-              {curTrack
-                ? "正在探测本曲可用音质…"
-                : "先播放一首歌后再选音质"}
-              <br />
-              <span className="quality-opt__id">默认优先最高可用档</span>
+            <div className="quality-opt--hint">
+              <p className="quality-opt--hint-line">
+                {probing ? "正在探测本曲可用音质…" : "先播放一首歌后再选音质"}
+              </p>
+              <p className="quality-opt--hint-sub">默认优先最高可用档</p>
             </div>
           )}
         </div>

@@ -841,6 +841,8 @@ export const usePlayer = create<State>((set, get) => ({
 
     // UI first — search click must highlight immediately (before any await)
     stopPausedBufferPump();
+    const sameTrack =
+      get().curTrack != null && String(get().curTrack!.id) === String(t.id);
     set({
       playToken: token,
       playing: false,
@@ -849,8 +851,11 @@ export const usePlayer = create<State>((set, get) => ({
       duration: 0,
       buffered: 0,
       quality: "…",
-      availableQualities: [],
-      preferredQuality: pickLevelForRank([], get().preferredRank),
+      // Keep quality menu + pre-resolved URLs when only switching level on same track
+      availableQualities: sameTrack ? get().availableQualities : [],
+      preferredQuality: sameTrack
+        ? get().preferredQuality || pickLevelForRank([], get().preferredRank)
+        : pickLevelForRank([], get().preferredRank),
       playSource: "",
       lyrics: instantLyrics,
       lyricIdx: instantIdx,
@@ -903,18 +908,61 @@ export const usePlayer = create<State>((set, get) => ({
             : DEFAULT_QUALITY;
     set({ preferredQuality: prefQ });
 
-    // Background: discover this track's real top-3 for the quality menu only
+    // Background: probe top-3 + cache each level's CDN URL for instant quality switch
     void (async () => {
       try {
+        // Reuse menu if already probed for this track
+        if (sameTrack && get().availableQualities.length >= 1) {
+          for (const c of get().availableQualities) {
+            if (c.url) {
+              setCachedSong(
+                {
+                  id: String(t.id),
+                  url: c.url,
+                  stream: `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(c.level)}`,
+                  level: c.level,
+                  br: c.br,
+                  size: c.size,
+                  name: t.name,
+                  artist: t.artist,
+                  cover: t.cover || "",
+                  source: "remote",
+                },
+                c.level
+              );
+              warmMediaUrl(`${t.id}-${c.level}`, c.url);
+            }
+          }
+          return;
+        }
         const raw = await api.fetchSongQualities(t.id, 3);
         if (get().playToken !== token) return;
         const choices = normalizeChoices(raw);
+        // Pre-cache every available quality URL so menu switch is instant
+        for (const c of choices) {
+          if (!c.url) continue;
+          setCachedSong(
+            {
+              id: String(t.id),
+              url: c.url,
+              stream: `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(c.level)}`,
+              level: c.level,
+              br: c.br,
+              size: c.size,
+              name: t.name || "",
+              artist: t.artist || "",
+              cover: t.cover || "",
+              source: "remote",
+            },
+            c.level
+          );
+          // Warm browser media buffer for non-current levels (low priority)
+          if (c.level !== prefQ) warmMediaUrl(`${t.id}-${c.level}`, c.url);
+        }
         const level = pickLevelForRank(choices, get().preferredRank);
         set({ availableQualities: choices, preferredQuality: level });
       } catch {
-        if (get().playToken === token) {
-          /* keep menu empty; playback already using ladder fallthrough */
-        }
+        /* menu stays empty; playback uses ladder fallthrough */
       }
     })();
 
@@ -1561,16 +1609,68 @@ export const usePlayer = create<State>((set, get) => ({
   setQualityLevel: (level) => {
     const lv = String(level || "").trim();
     if (!lv) return;
+    const cur = get().curTrack;
+    if (!cur) return;
     const choices = get().availableQualities;
     const idx = choices.findIndex((c) => c.level === lv);
     const rank = (idx >= 0 ? Math.min(2, idx) : 0) as QualityRank;
     savePreferredRank(rank);
-    // Pin exact level so playTrack resolves this tier (not rank remap race)
     set({ preferredRank: rank, preferredQuality: lv });
     const lab = labelForLevel(lv);
     get().showToast(`音质：${lab.label}`);
-    const cur = get().curTrack;
-    if (cur) void get().playTrack(cur, { from: get().queueSource });
+
+    // Instant path: use pre-probed / pre-cached URL — no network wait
+    const choice = idx >= 0 ? choices[idx] : null;
+    const cached = getCachedSong(cur.id, lv);
+    const remote =
+      (choice?.url && /^https?:\/\//i.test(choice.url) ? choice.url : "") ||
+      (cached?.url && /^https?:\/\//i.test(cached.url) ? cached.url : "");
+    const audio = get().audioEl;
+    if (remote && audio) {
+      stopPausedBufferPump();
+      const token = get().playToken + 1;
+      const t = {
+        ...cur,
+        level: lv,
+        br: choice?.br || cached?.br || cur.br || 0,
+        size: choice?.size || cached?.size || cur.size || 0,
+      };
+      set({
+        playToken: token,
+        curTrack: t,
+        quality: lv,
+        preferredQuality: lv,
+        loadingPlay: true,
+        buffered: 0,
+        currentTime: 0,
+        playSource: "",
+      });
+      void (async () => {
+        try {
+          hardStopAudio(audio);
+          applyAudioVolume(audio, get().volume, get().muted);
+          audio.src = remote;
+          await audio.play();
+          if (get().playToken !== token) return;
+          set({
+            playing: true,
+            loadingPlay: false,
+            playSource: "remote",
+            quality: lv,
+          });
+          get().recomputePredictedNext();
+          get().prefetchAround(t.id);
+        } catch {
+          // Fallback to full play path (re-resolve)
+          if (get().playToken === token) {
+            void get().playTrack(t, { from: get().queueSource });
+          }
+        }
+      })();
+      return;
+    }
+    // No pre-cached URL — full resolve path
+    void get().playTrack(cur, { from: get().queueSource });
   },
 
   cycleMode: () => {
@@ -1651,6 +1751,37 @@ export const usePlayer = create<State>((set, get) => ({
 
       // Cover first — thumb for list paint (cheap)
       if (n.cover) prefetchCover(n.cover, "thumb");
+
+      // Primary next: pre-probe all top-3 quality URLs so quality switch is warm
+      if (isPrimary) {
+        void (async () => {
+          try {
+            const raw = await api.fetchSongQualities(n.id, 3);
+            const choices = normalizeChoices(raw);
+            for (const c of choices) {
+              if (!c.url) continue;
+              setCachedSong(
+                {
+                  id: String(n.id),
+                  url: c.url,
+                  stream: `/api/stream/${encodeURIComponent(String(n.id))}?level=${encodeURIComponent(c.level)}`,
+                  level: c.level,
+                  br: c.br,
+                  size: c.size,
+                  name: n.name || "",
+                  artist: n.artist || "",
+                  cover: n.cover || "",
+                  source: "remote",
+                },
+                c.level
+              );
+              warmMediaUrl(`${n.id}-${c.level}`, c.url);
+            }
+          } catch {
+            /* */
+          }
+        })();
+      }
 
       void (async () => {
         // Resolve meta if missing

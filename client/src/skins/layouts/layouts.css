@@ -661,9 +661,11 @@ button.badge,
   left: 50%;
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  min-width: 8.5rem;
-  max-width: min(16rem, 70vw);
-  padding: 4px;
+  /* fixed min width prevents 1-char column / vertical Chinese stacking */
+  width: max(11rem, max-content);
+  min-width: 11rem;
+  max-width: min(18rem, 80vw);
+  padding: 6px;
   border-radius: 10px;
   background: color-mix(in srgb, #12121a 94%, currentColor 6%);
   border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
@@ -671,11 +673,13 @@ button.badge,
   z-index: 60;
   gap: 2px;
   flex-direction: column;
-  /* keep menu above transport, not covering title */
+  box-sizing: border-box;
   pointer-events: auto;
+  writing-mode: horizontal-tb;
 }
 .quality-opt {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -693,6 +697,8 @@ button.badge,
   opacity: 0.88;
   line-height: 1.25;
   min-height: 0;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 .quality-opt:hover {
   background: color-mix(in srgb, currentColor 12%, transparent);
@@ -704,25 +710,47 @@ button.badge,
   font-weight: 800;
   box-shadow: inset 2px 0 0 currentColor;
 }
+/* Hint is NOT a flex row of glyphs — block text, normal wrap */
 .quality-opt--hint {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  margin: 0;
   cursor: default;
-  opacity: 0.65;
-  line-height: 1.35;
-  font-size: 10px;
   pointer-events: none;
+  text-align: left;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  writing-mode: horizontal-tb;
+  line-height: 1.45;
 }
-.quality-opt--hint:hover {
-  background: transparent;
+.quality-opt--hint-line {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+  white-space: normal;
+}
+.quality-opt--hint-sub {
+  margin: 6px 0 0;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.5;
+  white-space: normal;
 }
 .quality-opt__name {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .quality-opt__id {
   opacity: 0.5;
   font-size: 10px;
   font-weight: 600;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 /* Theme t-btn { border-radius:50%; width:44px } must not swallow text chips */
 .skin-host .t-btn.ghost,
