@@ -91,7 +91,7 @@ async function loadLib(db: D1Database) {
   const lists: any = { playlist: [], favorites: [], history: [] };
   for (const lt of Object.keys(lists)) {
     const { results } = await db
-      .prepare(`SELECT * FROM library_tracks WHERE list_type=? ORDER BY pos ASC LIMIT 500`)
+      .prepare(`SELECT * FROM library_tracks WHERE list_type=? ORDER BY pos ASC LIMIT 2000`)
       .bind(lt)
       .all();
     lists[lt] = (results || []).map((r: any) => ({
@@ -153,9 +153,9 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
 
 async function saveLib(db: D1Database, data: any) {
   await ensureSchema(db);
-  await writeList(db, "playlist", data.playlist || [], 500);
-  await writeList(db, "favorites", data.favorites || [], 500);
-  await writeList(db, "history", data.history || [], 300);
+  await writeList(db, "playlist", data.playlist || [], 2000);
+  await writeList(db, "favorites", data.favorites || [], 2000);
+  await writeList(db, "history", data.history || [], 2000);
   await db
     .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('curIdx',?)`)
     .bind(String(data.curIdx ?? -1))
@@ -712,8 +712,8 @@ app.put("/api/library", async (c) => {
   const forcePl = Boolean(body.forceClearPlaylist);
   const forceFav = Boolean(body.forceClearFavorites);
   const forceHi = Boolean(body.forceClearHistory);
-  const pl = mergeTrackList(existing.playlist, body.playlist, forcePl, 500);
-  const fav = mergeTrackList(existing.favorites, body.favorites, forceFav, 500);
+  const pl = mergeTrackList(existing.playlist, body.playlist, forcePl, 2000);
+  const fav = mergeTrackList(existing.favorites, body.favorites, forceFav, 2000);
   let hi = existing.history;
   if (forceHi) hi = body.history || [];
   else if (body.history?.length) {
@@ -724,7 +724,7 @@ app.put("/api/library", async (c) => {
       if (!k || seen.has(k)) continue;
       seen.add(k);
       hi.push(t);
-      if (hi.length >= 300) break;
+      if (hi.length >= 2000) break;
     }
   }
   const data = await saveLib(c.env.MUSIC_DU_DB, {

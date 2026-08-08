@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { dataDir, libraryDbPath } from "./config.js";
 import type { Library, Track } from "./types.js";
 
-const LIST_CAPS = { playlist: 500, favorites: 500, history: 300 } as const;
+const LIST_CAPS = { playlist: 2000, favorites: 2000, history: 2000 } as const;
 export type ListType = keyof typeof LIST_CAPS;
 
 export function emptyLibrary(): Library {
