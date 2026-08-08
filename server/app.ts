@@ -252,6 +252,43 @@ export function createApp(opts?: {
 
   app.get("/api/library", (c) => c.json({ ok: true, data: lib.load() }));
 
+  /** Short URL: open /favs to download favorites JSON. */
+  const favoritesExport = (c: { req: { url: string } }) => {
+    const data = lib.load();
+    const favorites = (data.favorites || []).map((t: any) => ({
+      id: t.id,
+      name: t.name || "",
+      artist: t.artist || "",
+      album: t.album || "",
+      cover: t.cover || "",
+      duration: Number(t.duration || 0) || 0,
+    }));
+    const host = (() => {
+      try {
+        return new URL(c.req.url).host || "localhost";
+      } catch {
+        return "localhost";
+      }
+    })();
+    const stamp = new Date().toISOString().slice(0, 10);
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      source: host,
+      count: favorites.length,
+      favorites,
+    };
+    return new Response(JSON.stringify(payload, null, 2), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+        "Content-Disposition": `attachment; filename="favorites-${stamp}.json"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  };
+  app.get("/favs", favoritesExport);
+  app.get("/f.json", favoritesExport);
+
   app.put("/api/library", async (c) => {
     try {
       const body = await c.req.json().catch(() => ({}));

@@ -151,51 +151,9 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
     );
   };
 
-  const exportFavorites = () => {
-    if (mode !== "favorites") return;
-    if (!tracks.length) {
-      usePlayer.getState().showToast("收藏为空，无需导出");
-      return;
-    }
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      source: "music.dubin.cc",
-      count: tracks.length,
-      favorites: tracks.map((t) => ({
-        id: t.id,
-        name: t.name || "",
-        artist: t.artist || "",
-        album: t.album || "",
-        cover: t.cover || "",
-        duration: Number(t.duration || 0) || 0,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json;charset=utf-8",
-    });
-    const stamp = new Date().toISOString().slice(0, 10);
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `favorites-${stamp}.json`;
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    usePlayer.getState().showToast(`已导出 ${tracks.length} 首收藏`);
-  };
-
   if (!tracks.length) {
     return (
       <div className={className || "track-list"}>
-        {mode === "favorites" ? (
-          <div className="list-toolbar">
-            <span className="list-toolbar__meta">0 首</span>
-            <button type="button" className="list-toolbar__btn" disabled title="暂无收藏">
-              导出
-            </button>
-          </div>
-        ) : null}
         <div className="empty">{empty}</div>
       </div>
     );
@@ -203,19 +161,6 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
 
   return (
     <div className={className || "track-list"}>
-      {mode === "favorites" ? (
-        <div className="list-toolbar">
-          <span className="list-toolbar__meta">{tracks.length} 首</span>
-          <button
-            type="button"
-            className="list-toolbar__btn"
-            onClick={exportFavorites}
-            title="导出收藏为 JSON 备份"
-          >
-            导出
-          </button>
-        </div>
-      ) : null}
       {tracks.map((t, i) => {
         const active = curTrack && String(curTrack.id) === String(t.id);
         const rank = t.rank ?? (mode === "charts" ? i + 1 : 0);

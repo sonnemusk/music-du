@@ -663,6 +663,57 @@ app.get("/api/library", async (c) => {
   return c.json({ ok: true, data: await loadLib(c.env.MUSIC_DU_DB) });
 });
 
+/** Short URL: open /favs to download favorites JSON (no UI button). */
+async function favoritesExportResponse(c: {
+  env: Env;
+  req: { url: string };
+}) {
+  if (!c.env.MUSIC_DU_DB) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: "D1 not configured — browser localStorage only (free)",
+        localOnly: true,
+      }),
+      { status: 503, headers: { "Content-Type": "application/json;charset=utf-8" } }
+    );
+  }
+  const lib = await loadLib(c.env.MUSIC_DU_DB);
+  const favorites = (lib.favorites || []).map((t: any) => ({
+    id: t.id,
+    name: t.name || "",
+    artist: t.artist || "",
+    album: t.album || "",
+    cover: t.cover || "",
+    duration: Number(t.duration || 0) || 0,
+  }));
+  const host = (() => {
+    try {
+      return new URL(c.req.url).host || "music.dubin.cc";
+    } catch {
+      return "music.dubin.cc";
+    }
+  })();
+  const stamp = new Date().toISOString().slice(0, 10);
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    source: host,
+    count: favorites.length,
+    favorites,
+  };
+  return new Response(JSON.stringify(payload, null, 2), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json;charset=utf-8",
+      "Content-Disposition": `attachment; filename="favorites-${stamp}.json"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+app.get("/favs", (c) => favoritesExportResponse(c));
+app.get("/f.json", (c) => favoritesExportResponse(c));
+
 /**
  * Merge library lists without accidental wipe.
  * - forceClear*: client explicitly cleared → take incoming (may be empty)
