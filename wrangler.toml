@@ -9,6 +9,9 @@ name = "music-du"
 main = "server/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
+# Keep workers.dev URL for debugging (music-du.<account-subdomain>.workers.dev)
+workers_dev = true
+preview_urls = true
 
 [vars]
 CHKSZ_API_BASE = "https://api.chksz.top"
@@ -25,12 +28,11 @@ database_name = "music-du-library"
 database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
 migrations_dir = "migrations"
 
-# Custom Domain (no path wildcards — CF Custom Domains are hostname-only)
+# Zone route for music.dubin.cc (DNS CNAME managed separately / already on zone)
+# Pattern uses /* for path match; script name is music-du
 [[routes]]
-pattern = "music.dubin.cc"
+pattern = "music.dubin.cc/*"
 zone_name = "dubin.cc"
-custom_domain = true
 
 # Free tier only: Cache API for covers/meta; no R2/paid KV; no audio proxy body.
-# Secrets via dashboard or: wrangler secret put <NAME>
-# Deploy: npm run build && npx wrangler deploy
+# Secrets via dashboard or wrangler secret put. Deploy: npm run build && npx wrangler deploy
