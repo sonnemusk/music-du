@@ -1,0 +1,43 @@
+# Dependencies & build
+node_modules/
+dist/
+.wrangler/
+.turbo/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data — ignore contents, keep empty dirs in git
+data/*
+!data/.gitkeep
+!data/charts/
+!data/covers/
+data/charts/*
+!data/charts/.gitkeep
+data/covers/*
+!data/covers/.gitkeep
+
+# Python leftovers
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / coverage
+coverage/
+.nyc_output/

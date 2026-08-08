@@ -1,0 +1,328 @@
+/**
+ * Polished component theming via CSS variables.
+ * Spacing/sizing lives in layouts.css; this file only paints.
+ */
+
+.skin-host {
+  height: 100%;
+  min-height: 0;
+  color: var(--fg);
+  background: var(--wallpaper, var(--bg));
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* —— chrome —— */
+.skin-host .skin-search {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+/* theme tools inherit host colors */
+.skin-host .skin-switcher__btn:not(.primary) {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--fg);
+}
+.skin-host .skin-switcher__btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2, var(--accent)));
+  color: var(--accent-fg);
+}
+.skin-host .skin-search input {
+  color: var(--fg);
+}
+.skin-host .skin-search input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+.skin-host .skin-search button {
+  background: linear-gradient(135deg, var(--accent), var(--accent2, var(--accent)));
+  color: var(--accent-fg);
+  font-weight: 800;
+  border-left: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+.skin-host .skin-brand {
+  color: var(--fg);
+  opacity: 0.9;
+}
+.skin-host .skin-tabs button {
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s, opacity 0.12s;
+}
+.skin-host .skin-tabs button:hover {
+  opacity: 0.85;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+}
+.skin-host .skin-tabs button.on {
+  color: var(--accent-fg);
+  background: linear-gradient(135deg, var(--accent), var(--accent2, var(--accent)));
+  opacity: 1;
+}
+
+/* —— now playing —— */
+.skin-host .np-cover {
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+.skin-host .np-cover img,
+.skin-host .np-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.skin-host .np-title {
+  font-family: var(--display-font, var(--font));
+  color: var(--fg);
+}
+.skin-host .np-artist {
+  color: var(--muted);
+}
+/* Compact player bars use theme tokens */
+.skin-host .player-bar {
+  background: var(--card);
+  border-color: var(--line);
+}
+.skin-host .now-playing.inline .np-badges .badge {
+  font-size: 10px;
+  padding: 2px 7px;
+}
+.skin-host .badge {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+}
+
+/* —— tracks —— */
+.skin-host .track-row {
+  border-radius: var(--radius);
+  transition: background 0.12s, box-shadow 0.12s;
+}
+.skin-host .track-row:hover {
+  background: var(--card);
+}
+.skin-host .track-row.playing {
+  background: var(--card);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.skin-host .track-row .cov {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.skin-host .track-name {
+  color: var(--fg);
+}
+.skin-host .track-sub {
+  color: var(--muted);
+}
+.skin-host .icon-btn {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  transition: transform 0.1s, background 0.12s;
+}
+.skin-host .icon-btn:hover {
+  transform: scale(1.04);
+}
+.skin-host .icon-btn:active {
+  transform: scale(0.97);
+}
+.skin-host .icon-btn.danger {
+  color: var(--danger);
+}
+
+/* —— transport —— */
+.skin-host .t-btn {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  transition: transform 0.1s, box-shadow 0.12s, background 0.12s;
+}
+.skin-host .t-btn:hover {
+  background: color-mix(in srgb, var(--card) 70%, var(--accent) 12%);
+}
+.skin-host .t-btn:active {
+  transform: scale(0.96);
+}
+.skin-host .t-btn.play {
+  background: linear-gradient(135deg, var(--accent), var(--accent2, var(--accent)));
+  color: var(--accent-fg);
+  border-color: transparent;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.skin-host .t-btn.ghost {
+  /* Text labels must not inherit circle/clip from icon .t-btn theme rules */
+  border-radius: var(--radius-sm);
+  width: auto;
+  overflow: visible;
+  white-space: nowrap;
+}
+.skin-host .seek-row {
+  color: var(--muted);
+}
+.skin-host .seek-row input[type="range"],
+.skin-host .vol-slider {
+  accent-color: var(--accent);
+}
+
+/* —— lyrics (all themes: highlight + readable center line) —— */
+.skin-host .lyrics-panel .ly,
+.skin-host .split-lyrics .ly {
+  color: var(--muted);
+}
+.skin-host .lyrics-panel .ly.on,
+.skin-host .split-lyrics .ly.on {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* —— side —— */
+.skin-host .side-player {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  backdrop-filter: blur(14px);
+}
+.skin-host .side-panel {
+  background: color-mix(in srgb, var(--card) 65%, transparent);
+  border: 1px solid var(--line);
+  border-left: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+/* —— dock —— */
+.skin-host .dock-mini {
+  background: color-mix(in srgb, var(--bg) 78%, var(--card));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+}
+.skin-host .dock-mini-cov {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.skin-host .dock-mini-play {
+  background: linear-gradient(135deg, var(--accent), var(--accent2, var(--accent)));
+  color: var(--accent-fg);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.skin-host .dock-seek .transport {
+  background: color-mix(in srgb, var(--bg) 72%, var(--card));
+  border-color: var(--line);
+  color: var(--fg);
+}
+.skin-host .dock-nav {
+  background: color-mix(in srgb, var(--bg) 94%, #000);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+.skin-host .dock-nav button {
+  color: var(--muted);
+}
+.skin-host .dock-nav button.on {
+  color: var(--accent);
+}
+.skin-host .dock-title {
+  color: var(--fg);
+}
+
+/* —— immersive —— */
+.skin-host .imm-veil {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--bg) 52%, transparent),
+    color-mix(in srgb, var(--bg) 84%, transparent)
+  );
+}
+.skin-host .imm-now,
+.skin-host .imm-sheet {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(18px);
+}
+
+/* —— compact —— */
+.skin-host .compact-now {
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+/* —— split —— */
+.skin-host .split-cover {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+}
+.skin-host .split-copy h1 {
+  font-family: var(--display-font, var(--font));
+}
+.skin-host .eyebrow {
+  color: var(--accent);
+  font-family: var(--mono-font, var(--font));
+}
+.skin-host .split-gestures button {
+  color: var(--fg);
+}
+
+/* surface modifiers */
+.skin-host.surface-flat .side-player,
+.skin-host.surface-flat .imm-now,
+.skin-host.surface-flat .imm-sheet,
+.skin-host.surface-flat .dock-mini {
+  backdrop-filter: none;
+}
+.skin-host.surface-outline .side-player,
+.skin-host.surface-outline .side-panel,
+.skin-host.surface-outline .track-row.playing,
+.skin-host.surface-outline .t-btn {
+  border-width: 1.5px;
+  box-shadow: none;
+}
+.skin-host.surface-raised .track-row.playing,
+.skin-host.surface-raised .dock-mini,
+.skin-host.surface-raised .side-player {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.skin-host.radius-sharp .np-cover,
+.skin-host.radius-sharp .track-row .cov,
+.skin-host.radius-sharp .dock-mini,
+.skin-host.radius-sharp .dock-mini-cov {
+  border-radius: 2px;
+}
+.skin-host.radius-pill .skin-search,
+.skin-host.radius-pill .skin-tabs button,
+.skin-host.radius-pill .t-btn.ghost,
+.skin-host.radius-pill .dock-mini {
+  border-radius: 999px;
+}
+.skin-host.radius-pill .t-btn:not(.ghost) {
+  border-radius: 50%;
+}
+.skin-host.radius-pill .track-row {
+  border-radius: 16px;
+}
+
+@media (max-width: 860px) {
+  .skin-host .side-player,
+  .skin-host .side-panel {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+  }
+  .skin-host .side-panel {
+    border-top: none;
+  }
+}

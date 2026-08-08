@@ -1,0 +1,164 @@
+/**
+ * VPS / local entry: Node HTTP + Hono API + Vite (dev) or static SPA (prod).
+ */
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import type { ViteDevServer } from "vite";
+import { createApp } from "./app.js";
+import {
+  attachChartCoverWarmer,
+  attachChartDiskCache,
+  startChartWarmLoop,
+} from "./charts.js";
+import { createChartCoverWarmer, createChartDiskCache } from "./charts-disk.js";
+import { CHKSZ_APIKEY, HOST, PORT, ROOT } from "./config.js";
+
+// VPS durable chart + cover warm (not used on Cloudflare Workers)
+attachChartDiskCache(createChartDiskCache());
+attachChartCoverWarmer(createChartCoverWarmer());
+
+const isProd = process.env.NODE_ENV === "production";
+// Prefer project dist/client; if ROOT already points at dist (misconfig), still find client/
+const clientDist = fs.existsSync(path.join(ROOT, "dist/client"))
+  ? path.join(ROOT, "dist/client")
+  : path.join(ROOT, "client");
+
+async function readBody(req: http.IncomingMessage): Promise<Buffer | undefined> {
+  if (!req.method || ["GET", "HEAD"].includes(req.method)) return undefined;
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  const buf = Buffer.concat(chunks);
+  return buf.length ? buf : Buffer.alloc(0);
+}
+
+async function handleApi(
+  api: ReturnType<typeof createApp>,
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+) {
+  const host = req.headers.host || `${HOST}:${PORT}`;
+  const url = `http://${host}${req.url || "/"}`;
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (v == null) continue;
+    // skip hop-by-hop / conflicting
+    const lk = k.toLowerCase();
+    if (lk === "transfer-encoding" || lk === "connection") continue;
+    headers.set(k, Array.isArray(v) ? v.join(",") : v);
+  }
+  const bodyBuf = await readBody(req);
+  const hasBody = bodyBuf && bodyBuf.length > 0 && req.method && !["GET", "HEAD"].includes(req.method);
+  const response = await api.fetch(
+    new Request(url, {
+      method: req.method,
+      headers,
+      body: hasBody ? new Uint8Array(bodyBuf!) : undefined,
+      // Node undici requires duplex when body is a stream-like payload
+      ...(hasBody ? ({ duplex: "half" } as RequestInit) : {}),
+    })
+  );
+  res.statusCode = response.status;
+  response.headers.forEach((v, k) => {
+    if (k.toLowerCase() === "transfer-encoding") return;
+    res.setHeader(k, v);
+  });
+  if (!response.body) {
+    res.end();
+    return;
+  }
+  const ab = await response.arrayBuffer();
+  res.end(Buffer.from(ab));
+}
+
+function serveStaticFile(filePath: string, res: http.ServerResponse) {
+  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) return false;
+  const ext = path.extname(filePath).toLowerCase();
+  const types: Record<string, string> = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".json": "application/json",
+  };
+  res.statusCode = 200;
+  res.setHeader("Content-Type", types[ext] || "application/octet-stream");
+  res.end(fs.readFileSync(filePath));
+  return true;
+}
+
+async function main() {
+  const api = createApp();
+  let vite: ViteDevServer | null = null;
+
+  if (!isProd) {
+    const { createServer: createVite } = await import("vite");
+    vite = await createVite({
+      configFile: path.join(ROOT, "vite.config.ts"),
+      server: { middlewareMode: true },
+      appType: "custom",
+    });
+  }
+
+  const server = http.createServer(async (req, res) => {
+    try {
+      const url = req.url || "/";
+      if (url.startsWith("/api/")) {
+        await handleApi(api, req, res);
+        return;
+      }
+
+      if (vite) {
+        vite.middlewares(req, res, async () => {
+          try {
+            let template = fs.readFileSync(path.join(ROOT, "client/index.html"), "utf8");
+            template = await vite!.transformIndexHtml(url, template);
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.end(template);
+          } catch (e: any) {
+            vite?.ssrFixStacktrace(e);
+            res.statusCode = 500;
+            res.end(e?.message || "vite error");
+          }
+        });
+        return;
+      }
+
+      // production static
+      const pathname = decodeURIComponent(url.split("?")[0] || "/");
+      const safe = path.normalize(pathname).replace(/^(\.\.[/\\])+/, "");
+      const filePath = path.join(clientDist, safe === "/" ? "index.html" : safe);
+      if (serveStaticFile(filePath, res)) return;
+      // SPA fallback
+      const index = path.join(clientDist, "index.html");
+      if (serveStaticFile(index, res)) return;
+      res.statusCode = 404;
+      res.end("Not found — run npm run build");
+    } catch (e: any) {
+      res.statusCode = 500;
+      res.end(e?.message || "server error");
+    }
+  });
+
+  server.listen(PORT, HOST, () => {
+    console.log(
+      `Music (${isProd ? "prod" : "dev"}) http://${HOST}:${PORT}`
+    );
+    // Pre-warm hot charts + cover disk cache (daily-ish data)
+    if (CHKSZ_APIKEY) {
+      startChartWarmLoop({ apikey: CHKSZ_APIKEY });
+      console.log("chart warm loop started (12h fresh / 24h ttl, disk cache)");
+    }
+  });
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

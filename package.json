@@ -1,0 +1,41 @@
+{
+  "name": "kazam",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Music — personal music web app (Hono BFF + React SPA). Node VPS or Cloudflare Workers free tier.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server/node.ts",
+    "build": "vite build && tsc -p tsconfig.server.json",
+    "start": "NODE_ENV=production tsx server/node.ts",
+    "start:prod": "NODE_ENV=production node dist/server/node.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "smoke": "tsx scripts/smoke.ts",
+    "setup:d1": "bash scripts/setup-d1.sh",
+    "deploy:cf": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "hono": "^4.7.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2",
+    "vitest": "^3.0.9",
+    "wrangler": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

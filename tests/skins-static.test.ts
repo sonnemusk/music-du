@@ -1,0 +1,54 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { DEFAULT_SKIN, SKINS } from "../client/src/lib/types.js";
+import { LAYOUT_IDS } from "../client/src/skins/layouts/layout-ids.js";
+import { THEME_CATALOG, themeToCssVars } from "../client/src/skins/theme-catalog.js";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+describe("theme catalog", () => {
+  it("has 90+ themes with unique ids", () => {
+    expect(THEME_CATALOG.length).toBeGreaterThanOrEqual(90);
+    expect(SKINS.length).toBe(THEME_CATALOG.length);
+    const ids = new Set(THEME_CATALOG.map((t) => t.id));
+    expect(ids.size).toBe(THEME_CATALOG.length);
+    expect(ids.has("studio")).toBe(false);
+    expect(ids.has("layout-mosaic")).toBe(true);
+    expect(DEFAULT_SKIN).toBe("aurora");
+  });
+
+  it("exposes 20 distinct layouts and every theme uses one", () => {
+    expect(LAYOUT_IDS.length).toBeGreaterThanOrEqual(20);
+    const used = new Set(THEME_CATALOG.map((t) => t.layout));
+    for (const id of LAYOUT_IDS) {
+      expect(used.has(id)).toBe(true);
+    }
+  });
+
+  it("each theme has full tokens and css vars", () => {
+    for (const t of THEME_CATALOG) {
+      expect(t.name.length).toBeGreaterThan(0);
+      expect(t.accent).toMatch(/^#|^rgb|oklch|hsl/);
+      expect(LAYOUT_IDS).toContain(t.layout);
+      const vars = themeToCssVars(t);
+      expect(vars["--bg"]).toBeTruthy();
+      expect(vars["--accent"]).toBeTruthy();
+      expect(vars["--radius"]).toBeTruthy();
+    }
+  });
+
+  it("refined base + host exist (responsive shared layouts)", () => {
+    expect(fs.existsSync(path.join(root, "client/src/skins/SkinHost.tsx"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "client/src/skins/themes/refined-base.css"))).toBe(
+      true
+    );
+    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/SideLayout.tsx"))).toBe(
+      true
+    );
+    expect(fs.existsSync(path.join(root, "client/src/skins/layouts/MoreLayouts.tsx"))).toBe(
+      true
+    );
+  });
+});

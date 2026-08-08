@@ -1,0 +1,54 @@
+# =============================================================================
+# Music-Du — Cloudflare Worker (personal music app)
+# Dashboard names are intentional: all start with "Music-Du" so they are easy
+# to spot next to shortener-du / nav-du / etc.
+# =============================================================================
+# Naming map (what you see in Cloudflare dashboard):
+#   Worker script : Music-Du
+#   D1 database   : Music-Du-Library
+#   (no KV)       — library uses D1; audio is never stored on CF
+#   Custom domain : music.dubin.cc  (routes below)
+# =============================================================================
+
+name = "Music-Du"
+main = "server/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+CHKSZ_API_BASE = "https://api.chksz.top"
+
+# Built SPA: npm run build → dist/client
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+run_worker_first = true
+
+# Free D1 — human-readable name in CF → "Music-Du-Library"
+# Binding MUSIC_DU_DB is what code uses (c.env.MUSIC_DU_DB)
+[[d1_databases]]
+binding = "MUSIC_DU_DB"
+database_name = "Music-Du-Library"
+database_id = "059b044e-bd09-4205-b9e5-aac5115098af"
+migrations_dir = "migrations"
+
+# Custom hostname (zone must be on this CF account)
+[[routes]]
+pattern = "music.dubin.cc"
+zone_name = "dubin.cc"
+custom_domain = true
+
+[[routes]]
+pattern = "music.dubin.cc/*"
+zone_name = "dubin.cc"
+custom_domain = true
+
+# =============================================================================
+# FREE TIER ONLY
+#   - Cache API (covers / chart JSON / song+lyric metadata) — free
+#   - D1 free tier for library — Music-Du-Library
+#   - Secret: wrangler secret put CHKSZ_APIKEY
+#   - NO R2 / paid KV / Image Resizing
+#   - NO audio body cache or proxy (stream = 302 to CDN only)
+# Deploy: npm run build && npx wrangler deploy
+# =============================================================================
