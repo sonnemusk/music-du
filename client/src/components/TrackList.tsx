@@ -134,7 +134,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   }, [mode, locateRequest?.id, locateRequest?.nonce, curTrack?.id, tracks.length]);
 
   const play = (t: Track) => {
-    // Single entry — do NOT also fire on double-click (would cancel resolve mid-flight)
+    // Double-click / keyboard only — single click would fire twice on dblclick and cancel resolve
     void playTrack(t, { from: mode });
   };
 
@@ -174,12 +174,12 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
             }}
             data-track-id={String(t.id)}
             className={`track-row ${active ? "playing" : ""} ${active && loadingPlay ? "loading" : ""}`}
-            onClick={() => play(t)}
+            onDoubleClick={() => play(t)}
             onMouseEnter={() => warmRow(t)}
             onFocus={() => warmRow(t)}
             role="button"
             tabIndex={0}
-            title="点击播放"
+            title="双击播放"
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
