@@ -28,6 +28,10 @@ import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, resolvePlay } from "./play.js";
 import {
+  countNewFavorites,
+  parseFavsExportJson,
+} from "./favs-import.js";
+import {
   libraryRevisionOk,
   libraryTokenOk,
   mergeTrackList,
@@ -838,10 +842,11 @@ app.get("/favs", (c) => favoritesExportResponse(c));
 app.get("/export", (c) => favoritesExportResponse(c));
 
 /** Import page — same Access gate as rest of site; no app token (like /favs). */
-function favoritesImportHtml(msg?: string) {
+function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
+  const ok = Boolean(opts?.ok);
   const notice = msg
-    ? `<p class="msg">${msg.replace(/</g, "&lt;")}</p>`
-    : `<p class="hint">选择由 <code>/favs</code> 导出的 JSON 文件，将与现有收藏合并（不删除已有项）。</p>`;
+    ? `<p class="msg${ok ? " ok" : ""}">${msg.replace(/</g, "&lt;")}</p>`
+    : `<p class="hint">仅支持 <code>/favs</code> 导出的 JSON。按 <code>id</code> 与已有收藏去重，不会重复导入。</p>`;
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -856,7 +861,8 @@ function favoritesImportHtml(msg?: string) {
       background: #18181b; border: 1px solid #27272a; box-shadow: 0 20px 50px #0008; }
     h1 { margin: 0 0 8px; font-size: 1.25rem; }
     .hint, .msg { margin: 0 0 16px; opacity: .7; font-size: .9rem; line-height: 1.45; }
-    .msg { color: #6ee7b7; opacity: 1; }
+    .msg { color: #fca5a5; opacity: 1; }
+    .msg.ok { color: #6ee7b7; }
     code { font-size: .85em; opacity: .9; }
     input[type=file] { width: 100%; margin: 12px 0 16px; }
     button { width: 100%; padding: 12px 16px; border: 0; border-radius: 10px;
@@ -872,7 +878,7 @@ function favoritesImportHtml(msg?: string) {
     ${notice}
     <form method="post" action="/import" enctype="multipart/form-data">
       <input type="file" name="file" accept="application/json,.json" required />
-      <button type="submit">合并导入</button>
+      <button type="submit">合并导入（自动去重）</button>
     </form>
     <p class="links"><a href="/">← 返回播放器</a> · <a href="/favs">导出 /favs</a></p>
   </div>
@@ -880,9 +886,7 @@ function favoritesImportHtml(msg?: string) {
 </html>`;
 }
 
-app.get("/import", (c) =>
-  c.html(favoritesImportHtml())
-);
+app.get("/import", (c) => c.html(favoritesImportHtml()));
 
 app.post("/import", async (c) => {
   if (!c.env.MUSIC_DU_DB) {
@@ -905,35 +909,19 @@ app.post("/import", async (c) => {
     if (!raw) {
       return c.html(favoritesImportHtml("未收到有效 JSON 文件"), 400);
     }
-    let list: any[] = [];
-    if (Array.isArray(raw)) list = raw;
-    else if (raw && typeof raw === "object") {
-      const o = raw as any;
-      list = o.favorites || o.tracks || o.data?.favorites || [];
+    const parsed = parseFavsExportJson(raw);
+    if (!parsed.ok) {
+      return c.html(favoritesImportHtml(parsed.error), 400);
     }
-    const incoming: any[] = [];
-    const seen = new Set<string>();
-    for (const t of list) {
-      if (!t || t.id == null || t.id === "") continue;
-      const k = String(t.id);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      incoming.push({
-        id: /^\d+$/.test(k) ? Number(k) : t.id,
-        name: String(t.name || t.title || ""),
-        artist: String(t.artist || t.artists || t.singer || ""),
-        album: String(t.album || ""),
-        cover: String(t.cover || t.picUrl || ""),
-        duration: Number(t.duration || t.dt || 0) || 0,
-      });
-    }
-    if (!incoming.length) {
-      return c.html(favoritesImportHtml("文件中没有有效歌曲"), 400);
-    }
+    const incoming = parsed.tracks;
     const existing = await loadLib(c.env.MUSIC_DU_DB);
-    const before = (existing.favorites || []).length;
+    const added = countNewFavorites(existing.favorites || [], incoming);
+    if (added === 0) {
+      // Nothing new — still bounce to player so SPA refreshes
+      return c.redirect(`/?imported=0&total=${(existing.favorites || []).length}`, 303);
+    }
+    // Merge only; never forceClear — existing ids win position, new ids append
     const fav = mergeTrackList(existing.favorites || [], incoming, false, 2000);
-    const added = fav.length - before;
     const result = await saveLib(
       c.env.MUSIC_DU_DB,
       {
@@ -941,7 +929,6 @@ app.post("/import", async (c) => {
         favorites: fav,
         history: existing.history,
         curIdx: existing.curIdx,
-        // Import via Access page: accept current server rev (authoritative merge)
         revision: existing.revision,
       },
       { expectedRevision: existing.revision ?? 0 }
@@ -950,11 +937,8 @@ app.post("/import", async (c) => {
       return c.html(favoritesImportHtml("库正在被其他端写入，请重试"), 409);
     }
     const total = (result.data.favorites || []).length;
-    return c.html(
-      favoritesImportHtml(
-        `已合并导入 ${Math.max(0, added)} 首新歌，当前收藏共 ${total} 首。可返回播放器刷新。`
-      )
-    );
+    // Redirect into SPA — client reloads library from query
+    return c.redirect(`/?imported=${added}&total=${total}`, 303);
   } catch (e: any) {
     return c.html(
       favoritesImportHtml(`导入失败：${e?.message || String(e)}`),

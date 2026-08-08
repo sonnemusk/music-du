@@ -288,6 +288,8 @@ type State = {
   /** Switch to 收藏 (or list that contains current) and scroll to playing row. */
   locateCurrentInList: () => void;
   bootstrap: () => Promise<void>;
+  /** Re-fetch D1 library (e.g. after /import redirect). */
+  reloadLibrary: () => Promise<void>;
   search: (q: string) => Promise<void>;
   loadCharts: (
     platform?: ChartPlatformId,
@@ -578,6 +580,18 @@ export const usePlayer = create<State>((set, get) => ({
     return searchResults;
   },
 
+  reloadLibrary: async () => {
+    try {
+      const lib = await api.loadLibrary();
+      applyLib(set)(lib);
+    } catch (e: any) {
+      const msg = e?.message || "";
+      if (/Access|Cloudflare|登录/i.test(msg)) {
+        get().showToast(msg);
+      }
+    }
+  },
+
   bootstrap: async () => {
     hydrateSongCache();
     hydrateLyricCache();
@@ -810,7 +824,8 @@ export const usePlayer = create<State>((set, get) => ({
       }
     } catch (e: any) {
       set({ searching: false, searchResults: [] });
-      get().showToast(e?.message || "搜索失败");
+      const msg = e?.message || "搜索失败";
+      get().showToast(msg);
     }
   },
 
@@ -2061,17 +2076,24 @@ export const usePlayer = create<State>((set, get) => ({
             get().showToast("收藏已在其他设备更新，已同步");
             return;
           }
-          // Prefer re-fetch + rewrite with forceClear only after sync (avoids blind wipe)
+          // Never forceClear whole list on single-delete failure — retry DELETE once
           try {
             const lib = await api.loadLibrary();
             applyLib(set)(lib);
-            const favorites = get().favorites.filter(
-              (x) => String(x.id) !== String(track.id)
+            if (!get().isFavorite(track.id)) return;
+            const lib2 = await api.deleteFromList(
+              "favorites",
+              track.id,
+              get().libraryRevision
             );
-            set({ favorites });
-            persistSoon(get, { forceClearFavorites: true });
+            applyLib(set)(lib2);
           } catch {
-            persistSoon(get, { forceClearFavorites: true });
+            try {
+              applyLib(set)(await api.loadLibrary());
+            } catch {
+              /* */
+            }
+            get().showToast("取消收藏失败，请重试");
           }
         });
     } else {
@@ -2088,9 +2110,10 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   importFavorites: (tracks) => {
+    // Prefer /import URL; keep helper for tests — merge + dedupe only
     const incoming = (tracks || []).map(norm).filter(Boolean) as Track[];
     if (!incoming.length) {
-      get().showToast("导入文件里没有有效歌曲");
+      get().showToast("没有有效歌曲");
       return;
     }
     const before = get().favorites.length;
@@ -2098,9 +2121,8 @@ export const usePlayer = create<State>((set, get) => ({
     const added = favorites.length - before;
     set({ favorites });
     get().showToast(
-      added > 0 ? `已导入 ${added} 首（合计 ${favorites.length}）` : "没有新的收藏可导入"
+      added > 0 ? `已导入 ${added} 首（合计 ${favorites.length}）` : "没有新的收藏可导入（已去重）"
     );
-    // Merge write — never forceClear (protects multi-device)
     void persistSoon(get, {});
   },
 
@@ -2122,13 +2144,22 @@ export const usePlayer = create<State>((set, get) => ({
     void api
       .deleteFromList("playlist", id, get().libraryRevision)
       .then(applyLib(set))
-      .catch((e) => {
+      .catch(async (e) => {
         if (e instanceof api.LibraryConflictError) {
           applyLib(set)(e.data);
           get().showToast("列表已在其他设备更新，已同步");
           return;
         }
-        persistSoon(get, { forceClearPlaylist: true });
+        try {
+          applyLib(set)(await api.loadLibrary());
+          if (get().playlist.some((x) => String(x.id) === String(id))) {
+            applyLib(set)(
+              await api.deleteFromList("playlist", id, get().libraryRevision)
+            );
+          }
+        } catch {
+          get().showToast("移除失败，请重试");
+        }
       });
   },
 
@@ -2139,13 +2170,22 @@ export const usePlayer = create<State>((set, get) => ({
     void api
       .deleteFromList("history", id, get().libraryRevision)
       .then(applyLib(set))
-      .catch((e) => {
+      .catch(async (e) => {
         if (e instanceof api.LibraryConflictError) {
           applyLib(set)(e.data);
           get().showToast("历史已在其他设备更新，已同步");
           return;
         }
-        persistSoon(get, { forceClearHistory: true });
+        try {
+          applyLib(set)(await api.loadLibrary());
+          if (get().history.some((x) => String(x.id) === String(id))) {
+            applyLib(set)(
+              await api.deleteFromList("history", id, get().libraryRevision)
+            );
+          }
+        } catch {
+          get().showToast("移除失败，请重试");
+        }
       });
   },
 }));

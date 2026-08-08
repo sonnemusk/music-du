@@ -240,6 +240,9 @@ img {
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   position: fixed;
   left: 50%;
   bottom: calc(24px + var(--safe-b));
@@ -260,6 +263,22 @@ img {
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.toast__text {
+  flex: 1;
+  min-width: 0;
+}
+.toast__action {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  background: #a78bfa;
+  color: #1e1b4b;
 }
 
 /* shared bits */

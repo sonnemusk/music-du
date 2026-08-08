@@ -187,12 +187,14 @@ export function MediaSession() {
     }
 
     try {
-      const d = duration || 0;
-      const pos = currentTime || 0;
+      const a = usePlayer.getState().audioEl;
+      const d = duration || a?.duration || 0;
+      const pos = currentTime || a?.currentTime || 0;
+      const rate = a && isFinite(a.playbackRate) && a.playbackRate > 0 ? a.playbackRate : 1;
       if (d > 0 && isFinite(d) && isFinite(pos)) {
         ms.setPositionState({
           duration: d,
-          playbackRate: 1,
+          playbackRate: rate,
           position: Math.max(0, Math.min(pos, d)),
         });
       }

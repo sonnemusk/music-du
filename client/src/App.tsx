@@ -16,9 +16,34 @@ export default function App() {
   const next = usePlayer((s) => s.next);
   const shellRef = useRef<HTMLDivElement>(null);
 
+  const showToast = usePlayer((s) => s.showToast);
+  const reloadLibrary = usePlayer((s) => s.reloadLibrary);
+
   useEffect(() => {
-    void bootstrap();
-  }, [bootstrap]);
+    void (async () => {
+      await bootstrap();
+      // /import success redirects here: /?imported=N&total=M
+      try {
+        const q = new URLSearchParams(window.location.search);
+        if (!q.has("imported")) return;
+        const added = Number(q.get("imported") || 0);
+        const total = Number(q.get("total") || 0);
+        await reloadLibrary();
+        if (added > 0) {
+          showToast(`已导入 ${added} 首新歌${total ? `（共 ${total}）` : ""}`);
+        } else {
+          showToast(total ? `无新歌，收藏仍为 ${total} 首` : "无新歌可导入（已去重）");
+        }
+        // Clean query so refresh doesn't re-toast
+        const url = new URL(window.location.href);
+        url.searchParams.delete("imported");
+        url.searchParams.delete("total");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      } catch {
+        /* */
+      }
+    })();
+  }, [bootstrap, reloadLibrary, showToast]);
 
   // Touch: swipe left = next, swipe right = prev (ignore vertical scroll)
   useEffect(() => {

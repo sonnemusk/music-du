@@ -48,3 +48,25 @@ SPA ──same-origin /api/*──► Worker (CF Access at edge)
 
 - No audio bodies on CF; no R2/paid KV; Observability sampling free-tier only.
 - `workers_dev = false` (custom hosts + Access only).
+
+## Observability (free)
+
+Workers Observability enabled in `wrangler.toml`. Useful log signals:
+
+| Signal | Meaning |
+|--------|---------|
+| `HTTP 429` / rate limited | Upstream ChKSz throttle — client backs off |
+| `library conflict` / 409 | Multi-device revision mismatch |
+| `unauthorized` / Access 302 | Missing login or service token |
+| `no url` / song 404 | Resolve miss |
+
+## Import / export
+
+| URL | Behavior |
+|-----|----------|
+| `GET /favs` | Download export JSON |
+| `GET/POST /import` | Upload **same** JSON shape; merge by id (dedupe); redirect `/?imported=&total=` |
+
+## Node
+
+**Local / VPS development only.** Production is the Worker. Do not treat `npm run start:prod` as the public deploy path.

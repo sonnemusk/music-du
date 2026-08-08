@@ -115,8 +115,8 @@ describe("union + import", () => {
     expect(a[1].name).toBe("B");
   });
 
-  it("parseFavoritesImport accepts export shape", () => {
-    const list = parseFavoritesImport({
+  it("parseFavoritesImport accepts export shape only", () => {
+    const ok = parseFavoritesImport({
       count: 2,
       favorites: [
         { id: 10, name: "X", artist: "Y" },
@@ -124,8 +124,12 @@ describe("union + import", () => {
         { id: 11, name: "Z", artist: "W" },
       ],
     });
-    expect(list).toHaveLength(2);
-    expect(list[0].id).toBe(10);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) {
+      expect(ok.tracks).toHaveLength(2);
+      expect(ok.tracks[0].id).toBe(10);
+    }
+    expect(parseFavoritesImport([{ id: 1 }]).ok).toBe(false);
   });
 });
 

@@ -21,29 +21,47 @@ export function unionTracksById(primary: Track[], secondary: Track[]): Track[] {
   return out;
 }
 
-/** Parse favorites export / library JSON into Track[]. */
-export function parseFavoritesImport(raw: unknown): Track[] {
-  let list: any[] = [];
-  if (Array.isArray(raw)) list = raw;
-  else if (raw && typeof raw === "object") {
-    const o = raw as any;
-    list = o.favorites || o.tracks || o.data?.favorites || [];
+/**
+ * Parse /favs export JSON only.
+ * Required shape: { favorites: [ { id, name, artist, album?, cover?, duration? } ] }
+ */
+export function parseFavoritesImport(raw: unknown): {
+  ok: true;
+  tracks: Track[];
+} | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {
+      ok: false,
+      error: "格式不对：请使用 /favs 导出的 JSON（需含 favorites 数组）",
+    };
+  }
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.favorites)) {
+    return {
+      ok: false,
+      error: "格式不对：请使用 /favs 导出的 JSON（需含 favorites 数组）",
+    };
   }
   const out: Track[] = [];
   const seen = new Set<string>();
-  for (const t of list) {
-    if (!t || t.id == null || t.id === "") continue;
-    const k = String(t.id);
+  for (const t of o.favorites) {
+    if (!t || typeof t !== "object") continue;
+    const row = t as Record<string, unknown>;
+    if (row.id == null || row.id === "") continue;
+    const k = String(row.id);
     if (seen.has(k)) continue;
     seen.add(k);
     out.push({
-      id: /^\d+$/.test(k) ? Number(k) : t.id,
-      name: String(t.name || t.title || ""),
-      artist: String(t.artist || t.artists || t.singer || ""),
-      album: String(t.album || ""),
-      cover: String(t.cover || t.picUrl || ""),
-      duration: Number(t.duration || t.dt || 0) || 0,
+      id: /^\d+$/.test(k) ? Number(k) : (row.id as string | number),
+      name: String(row.name ?? ""),
+      artist: String(row.artist ?? ""),
+      album: String(row.album ?? ""),
+      cover: String(row.cover ?? ""),
+      duration: Number(row.duration ?? 0) || 0,
     });
   }
-  return out;
+  if (!out.length) {
+    return { ok: false, error: "favorites 为空或没有有效 id" };
+  }
+  return { ok: true, tracks: out };
 }
