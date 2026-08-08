@@ -41,3 +41,6 @@ Thumbs.db
 # Test / coverage
 coverage/
 .nyc_output/
+
+# Wrangler local secrets
+.dev.vars
