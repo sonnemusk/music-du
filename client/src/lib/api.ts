@@ -49,6 +49,9 @@ async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
   if (r.status === 401) {
     throw new Error(j?.error || "unauthorized — library token required");
   }
+  if (r.status === 429) {
+    throw new Error(j?.error || "HTTP 429 rate limited");
+  }
   if (!r.ok && j?.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
   if (j?.ok === false) throw new Error(j.error || "request failed");
   return j as T;
@@ -98,6 +101,7 @@ export async function resolveSong(
 ) {
   const q = new URLSearchParams();
   if (opts?.level) q.set("level", opts.level);
+  // Always bypass edge/D1 when force — signed CDN URLs expire
   if (opts?.force) q.set("force", "1");
   const qs = q.toString();
   const j = await json(

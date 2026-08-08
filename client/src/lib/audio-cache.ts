@@ -205,13 +205,48 @@ export async function deleteAudioBlob(id: string | number): Promise<void> {
 }
 
 /**
+ * CF Workers `/api/stream` only 302s to CDN (no byte proxy, free tier).
+ * CDN usually lacks CORS → IDB blob cache never fills. Detect once via /api/health.
+ */
+let durableBlobAllowed: boolean | null = null;
+
+export async function canDurableAudioCache(): Promise<boolean> {
+  if (durableBlobAllowed != null) return durableBlobAllowed;
+  try {
+    const r = await fetch("/api/health", { credentials: "same-origin" });
+    const j = (await r.json()) as {
+      runtime?: string;
+      policy?: { audio_byte_proxy?: boolean };
+    };
+    if (j?.policy?.audio_byte_proxy === false) {
+      durableBlobAllowed = false;
+      return false;
+    }
+    if (j?.runtime === "cloudflare-workers") {
+      durableBlobAllowed = false;
+      return false;
+    }
+  } catch {
+    /* fall through — allow try on Node/local */
+  }
+  durableBlobAllowed = true;
+  return true;
+}
+
+/** Test helper */
+export function resetDurableAudioCacheGate() {
+  durableBlobAllowed = null;
+}
+
+/**
  * Download audio via same-origin stream proxy and store in IDB.
- * Uses AbortSignal so we can cancel when user leaves quickly.
+ * No-ops on CF Workers (302-only stream). Uses AbortSignal for cancel.
  */
 export async function cacheAudioFromStream(
   id: string | number,
   opts?: { level?: string; signal?: AbortSignal; force?: boolean }
 ): Promise<boolean> {
+  if (!(await canDurableAudioCache())) return false;
   const key = String(id);
   if (!opts?.force && (await hasAudioBlob(key))) return true;
   const existing = inflight.get(key);
@@ -222,13 +257,17 @@ export async function cacheAudioFromStream(
       // Include preferred level so stream redirect matches playback quality
       const lv = opts?.level ? `?level=${encodeURIComponent(opts.level)}` : "";
       const streamUrl = `/api/stream/${encodeURIComponent(key)}${lv}`;
+      // Manual redirect: if 302, body is empty (CF) — don't follow to CORS-blocked CDN
       const res = await fetch(streamUrl, {
         credentials: "same-origin",
         signal: opts?.signal,
         headers: { Accept: "audio/*,*/*" },
-        // Follow 302 to CDN when CORS allows; otherwise fails softly
-        redirect: "follow",
+        redirect: "manual",
       });
+      if (res.status >= 300 && res.status < 400) {
+        durableBlobAllowed = false;
+        return false;
+      }
       if (!res.ok) return false;
       const blob = await res.blob();
       if (blob.size < 8 * 1024) return false;

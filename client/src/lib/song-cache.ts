@@ -26,9 +26,12 @@ export type CachedSong = {
   ts: number;
 };
 
-/** Align with D1 resolve_cache (~18m) so client doesn't outlive edge signed URLs too long */
-const MEMORY_TTL_MS = 10 * 60 * 1000;
-const DURABLE_TTL_MS = 20 * 60 * 1000;
+/**
+ * Keep client TTL under typical NetEase signed-URL lifetime and D1 (~18m).
+ * Too long → first play fails on expired CDN link before re-resolve.
+ */
+const MEMORY_TTL_MS = 6 * 60 * 1000;
+const DURABLE_TTL_MS = 12 * 60 * 1000;
 const LS_KEY = "kazam.v2.songResolve";
 const LS_MAX = 80;
 

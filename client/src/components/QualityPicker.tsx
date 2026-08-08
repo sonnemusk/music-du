@@ -11,15 +11,17 @@ export function QualityPicker({ className }: { className?: string }) {
   const preferredQuality = usePlayer((s) => s.preferredQuality);
   const availableQualities = usePlayer((s) => s.availableQualities);
   const setQualityLevel = usePlayer((s) => s.setQualityLevel);
+  const ensureQualities = usePlayer((s) => s.ensureQualities);
   const curTrack = usePlayer((s) => s.curTrack);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const currentLevel =
     quality && quality !== "…" ? quality : preferredQuality || "";
   const short = qualityShortLabel(currentLevel) || "音质";
   const full = labelForLevel(currentLevel).label;
-  const probing = Boolean(curTrack) && availableQualities.length === 0;
+  const probing = Boolean(curTrack) && open && (loading || availableQualities.length === 0);
 
   useEffect(() => {
     if (!open) return;
@@ -41,7 +43,22 @@ export function QualityPicker({ className }: { className?: string }) {
 
   useEffect(() => {
     setOpen(false);
+    setLoading(false);
   }, [curTrack?.id]);
+
+  // Probe only when user opens the menu (not on every playTrack)
+  useEffect(() => {
+    if (!open || !curTrack) return;
+    if (availableQualities.length >= 1) return;
+    let cancelled = false;
+    setLoading(true);
+    void ensureQualities().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, curTrack?.id, availableQualities.length, ensureQualities]);
 
   const pick = (level: string) => {
     setOpen(false);

@@ -313,6 +313,8 @@ type State = {
   cyclePreferredQuality: () => void;
   /** Play a concrete level from availableQualities */
   setQualityLevel: (level: string) => void;
+  /** Probe top qualities only when menu needs them (not on every play). */
+  ensureQualities: () => Promise<void>;
   /** Effective preferred level string for resolve (from rank + available) */
   preferredQuality: string;
   toggleFavorite: (t?: Track | null) => void;
@@ -1032,69 +1034,13 @@ export const usePlayer = create<State>((set, get) => ({
     void persistSoon(get);
 
     // Play at sticky / pre-warmed level (rank intent). Server falls through if missing.
-    // Do NOT block first paint on full qualities probe.
+    // Qualities menu is filled on-demand (ensureQualities) — no top-3 probe every play.
     const rank = get().preferredRank;
     const known = get().availableQualities;
     // Always request by rank intent (or known ladder pick). preferred stays sticky for next warm.
     const prefQ =
       known.length > 0 ? pickLevelForRank(known, rank) : intentLevelForRank(rank);
     set({ preferredQuality: prefQ });
-
-    // Background: probe top-3 URLs for the menu only — do NOT warm other levels (bandwidth)
-    // and do NOT rewrite quality/preferred mid-play (that caused 母带↔沉浸 jumps).
-    void (async () => {
-      try {
-        if (sameTrack && get().availableQualities.length >= 1) {
-          for (const c of get().availableQualities) {
-            if (!c.url) continue;
-            setCachedSong(
-              {
-                id: String(t.id),
-                url: c.url,
-                stream: `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(c.level)}`,
-                level: c.level,
-                br: c.br,
-                size: c.size,
-                name: t.name,
-                artist: t.artist,
-                cover: t.cover || "",
-                source: "remote",
-              },
-              c.level
-            );
-          }
-          return;
-        }
-        const raw = await api.fetchSongQualities(t.id, 3);
-        if (get().playToken !== token) return;
-        const choices = normalizeChoices(raw);
-        for (const c of choices) {
-          if (!c.url) continue;
-          setCachedSong(
-            {
-              id: String(t.id),
-              url: c.url,
-              stream: `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(c.level)}`,
-              level: c.level,
-              br: c.br,
-              size: c.size,
-              name: t.name || "",
-              artist: t.artist || "",
-              cover: t.cover || "",
-              source: "remote",
-            },
-            c.level
-          );
-        }
-        // Menu only. Prefer mapping rank→this song's ladder without changing the playing label
-        // unless UI still shows a generic intent that matches.
-        // Menu only — never rewrite preferredQuality (rank intent) so next track
-        // keeps warming the same slot the user chose (no 沉浸→母带 jump).
-        set({ availableQualities: choices });
-      } catch {
-        /* menu stays empty; playback uses ladder fallthrough */
-      }
-    })();
 
     // Only toast when we actually need a network resolve (cache miss)
     const hadResolveCache = Boolean(
@@ -1109,11 +1055,12 @@ export const usePlayer = create<State>((set, get) => ({
     const stream = `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(prefQ)}`;
     const clearSlow = () => window.clearTimeout(slowHint);
 
-    /** Network resolve + write durable cache (only when cache miss or forced refresh). */
-    const fetchAndStoreResolve = async () => {
-      const data = await api.resolveSong(t.id, { level: prefQ });
+    /** Network resolve + write durable cache. force=true bypasses edge/D1 (expired CDN). */
+    const fetchAndStoreResolve = async (force = false) => {
+      const data = await api.resolveSong(t.id, { level: prefQ, force });
       const remoteUrl =
         data.url && /^https?:\/\//i.test(String(data.url)) ? String(data.url) : "";
+      const actualLevel = String(data.level || prefQ);
       const updated = {
         ...t,
         name: data.name || t.name,
@@ -1123,22 +1070,24 @@ export const usePlayer = create<State>((set, get) => ({
         br: data.br,
         size: data.size,
       };
-      setCachedSong(
-        {
-          id: String(t.id),
-          url: remoteUrl,
-          stream: data.stream || stream,
-          level: String(data.level || prefQ),
-          br: Number(data.br || 0),
-          size: Number(data.size || 0),
-          name: updated.name,
-          artist: updated.artist,
-          cover: updated.cover || "",
-          source: String(data.source || ""),
-          play: data.play,
-        },
-        prefQ
-      );
+      const entry = {
+        id: String(t.id),
+        url: remoteUrl,
+        stream: data.stream || stream,
+        level: actualLevel,
+        br: Number(data.br || 0),
+        size: Number(data.size || 0),
+        name: updated.name,
+        artist: updated.artist,
+        cover: updated.cover || "",
+        source: String(data.source || ""),
+        play: data.play,
+      };
+      // Cache under intent key (prefQ) and actual level when they differ
+      setCachedSong(entry, prefQ);
+      if (actualLevel && actualLevel !== prefQ) {
+        setCachedSong(entry, actualLevel);
+      }
       return { data, remoteUrl, updated };
     };
 
@@ -1161,7 +1110,8 @@ export const usePlayer = create<State>((set, get) => ({
             void (async () => {
               try {
                 invalidateCachedSong(t.id, prefQ);
-                const fresh = await fetchAndStoreResolve();
+                // force: skip edge/D1 stale signed URL
+                const fresh = await fetchAndStoreResolve(true);
                 if (get().playToken !== token) return;
                 if (fresh.remoteUrl) {
                   audio.src = fresh.remoteUrl;
@@ -1200,11 +1150,11 @@ export const usePlayer = create<State>((set, get) => ({
         /* try refresh / stream */
       }
 
-      // Cached CDN link often expires — re-resolve once, then stream
+      // Cached CDN link often expires — force re-resolve once, then stream
       if (fromCache || remoteUrl) {
         try {
           invalidateCachedSong(t.id, prefQ);
-          const fresh = await fetchAndStoreResolve();
+          const fresh = await fetchAndStoreResolve(true);
           if (get().playToken !== token) return false;
           set({
             curTrack: fresh.updated,
@@ -1772,6 +1722,38 @@ export const usePlayer = create<State>((set, get) => ({
     const n = get().availableQualities.length || 3;
     const next = cycleRank(get().preferredRank, n);
     get().setPreferredRank(next);
+  },
+
+  ensureQualities: async () => {
+    const cur = get().curTrack;
+    if (!cur) return;
+    if (get().availableQualities.length >= 1) return;
+    try {
+      const raw = await api.fetchSongQualities(cur.id, 3);
+      if (String(get().curTrack?.id) !== String(cur.id)) return;
+      const choices = normalizeChoices(raw);
+      for (const c of choices) {
+        if (!c.url) continue;
+        setCachedSong(
+          {
+            id: String(cur.id),
+            url: c.url,
+            stream: `/api/stream/${encodeURIComponent(String(cur.id))}?level=${encodeURIComponent(c.level)}`,
+            level: c.level,
+            br: c.br,
+            size: c.size,
+            name: cur.name || "",
+            artist: cur.artist || "",
+            cover: cur.cover || "",
+            source: "remote",
+          },
+          c.level
+        );
+      }
+      set({ availableQualities: choices });
+    } catch {
+      /* menu stays empty; playback uses ladder fallthrough */
+    }
   },
 
   setQualityLevel: (level) => {

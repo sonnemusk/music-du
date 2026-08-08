@@ -6,6 +6,12 @@
 import { DEFAULT_QUALITY } from "./quality";
 import { getCachedSong, setCachedSong } from "./song-cache";
 import type { Track } from "./types";
+import {
+  isUpstreamBlocked,
+  noteUpstreamError,
+  noteUpstreamOk,
+  waitUpstreamSlot,
+} from "./upstream-backoff";
 
 const inflight = new Set<string>();
 
@@ -67,6 +73,10 @@ export function prefetchSongResolves(
     let idx = 0;
     const worker = async () => {
       while (idx < list.length) {
+        if (isUpstreamBlocked()) {
+          const ok = await waitUpstreamSlot();
+          if (!ok || isUpstreamBlocked()) break;
+        }
         const t = list[idx++];
         if (!t) break;
         const k = `${String(t.id)}@@${level}`;
@@ -74,6 +84,7 @@ export function prefetchSongResolves(
         inflight.add(k);
         try {
           const meta = await resolveFn(t.id, { level });
+          noteUpstreamOk();
           const remote =
             meta?.url && /^https?:\/\//i.test(String(meta.url))
               ? String(meta.url)
@@ -96,7 +107,10 @@ export function prefetchSongResolves(
             },
             level
           );
-        } catch {
+        } catch (e: any) {
+          const msg = String(e?.message || e || "");
+          if (/\b429\b|rate.?limit|too many/i.test(msg)) noteUpstreamError(429);
+          else if (/\b5\d\d\b|upstream/i.test(msg)) noteUpstreamError(502);
           /* skip — play path will resolve again */
         } finally {
           inflight.delete(k);
