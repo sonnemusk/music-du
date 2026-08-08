@@ -518,7 +518,8 @@ export const usePlayer = create<State>((set, get) => ({
         window.setTimeout(() => {
           // Still on favorites and same track?
           if (get().tab !== "favorites") return;
-          if (!get().curTrack || String(get().curTrack.id) !== id) return;
+          const still = get().curTrack;
+          if (!still || String(still.id) !== id) return;
           const nonce = (get().locateRequest?.nonce || 0) + 1;
           set({ locateRequest: { id, nonce } });
         }, 100);
