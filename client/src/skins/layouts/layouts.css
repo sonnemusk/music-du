@@ -781,6 +781,8 @@ button.badge,
 .seek-track {
   --seek-play: 0%;
   --seek-buf: 0%;
+  /* Tip follows mouse; falls back to playhead when not set */
+  --seek-tip-x: var(--seek-play);
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
@@ -788,11 +790,11 @@ button.badge,
   display: flex;
   align-items: center;
 }
-/* Instant hover tip (native title is ~1s delayed) */
+/* Instant hover tip (native title is ~1s delayed) — anchored to --seek-tip-x, not bar center */
 .seek-track[data-tip]::after {
   content: attr(data-tip);
   position: absolute;
-  left: 50%;
+  left: var(--seek-tip-x);
   bottom: calc(100% + 6px);
   transform: translateX(-50%) translateY(2px);
   padding: 4px 8px;
@@ -810,6 +812,8 @@ button.badge,
   visibility: hidden;
   transition: opacity 60ms ease, transform 60ms ease, visibility 60ms;
   z-index: 20;
+  /* Keep tip within track bounds when near edges */
+  max-width: min(100%, 220px);
 }
 .seek-track[data-tip]:hover::after,
 .seek-track[data-tip]:focus-within::after {

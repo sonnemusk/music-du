@@ -1,6 +1,18 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useRef } from "react";
 import { usePlayer } from "../store/player";
 import { QualityPicker } from "./QualityPicker";
+
+/** Clamp tip % so half-width bubble stays roughly on-bar. */
+function tipXPercent(clientX: number, el: HTMLElement): number {
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0) return 0;
+  const raw = ((clientX - rect.left) / rect.width) * 100;
+  // Soft edge pad so translateX(-50%) tip doesn't clip as hard
+  const padPx = 48;
+  const padPct = Math.min(20, (padPx / rect.width) * 100);
+  return Math.min(100 - padPct, Math.max(padPct, raw));
+}
 
 /** Shared transport controls — skins style via CSS scope. */
 export function Transport({ compact }: { compact?: boolean }) {
@@ -31,6 +43,20 @@ export function Transport({ compact }: { compact?: boolean }) {
   const playPct = Math.round(ratio * 1000) / 10;
   const bufPct = Math.round(bufRatio * 1000) / 10;
   const volPct = Math.round((muted ? 0 : volume) * 100);
+
+  const seekTrackRef = useRef<HTMLDivElement>(null);
+
+  /** Write --seek-tip-x on the node (no React re-render per mousemove). */
+  const onSeekPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = seekTrackRef.current;
+    if (!el) return;
+    el.style.setProperty("--seek-tip-x", `${tipXPercent(e.clientX, el)}%`);
+  }, []);
+
+  const onSeekPointerLeave = useCallback(() => {
+    // Drop override → CSS falls back to playhead (--seek-play)
+    seekTrackRef.current?.style.removeProperty("--seek-tip-x");
+  }, []);
 
   return (
     <div className={`transport ${compact ? "compact" : ""}`}>
@@ -77,6 +103,7 @@ export function Transport({ compact }: { compact?: boolean }) {
       <div className="seek-row">
         <span aria-hidden="true">{fmt(currentTime)}</span>
         <div
+          ref={seekTrackRef}
           className="seek-track"
           style={
             {
@@ -89,6 +116,9 @@ export function Transport({ compact }: { compact?: boolean }) {
               ? `已播放 ${Math.round(playPct)}% · 已缓冲 ${Math.round(bufPct)}%`
               : undefined
           }
+          onPointerMove={onSeekPointerMove}
+          onPointerEnter={onSeekPointerMove}
+          onPointerLeave={onSeekPointerLeave}
         >
           <div className="seek-track__rail" aria-hidden="true">
             <div className="seek-track__buffer" />
