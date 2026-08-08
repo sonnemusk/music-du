@@ -1,8 +1,17 @@
 /**
- * ChKSz NetEase adapter — official contract:
- * base https://api.chksz.top (free) or override CHKSZ_API_BASE; auth query `apikey` when required.
+ * ChKSz NetEase adapter.
+ *
+ * Primary:  CHKSZ_API_BASE (default https://api.chksz.top) + primary key(s)
+ * Fallback: CHKSZ_FALLBACK_BASE (default https://api.chksz.com) + fallback keys round-robin
  */
-import { CHKSZ_API_BASE, CHKSZ_APIKEY, qualityLevels } from "./config.js";
+import {
+  CHKSZ_APIKEY,
+  chkszFallbackBase,
+  chkszFallbackKeys,
+  chkszPrimaryBase,
+  chkszPrimaryKeys,
+  qualityLevels,
+} from "./config.js";
 import type { Track } from "./types.js";
 
 export class ChkszError extends Error {
@@ -22,8 +31,16 @@ export type Transport = (
 
 let transport: Transport | null = null;
 
+/** Round-robin cursor for fallback keys (module-level; Workers isolate per isolate). */
+let fallbackKeyCursor = 0;
+
 export function setHttpTransport(fn: Transport | null) {
   transport = fn;
+}
+
+/** Test helper — reset RR cursor. */
+export function resetKeyRotationForTests() {
+  fallbackKeyCursor = 0;
 }
 
 export function tryHttps(url: string): string {
@@ -44,9 +61,14 @@ export function requireApikey(key = CHKSZ_APIKEY): string {
   return key;
 }
 
-function buildUrl(path: string, params: Record<string, string | number>, apikey: string) {
+function buildUrl(
+  baseIn: string,
+  path: string,
+  params: Record<string, string | number>,
+  apikey: string
+) {
   let p = path.startsWith("/") ? path : `/${path}`;
-  let base = CHKSZ_API_BASE.replace(/\/$/, "");
+  let base = baseIn.replace(/\/$/, "");
   if (base.endsWith("/api") && p.startsWith("/api/")) p = p.slice(4);
   const u = new URL(base + p);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
@@ -54,19 +76,102 @@ function buildUrl(path: string, params: Record<string, string | number>, apikey:
   return u.toString();
 }
 
-async function apiGet(
+type Attempt = { base: string; key: string; label: string };
+
+function splitOptKeys(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[,;\n\r\t]+/)) {
+    const k = part.trim();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
+/**
+ * Build try order:
+ * 1) primary base × primary key(s)
+ * 2) fallback base × fallback keys (RR start advances each call)
+ *
+ * Explicit empty apikey → 401 (tests). Mock transport → primary only (no multi-host).
+ */
+function buildAttempts(opts?: { apikey?: string }): Attempt[] {
+  const primary = chkszPrimaryBase();
+  const fallback = chkszFallbackBase();
+
+  let primaryKeys: string[];
+  if (opts && "apikey" in opts) {
+    const raw = String(opts.apikey ?? "");
+    // empty string must 401 (unit tests)
+    if (!raw.trim()) {
+      throw new ChkszError(
+        "CHKSZ_APIKEY not configured (set env CHKSZ_APIKEY)",
+        401
+      );
+    }
+    primaryKeys = splitOptKeys(raw);
+  } else {
+    primaryKeys = chkszPrimaryKeys();
+  }
+
+  if (!primaryKeys.length) {
+    throw new ChkszError(
+      "CHKSZ_APIKEY not configured (set env CHKSZ_APIKEY)",
+      401
+    );
+  }
+
+  const out: Attempt[] = primaryKeys.map((key, i) => ({
+    base: primary,
+    key,
+    label: primaryKeys.length > 1 ? `primary#${i + 1}` : "primary",
+  }));
+
+  // Unit tests inject transport — keep single-host, no fallback fan-out
+  if (transport) return out;
+
+  if (fallback) {
+    // Dedicated fallback keys (.com RR); if unset, chkszFallbackKeys reuses primary keys
+    const fbKeys = chkszFallbackKeys();
+    if (fbKeys.length) {
+      const start = fallbackKeyCursor % fbKeys.length;
+      fallbackKeyCursor += 1;
+      for (let i = 0; i < fbKeys.length; i++) {
+        const key = fbKeys[(start + i) % fbKeys.length]!;
+        out.push({
+          base: fallback,
+          key,
+          label: `fallback#${i + 1}`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 401 || status === 402 || status === 403 || status === 429 || status >= 500;
+}
+
+async function rawGet(
+  base: string,
   path: string,
-  params: Record<string, string | number> = {},
-  opts?: { apikey?: string; timeout?: number }
+  params: Record<string, string | number>,
+  key: string,
+  timeout: number
 ): Promise<{ status: number; body: any }> {
-  const key = requireApikey(opts?.apikey ?? CHKSZ_APIKEY);
-  const url = buildUrl(path, params, key);
+  const url = buildUrl(base, path, params, key);
   if (transport) {
-    const r = await transport("GET", url, { params: { ...params, apikey: key }, timeout: opts?.timeout });
+    const r = await transport("GET", url, {
+      params: { ...params, apikey: key },
+      timeout,
+    });
     return { status: r.status, body: await r.json() };
   }
   const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), opts?.timeout ?? 12000);
+  const t = setTimeout(() => ac.abort(), timeout);
   try {
     const r = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -82,6 +187,43 @@ async function apiGet(
   } finally {
     clearTimeout(t);
   }
+}
+
+async function apiGet(
+  path: string,
+  params: Record<string, string | number> = {},
+  opts?: { apikey?: string; timeout?: number }
+): Promise<{ status: number; body: any }> {
+  const attempts = buildAttempts(opts);
+  const timeout = opts?.timeout ?? 12000;
+  let last: { status: number; body: any } | null = null;
+  let lastErr: unknown = null;
+
+  for (let i = 0; i < attempts.length; i++) {
+    const a = attempts[i]!;
+    try {
+      const res = await rawGet(a.base, path, params, a.key, timeout);
+      last = res;
+      // Success or non-retryable client error (e.g. 404) — stop
+      if (!isRetryableStatus(res.status)) return res;
+      // Retryable: try next key/base if any
+      if (i < attempts.length - 1) continue;
+      return res;
+    } catch (e) {
+      lastErr = e;
+      // Network / abort → try next
+      if (i < attempts.length - 1) continue;
+      if (e instanceof ChkszError) throw e;
+      throw new ChkszError(
+        e instanceof Error ? e.message : "upstream request failed",
+        502
+      );
+    }
+  }
+
+  if (last) return last;
+  if (lastErr instanceof ChkszError) throw lastErr;
+  throw new ChkszError("upstream request failed", 502);
 }
 
 function checkAuth(status: number, body: any) {

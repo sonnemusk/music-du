@@ -38,6 +38,10 @@ import {
 export type Env = {
   CHKSZ_APIKEY?: string;
   CHKSZ_API_BASE?: string;
+  /** Backup host, default https://api.chksz.com */
+  CHKSZ_FALLBACK_BASE?: string;
+  /** Comma-separated keys for fallback host (round-robin) */
+  CHKSZ_FALLBACK_APIKEYS?: string;
   ASSETS: Fetcher;
   /** Free D1 library — dashboard name: music-du-library (binding MUSIC_DU_DB). */
   MUSIC_DU_DB?: D1Database;
@@ -51,6 +55,8 @@ function injectEnv(env: Env) {
     if (!pe) return;
     if (env.CHKSZ_APIKEY) pe.CHKSZ_APIKEY = env.CHKSZ_APIKEY;
     if (env.CHKSZ_API_BASE) pe.CHKSZ_API_BASE = env.CHKSZ_API_BASE;
+    if (env.CHKSZ_FALLBACK_BASE) pe.CHKSZ_FALLBACK_BASE = env.CHKSZ_FALLBACK_BASE;
+    if (env.CHKSZ_FALLBACK_APIKEYS) pe.CHKSZ_FALLBACK_APIKEYS = env.CHKSZ_FALLBACK_APIKEYS;
   } catch {
     /* */
   }
@@ -210,6 +216,9 @@ app.get("/api/health", (c) =>
     provider: "chksz",
     runtime: "cloudflare-workers",
     has_apikey: Boolean(c.env.CHKSZ_APIKEY),
+    has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS),
+    api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
+    fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
     has_d1: Boolean(c.env.MUSIC_DU_DB),
     project: "music-du",
     /** Free-tier contract for operators */

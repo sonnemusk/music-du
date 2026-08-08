@@ -59,18 +59,71 @@ function loadDotenv() {
 
 loadDotenv();
 
-/** Default free gateway. Override via CHKSZ_API_BASE. */
-export const CHKSZ_API_BASE = (process.env.CHKSZ_API_BASE || "https://api.chksz.top").replace(
-  /\/$/,
-  ""
-);
+function stripSlash(u: string): string {
+  return u.replace(/\/$/, "");
+}
 
-export const CHKSZ_APIKEY = (
-  process.env.CHKSZ_APIKEY ||
-  process.env.CHKSZ_TOKEN ||
-  process.env.API_TOKEN ||
-  ""
-).trim();
+function splitKeys(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[,;\n\r\t]+/)) {
+    const k = part.trim();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
+/** Live read — Worker injectEnv may set process.env after module load. */
+export function chkszPrimaryBase(): string {
+  return stripSlash(process.env.CHKSZ_API_BASE || "https://api.chksz.top");
+}
+
+/** Backup gateway (default api.chksz.com). Empty / same as primary → no fallback host. */
+export function chkszFallbackBase(): string {
+  const raw = (
+    process.env.CHKSZ_FALLBACK_BASE ||
+    process.env.CHKSZ_API_FALLBACK ||
+    "https://api.chksz.com"
+  ).trim();
+  if (!raw) return "";
+  const base = stripSlash(raw);
+  if (base === chkszPrimaryBase()) return "";
+  return base;
+}
+
+/** Keys for primary base (.top). Comma-separated supported. */
+export function chkszPrimaryKeys(): string[] {
+  return splitKeys(
+    process.env.CHKSZ_APIKEY ||
+      process.env.CHKSZ_TOKEN ||
+      process.env.API_TOKEN ||
+      ""
+  );
+}
+
+/**
+ * Keys for fallback base (.com), round-robin.
+ * Prefer CHKSZ_FALLBACK_APIKEYS / CHKSZ_BACKUP_APIKEYS / CHKSZ_APIKEY_2;
+ * if unset, reuse primary keys so a single secret still works on .com.
+ */
+export function chkszFallbackKeys(): string[] {
+  const dedicated = splitKeys(
+    process.env.CHKSZ_FALLBACK_APIKEYS ||
+      process.env.CHKSZ_BACKUP_APIKEYS ||
+      process.env.CHKSZ_APIKEY_2 ||
+      ""
+  );
+  if (dedicated.length) return dedicated;
+  return chkszPrimaryKeys();
+}
+
+/** @deprecated use chkszPrimaryBase() — kept for import sites that expect a const. */
+export const CHKSZ_API_BASE = chkszPrimaryBase();
+
+/** First primary key (compat). Prefer chkszPrimaryKeys() for multi-key. */
+export const CHKSZ_APIKEY = chkszPrimaryKeys()[0] || "";
 
 /** High → low. Used to pick “top 3 that actually have a URL” per track. */
 export const DEFAULT_QUALITY = [

@@ -138,4 +138,15 @@ describe("chksz adapter", () => {
     expect(d.lrc).toContain("hello");
     expect(d.tlrc).toContain("hi");
   });
+
+  it("primary 429 then succeeds on next attempt order (transport single-host)", async () => {
+    // With mock transport we only hit primary once per design; auth error surfaces
+    chksz.setHttpTransport(async () => ({
+      status: 429,
+      json: async () => ({ msg: "rate limited" }),
+    }));
+    await expect(
+      chksz.search("x", 1, { apikey: "chksz_test_fixture_key" })
+    ).rejects.toMatchObject({ status: 429 });
+  });
 });

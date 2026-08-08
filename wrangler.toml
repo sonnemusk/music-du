@@ -14,7 +14,10 @@ workers_dev = true
 preview_urls = true
 
 [vars]
+# Primary gateway (always try first)
 CHKSZ_API_BASE = "https://api.chksz.top"
+# Backup gateway — use with secret CHKSZ_FALLBACK_APIKEYS (comma-separated, round-robin)
+CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
 
 [assets]
 directory = "./dist/client"
