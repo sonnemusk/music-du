@@ -26,10 +26,7 @@ export type Env = {
   CHKSZ_APIKEY?: string;
   CHKSZ_API_BASE?: string;
   ASSETS: Fetcher;
-  /**
-   * Free D1 library DB — dashboard name: **Music-Du-Library**
-   * Binding name in wrangler: MUSIC_DU_DB (not a random UUID).
-   */
+  /** Free D1 library — dashboard name: music-du-library (binding MUSIC_DU_DB). */
   MUSIC_DU_DB?: D1Database;
 };
 
@@ -187,7 +184,7 @@ app.get("/api/health", (c) =>
     runtime: "cloudflare-workers",
     has_apikey: Boolean(c.env.CHKSZ_APIKEY),
     has_d1: Boolean(c.env.MUSIC_DU_DB),
-    project: "Music-Du",
+    project: "music-du",
     /** Free-tier contract for operators */
     policy: {
       paid_services: false,
@@ -195,9 +192,9 @@ app.get("/api/health", (c) =>
       audio_byte_proxy: false,
       audio_play: "remote-url-direct",
       cover_chart_cache: "workers-cache-api-free",
-      library: c.env.MUSIC_DU_DB ? "Music-Du-Library (D1 free)" : "browser-localStorage",
-      worker_name: "Music-Du",
-      d1_name: "Music-Du-Library",
+      library: c.env.MUSIC_DU_DB ? "music-du-library (d1 free)" : "browser-localStorage",
+      worker_name: "music-du",
+      d1_name: "music-du-library",
     },
     version: 2,
   })

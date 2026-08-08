@@ -1,28 +1,25 @@
 # Music
 
 Personal music web app — search, charts, library, lyrics, multi-theme UI.  
-Brand **Music** · npm package `kazam` · Cloudflare Worker **Music-Du** · domain **music.dubin.cc**.
+Brand **Music** · npm package `kazam` · GitHub / Cloudflare Worker **music-du** · domain **music.dubin.cc**.
 
 **Stack:** TypeScript · Hono BFF · React + Zustand · Node **or** Cloudflare Workers (free tier first).
 
-Upstream: [ChKSz](https://api.chksz.top)-compatible gateway (`CHKSZ_API_BASE`). API keys stay on the server.
+Upstream music gateway is configured only on the **server** (env / Worker secrets). Never put gateway keys in the client or in git.
 
 ---
 
 ## Features
 
-- **Play**: CDN direct URL preferred; progressive streaming (not full-download-before-play)
-- **Library**: playlist · favorites · history (SQLite on Node; optional free **D1** on CF; browser `localStorage` fallback)
+- **Play**: CDN direct URL preferred; progressive streaming
+- **Library**: playlist · favorites · history (SQLite on Node; free **D1** `music-du-library` on CF; browser `localStorage` fallback)
 - **Search** + multi-platform **charts** (Douyin / NetEase / QQ / Kugou / Kuwo / … · soar/hot/new)
 - **Lyrics**: multi-source resolve, local cache, center-follow scroll
-- **Skins**: many visual themes × layout structures (dock / side / immersive / compact / …)
-- **Performance**
-  - Background **URL pre-resolve** for search, charts, favorites, playlist, history
-  - Next-track warm (resolve + media buffer; optional IDB for favorites)
-  - Cover / chart / lyric caches (browser + server disk or CF Cache API)
-- **Shortcuts**: Space play/pause · ←/→ seek · [/] prev/next · M mute · F favorite · L mode · Esc close theme panel
+- **Skins**: many visual themes × layout structures
+- **Performance**: list URL pre-resolve, next-track warm, cover/chart/lyric caches
+- **Shortcuts**: Space · ←/→ seek · [/] prev/next · M mute · F favorite · L mode · Esc theme panel
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system design.
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ---
 
@@ -37,32 +34,32 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system design.
 
 ```bash
 cp .env.example .env
-# Edit .env — set CHKSZ_APIKEY if your gateway needs it
+# Fill server-side env vars locally (see .env.example). Do not commit .env.
 
 npm install
-npm run dev          # http://127.0.0.1:8787  (API + Vite HMR)
+npm run dev          # http://127.0.0.1:8787
 ```
 
-Production build on the same machine:
+Production on the same machine:
 
 ```bash
 npm run build
-NODE_ENV=production npm run start:prod   # serves dist/client + dist/server
-# or: npm start   # tsx production without precompile
+NODE_ENV=production npm run start:prod
 ```
 
 ---
 
 ## Environment
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CHKSZ_APIKEY` | _(empty)_ | Upstream API key (server only) |
-| `CHKSZ_API_BASE` | `https://api.chksz.top` | Gateway base URL |
-| `HOST` / `PORT` | `127.0.0.1` / `8787` | Node listen address |
-| `MUSIC_DATA_DIR` | `./data` | SQLite + chart/cover disk cache |
+Copy [`.env.example`](./.env.example). Variable **names** (not values) include:
 
-Template: [`.env.example`](./.env.example). **Never commit `.env`.**
+| Variable | Purpose |
+|----------|---------|
+| Upstream API key / base URL | Server-only music gateway |
+| `HOST` / `PORT` | Node listen address |
+| `MUSIC_DATA_DIR` | SQLite + disk caches (Node) |
+
+**Never commit** `.env`, tokens, or real keys. Production secrets live in the host env, Cloudflare Worker secrets, or GitHub Actions secrets.
 
 ---
 
@@ -71,13 +68,11 @@ Template: [`.env.example`](./.env.example). **Never commit `.env`.**
 | Script | Purpose |
 |--------|---------|
 | `npm run dev` | Local development |
-| `npm run build` | Vite client + `tsc` server → `dist/` |
-| `npm start` | Production via `tsx` |
-| `npm run start:prod` | Production via compiled `dist/server/node.js` |
-| `npm test` | Vitest unit/API tests |
-| `npm run typecheck` | Client + server TypeScript |
-| `npm run smoke` | Live HTTP smoke (server must be up) |
-| `npm run setup:d1` | Create free D1 + print wrangler snippet |
+| `npm run build` | Client + server → `dist/` |
+| `npm start` / `start:prod` | Production server |
+| `npm test` / `typecheck` | Tests / TypeScript |
+| `npm run smoke` | Live HTTP smoke (server up) |
+| `npm run setup:d1` | Create free D1 `music-du-library` |
 | `npm run deploy:cf` | `build` + `wrangler deploy` |
 
 ---
@@ -85,113 +80,72 @@ Template: [`.env.example`](./.env.example). **Never commit `.env`.**
 ## Project layout
 
 ```
-music-app/
-├── client/                 # React SPA (Vite)
-│   ├── public/             # Favicons, PWA manifest
-│   └── src/
-│       ├── components/     # Transport, lyrics, lists, …
-│       ├── lib/            # API client, caches, prefetch
-│       ├── skins/          # Themes + layout shells
-│       └── store/          # Zustand player
-├── server/                 # Hono BFF
-│   ├── node.ts             # VPS / local entry
-│   ├── worker.ts           # Cloudflare Workers entry
-│   ├── charts.ts           # Charts (memory; disk via charts-disk)
-│   ├── charts-disk.ts      # Node-only disk chart cache
-│   └── …
-├── migrations/             # D1 SQL (optional CF)
-├── scripts/                # smoke, setup-d1
-├── tests/                  # Vitest
-├── docs/                   # Architecture notes
-├── data/                   # Runtime only (gitignored contents)
-├── wrangler.toml           # CF Workers config
-└── package.json
+client/     React SPA
+server/     Hono BFF (node.ts + worker.ts)
+tests/      Vitest
+scripts/    smoke, setup-d1
+migrations/ D1 SQL
+docs/       architecture / features
+data/       runtime only (gitignored)
 ```
 
 ---
 
 ## Deploy — Node VPS
 
-Example (Caddy reverse proxy → `127.0.0.1:8787`):
-
 ```bash
 rsync -az --delete \
   --exclude node_modules --exclude data --exclude .env --exclude dist --exclude .git \
-  ./ user@host:/path/to/music-app/
+  ./ user@host:/path/to/music-du/
 
-ssh user@host 'cd /path/to/music-app && npm install --legacy-peer-deps && npm run build && sudo systemctl restart music-app'
+ssh user@host 'cd /path/to/music-du && npm install --legacy-peer-deps && npm run build && sudo systemctl restart music-app'
 ```
 
-systemd should run:
-
-```text
-ExecStart=/usr/bin/node /path/to/music-app/dist/server/node.js
-WorkingDirectory=/path/to/music-app
-Environment=NODE_ENV=production
-# EnvironmentFile=/path/to/music-app/.env
-```
-
-Preserve `data/` across deploys (library DB + caches).
+Point reverse proxy at the Node port; keep `data/` across deploys; load env from a file **outside** git.
 
 ---
 
-## Deploy — Cloudflare Workers (free tier)
+## Deploy — Cloudflare (`music-du`)
 
-**GitHub:** private repo [sonnemusk/Music-Du](https://github.com/sonnemusk/Music-Du)  
-**Worker:** `Music-Du` · **D1:** `Music-Du-Library` · **Domain:** https://music.dubin.cc  
+| Resource | Name |
+|----------|------|
+| GitHub | `sonnemusk/music-du` (private) |
+| Worker | `music-du` |
+| D1 | `music-du-library` |
+| Domain | `music.dubin.cc` |
 
-Push to `main` → GitHub Actions (`.github/workflows/deploy.yml`) runs `npm run build` + `wrangler deploy`.  
-Same secrets as other `*-du` projects:
+Push to `main` → [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) builds and deploys.
 
-| Secret | Notes |
-|--------|--------|
-| `CLOUDFLARE_API_TOKEN` | Reuse the same account token as shortener-du / nav-du / … |
-| `CLOUDFLARE_ACCOUNT_ID` | `6a243c6fffe95b2a146eca678f50b001` |
+**GitHub Actions secrets** (set in repo settings — do not put values in this README):
 
-Worker secret (once, not in GitHub):
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
 
-```bash
-npx wrangler secret put CHKSZ_APIKEY   # upstream gateway key
-```
+Same token/account as your other `*-du` Workers is fine if permissions allow.
 
-**Policy (hard rules):**
+**Worker secrets** (Cloudflare dashboard or `wrangler secret put`, once):
 
-| Topic | Rule |
-|-------|------|
-| Paid products | Not required / not used (no R2, paid KV, Image Resizing) |
-| Audio | Play **resolved remote URL**; `/api/stream` **302 only** — no audio body cache |
-| Covers / charts / lyrics / song **metadata** | Free **Workers Cache API** |
-| Library | Free **D1** **Music-Du-Library** (`MUSIC_DU_DB`); else browser `localStorage` |
-| Naming | All CF resources prefixed **Music-Du-*** |
+- Upstream gateway key, if required
 
-Manual deploy:
+**Policy:** free tier only; audio plays from resolved remote URLs; no audio body on CF; no paid KV/R2 required.
 
-```bash
-npm run build && npx wrangler deploy
-```
-
-Details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md), `wrangler.toml`.
+Manual: `npm run build && npx wrangler deploy`
 
 ---
 
 ## Caching & playback (short)
 
-1. **List appears** → background pre-resolve top N track URLs into browser durable cache  
-2. **Click play** → use cached URL if present (no `/api/song` wait)  
-3. **Play error** (expired CDN) → invalidate → resolve once → stream/redirect fallback  
-4. **Next track** → sticky prediction + prefetch while current song plays  
-
-Audio is **streamed** by the browser; full-file IDB cache is only an optional speedup for favorites.
+1. List ready → background pre-resolve URLs into browser cache  
+2. Click play → use cache; re-resolve only on miss / play error  
+3. Next track → sticky prediction + prefetch  
 
 ---
 
 ## Testing
 
 ```bash
-npm test
-npm run typecheck
-
-# With server running:
+npm test && npm run typecheck
+# server running:
 npm run smoke
 ```
 
@@ -199,11 +153,4 @@ npm run smoke
 
 ## License / usage
 
-Personal project. Upstream music APIs and content rights remain your responsibility; use only with accounts/gateways you are allowed to use.
-
----
-
-## Changelog notes for maintainers
-
-- v2: Full TypeScript rewrite (Hono + React); Python prototype removed from tree  
-- Multi-layout skins, charts, resolve prefetch, CF free-tier worker path  
+Personal project. Upstream music APIs and content rights remain your responsibility.

@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# Create free-tier D1 for Music-Du with a human-readable dashboard name.
-# Default name: Music-Du-Library  (NOT a random slug — easy to find in CF UI)
-# Requires: wrangler login (or CLOUDFLARE_API_TOKEN)
+# Create free-tier D1 for music-du (lowercase name for Cloudflare dashboard).
+# Default: music-du-library
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Always prefix with Music-Du so CF console is scannable
-NAME="${1:-Music-Du-Library}"
-echo "==> Creating D1 database: $NAME (free tier, Music project)"
+NAME="${1:-music-du-library}"
+echo "==> Creating D1 database: $NAME"
 OUT=$(npx wrangler d1 create "$NAME" 2>&1) || true
 echo "$OUT"
 
@@ -17,15 +15,12 @@ if [[ -z "${ID:-}" ]]; then
 fi
 
 if [[ -z "${ID:-}" ]]; then
-  echo ""
-  echo "Could not parse database_id. If the DB already exists:"
-  echo "  npx wrangler d1 list"
-  echo "Look for name: Music-Du-Library"
+  echo "Could not parse database_id. Run: npx wrangler d1 list"
   exit 1
 fi
 
 echo ""
-echo "==> Put this in wrangler.toml (binding name stays readable too):"
+echo "Put into wrangler.toml:"
 cat <<EOF
 
 [[d1_databases]]
@@ -36,10 +31,5 @@ migrations_dir = "migrations"
 EOF
 
 echo ""
-echo "Note: database_id is Cloudflare's internal UUID (required by API)."
-echo "      What you read in the dashboard list is database_name = $NAME"
-echo ""
-echo "==> Applying migrations..."
 npx wrangler d1 migrations apply "$NAME" --remote || npx wrangler d1 execute "$NAME" --remote --file=./migrations/0001_library.sql
-
-echo "Done. npm run build && npx wrangler deploy"
+echo "Done."

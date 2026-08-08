@@ -1,12 +1,11 @@
-# Deploy Music-Du Worker to Cloudflare on push to main.
-# Same pattern as shortener-du / ios-loc-du / sub-du.
+# Deploy worker music-du on push to main (same pattern as shortener-du / ios-loc-du).
 #
-# Required repo secrets:
-#   CLOUDFLARE_API_TOKEN   — same token as other *-du projects (account-scoped)
-#   CLOUDFLARE_ACCOUNT_ID  — 6a243c6fffe95b2a146eca678f50b001
+# Repo secrets (names only — never commit values):
+#   CLOUDFLARE_API_TOKEN
+#   CLOUDFLARE_ACCOUNT_ID
 #
-# Optional (Worker secret, set once via wrangler or dashboard):
-#   CHKSZ_APIKEY — upstream music gateway key
+# Worker secrets (set once in CF / wrangler, not GitHub):
+#   gateway API key as needed by your upstream
 
 name: Deploy to Cloudflare Workers
 
@@ -37,10 +36,10 @@ jobs:
       - name: Install
         run: npm ci || npm install
 
-      - name: Build (client + server types)
+      - name: Build
         run: npm run build
 
-      - name: Deploy Worker (Music-Du)
+      - name: Deploy worker music-du
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

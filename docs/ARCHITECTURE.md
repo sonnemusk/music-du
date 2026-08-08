@@ -78,19 +78,20 @@
 - **Not used**: R2, paid KV, Image Resizing, audio body cache/proxy
 - **Audio**: browser plays remote URL from resolve; stream is redirect-only on CF
 
-## Cloudflare resource naming (Music project)
+## Cloudflare resource naming (music-du)
 
-All dashboard-facing names are prefixed so they are obvious next to other `*-du` apps:
+Use **lowercase kebab-case**, same style as `shortener-du` / `nav-du` / `ios-loc-du`:
 
-| Resource | Name you see in Cloudflare | Notes |
-|----------|----------------------------|--------|
-| Worker | **Music-Du** | `wrangler.toml` `name` |
-| D1 | **Music-Du-Library** | library (favorites / playlist / history) |
-| Binding | `MUSIC_DU_DB` | code: `c.env.MUSIC_DU_DB` |
-| Custom domain | **music.dubin.cc** | routes in `wrangler.toml` |
-| KV | *(none)* | not used for this project |
+| Resource | Name in Cloudflare / GitHub | Notes |
+|----------|-------------------------------|--------|
+| GitHub repo | `music-du` | private |
+| Worker | `music-du` | `wrangler.toml` `name` |
+| D1 | `music-du-library` | favorites / playlist / history |
+| Binding | `MUSIC_DU_DB` | env binding in Worker code |
+| Custom domain | `music.dubin.cc` | routes in `wrangler.toml` |
+| KV | *(none)* | not used |
 
-`database_id` in `wrangler.toml` is Cloudflare’s internal UUID — required by the API, not a product “name”. Always identify resources by **Music-Du-*** titles in the UI.
+Do not put API tokens, account IDs, or gateway keys in docs or commits. Use GitHub Actions secrets / `wrangler secret` / local `.env` only.
 
 ## Data directories (Node)
 
