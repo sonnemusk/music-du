@@ -1733,6 +1733,8 @@ export function themeToCssVars(t: ThemeTokens): Record<string, string> {
     "--font": t.font,
     "--display-font": t.displayFont || t.font,
     "--mono-font": t.monoFont || t.font,
+    // pill = rounded controls (search/tabs still 999 via CSS); panels must NOT be 999
+    // or side/imm cards become giant soap-bubbles (樱花/糖果 etc.).
     "--radius":
       t.radius === "sharp"
         ? "2px"
@@ -1740,7 +1742,7 @@ export function themeToCssVars(t: ThemeTokens): Record<string, string> {
           ? "12px"
           : t.radius === "round"
             ? "18px"
-            : "999px",
+            : "16px",
     "--radius-sm":
       t.radius === "sharp"
         ? "0px"
@@ -1748,7 +1750,7 @@ export function themeToCssVars(t: ThemeTokens): Record<string, string> {
           ? "8px"
           : t.radius === "round"
             ? "12px"
-            : "999px",
+            : "12px",
     "--radius-lg":
       t.radius === "sharp"
         ? "4px"
@@ -1756,7 +1758,7 @@ export function themeToCssVars(t: ThemeTokens): Record<string, string> {
           ? "20px"
           : t.radius === "round"
             ? "28px"
-            : "999px",
+            : "24px",
     "--gap": t.density === "tight" ? "6px" : "10px",
     "--pad": t.density === "tight" ? "8px" : "12px",
     "--wallpaper": t.wallpaper || t.bg,
