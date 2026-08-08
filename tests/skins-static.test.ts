@@ -15,15 +15,20 @@ describe("theme catalog", () => {
     const ids = new Set(THEME_CATALOG.map((t) => t.id));
     expect(ids.size).toBe(THEME_CATALOG.length);
     expect(ids.has("studio")).toBe(false);
-    expect(ids.has("layout-mosaic")).toBe(true);
+    expect(ids.has("layout-mosaic")).toBe(false);
+    expect(ids.has("bento")).toBe(true); // former layout-mosaic palette
     expect(DEFAULT_SKIN).toBe("aurora");
   });
 
-  it("exposes 20 distinct layouts and every theme uses one", () => {
-    expect(LAYOUT_IDS.length).toBeGreaterThanOrEqual(20);
+  it("exposes active layouts and every theme uses one", () => {
+    expect(LAYOUT_IDS.length).toBeGreaterThanOrEqual(4);
     const used = new Set(THEME_CATALOG.map((t) => t.layout));
     for (const id of LAYOUT_IDS) {
       expect(used.has(id)).toBe(true);
+    }
+    // no orphan layout-* showcase skins
+    for (const t of THEME_CATALOG) {
+      expect(t.id.startsWith("layout-")).toBe(false);
     }
   });
 

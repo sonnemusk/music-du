@@ -3,23 +3,6 @@ import { getTheme, themeToCssVars, type SkinId } from "./theme-catalog";
 import { CompactLayout } from "./layouts/CompactLayout";
 import { DockLayout } from "./layouts/DockLayout";
 import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
-import {
-  CardLayout,
-  CinematicLayout,
-  ConsoleLayout,
-  FocusLayout,
-  GridLayout,
-  LibraryLayout,
-  MagazineLayout,
-  MosaicLayout,
-  PosterLayout,
-  RailLayout,
-  SheetLayout,
-  StackLayout,
-  StripLayout,
-  TheaterLayout,
-  ZenLayout,
-} from "./layouts/MoreLayouts";
 import { SideLayout } from "./layouts/SideLayout";
 import { SplitLayout } from "./layouts/SplitLayout";
 import "./layouts/layouts.css";
@@ -46,51 +29,6 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       break;
     case "compact":
       layout = <CompactLayout brand={brand} />;
-      break;
-    case "stack":
-      layout = <StackLayout brand={brand} />;
-      break;
-    case "theater":
-      layout = <TheaterLayout brand={brand} />;
-      break;
-    case "rail":
-      layout = <RailLayout brand={brand} />;
-      break;
-    case "magazine":
-      layout = <MagazineLayout brand={brand} />;
-      break;
-    case "card":
-      layout = <CardLayout brand={brand} />;
-      break;
-    case "grid":
-      layout = <GridLayout brand={brand} />;
-      break;
-    case "strip":
-      layout = <StripLayout brand={brand} />;
-      break;
-    case "poster":
-      layout = <PosterLayout brand={brand} />;
-      break;
-    case "focus":
-      layout = <FocusLayout brand={brand} />;
-      break;
-    case "library":
-      layout = <LibraryLayout brand={brand} />;
-      break;
-    case "cinematic":
-      layout = <CinematicLayout brand={brand} />;
-      break;
-    case "zen":
-      layout = <ZenLayout brand={brand} />;
-      break;
-    case "console":
-      layout = <ConsoleLayout brand={brand} />;
-      break;
-    case "sheet":
-      layout = <SheetLayout brand={brand} />;
-      break;
-    case "mosaic":
-      layout = <MosaicLayout brand={brand} />;
       break;
     default:
       layout = <SideLayout brand={brand} />;
