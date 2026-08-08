@@ -1543,26 +1543,18 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   setQualityLevel: (level) => {
+    const lv = String(level || "").trim();
+    if (!lv) return;
     const choices = get().availableQualities;
-    const idx = choices.findIndex((c) => c.level === level);
-    if (idx >= 0) {
-      get().setPreferredRank(Math.min(2, idx) as QualityRank);
-      return;
-    }
-    // Unknown level — still try direct play
-    savePreferredRank(0);
-    set({ preferredRank: 0 });
+    const idx = choices.findIndex((c) => c.level === lv);
+    const rank = (idx >= 0 ? Math.min(2, idx) : 0) as QualityRank;
+    savePreferredRank(rank);
+    // Pin exact level so playTrack resolves this tier (not rank remap race)
+    set({ preferredRank: rank, preferredQuality: lv });
+    const lab = labelForLevel(lv);
+    get().showToast(`音质：${lab.label}`);
     const cur = get().curTrack;
-    if (cur) {
-      // temporarily stash as only choice so resolve uses it
-      const lab = labelForLevel(level);
-      set({
-        availableQualities: [
-          { level, br: 0, size: 0, short: lab.short, label: lab.label },
-        ],
-      });
-      void get().playTrack(cur, { from: get().queueSource });
-    }
+    if (cur) void get().playTrack(cur, { from: get().queueSource });
   },
 
   cycleMode: () => {

@@ -71,30 +71,21 @@ export function NowPlaying({
   const curTrack = usePlayer((s) => s.curTrack);
   const quality = usePlayer((s) => s.quality);
   const preferredQuality = usePlayer((s) => s.preferredQuality);
-  const availableQualities = usePlayer((s) => s.availableQualities);
-  const cyclePreferredQuality = usePlayer((s) => s.cyclePreferredQuality);
   const playSource = usePlayer((s) => s.playSource);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
 
   const showBadges = !hideBadges;
+  // Display-only chip — switching lives on the transport QualityPicker only
   const qShow = quality && quality !== "…" ? quality : preferredQuality;
-  // Prefer short Chinese chip (母带) over raw JYMASTER which blows badge width
   const qLabel = qualityShortLabel(qShow) || String(qShow || "").toUpperCase();
   const badges = showBadges ? (
     <div className="np-badges">
       {loadingPlay ? <span className="badge">切换中…</span> : null}
-      <button
-        type="button"
-        className="badge badge-btn"
-        onClick={cyclePreferredQuality}
-        title={
-          availableQualities.length
-            ? `本曲可选 ${availableQualities.map((c) => c.short).join(" / ")}（点击切换）`
-            : "优先最高可用音质"
-        }
-      >
-        {qLabel}
-      </button>
+      {qLabel ? (
+        <span className="badge" title="当前音质（在下方「母带」按钮切换）">
+          {qLabel}
+        </span>
+      ) : null}
       {playSource ? (
         <span className="badge">{playSource === "remote" ? "直链" : "代理"}</span>
       ) : null}
