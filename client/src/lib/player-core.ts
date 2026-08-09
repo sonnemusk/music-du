@@ -42,7 +42,8 @@ export function nextQueueIndex(
   if (!len || len < 1) return -1;
   if (mode === "single" && delta === 1 && cur >= 0) return cur;
   if (mode === "shuffle") {
-    // Direction-aware: forward uses random; back steps list order
+    // Forward: random. Back: caller should use shuffle play-history stack;
+    // this fallback only applies when history is empty.
     if (delta < 0) {
       if (cur < 0) return 0;
       return (cur + delta + len) % len;
@@ -51,6 +52,30 @@ export function nextQueueIndex(
   }
   if (cur < 0) return 0;
   return (cur + delta + len) % len;
+}
+
+const SHUFFLE_HISTORY_MAX = 80;
+
+/** Push a played track id (no consecutive duplicates). */
+export function pushShuffleHistory(hist: string[], id: string | number): string[] {
+  const s = String(id ?? "");
+  if (!s) return hist || [];
+  const h = hist || [];
+  if (h.length && h[h.length - 1] === s) return h;
+  const next = [...h, s];
+  return next.length > SHUFFLE_HISTORY_MAX
+    ? next.slice(next.length - SHUFFLE_HISTORY_MAX)
+    : next;
+}
+
+/** Pop most recently played id (for 上一首 in shuffle). */
+export function popShuffleHistory(hist: string[]): {
+  id: string | null;
+  rest: string[];
+} {
+  const h = hist || [];
+  if (!h.length) return { id: null, rest: [] };
+  return { id: h[h.length - 1]!, rest: h.slice(0, -1) };
 }
 
 export function parseLyric(lrc: string, tlrc = ""): LyricLine[] {

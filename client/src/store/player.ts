@@ -42,7 +42,9 @@ import {
   nextQueueIndex,
   parseLyric,
   playModeLabel,
+  popShuffleHistory,
   predictNextIndex,
+  pushShuffleHistory,
 } from "../lib/player-core";
 import {
   cycleRank,
@@ -220,7 +222,11 @@ export function hardStopAudio(audio: HTMLAudioElement | null) {
   }
 }
 
-type PlayOpts = { from?: QueueSource | PanelTab };
+type PlayOpts = {
+  from?: QueueSource | PanelTab;
+  /** When true, do not push previous track onto shuffle history (prev navigation). */
+  skipShuffleHistory?: boolean;
+};
 
 type State = {
   skin: SkinId;
@@ -273,6 +279,11 @@ type State = {
   muted: boolean;
   /** Sticky next-track id (esp. shuffle) so prefetch matches the real next() */
   predictedNextId: string | null;
+  /**
+   * Shuffle play history (track ids, oldest→newest).
+   * 下一首 still random; 上一首 pops here so you hear the real previous song.
+   */
+  shuffleHistory: string[];
   /**
    * Bump to ask TrackList to scroll the playing row into view.
    * `id` = track id; `nonce` forces re-scroll even if same id.
@@ -450,6 +461,7 @@ export const usePlayer = create<State>((set, get) => ({
   volume: typeof window !== "undefined" ? loadVolume() : 1,
   muted: typeof window !== "undefined" ? loadMuted() : false,
   predictedNextId: null,
+  shuffleHistory: [],
   locateRequest: null,
 
   setAudio: (el) => {
@@ -975,6 +987,18 @@ export const usePlayer = create<State>((set, get) => ({
     const curId = get().curTrack?.id;
     if (get().loadingPlay && curId != null && String(curId) === String(t.id)) {
       return;
+    }
+
+    // Shuffle: remember what we leave so 上一首 can come back (not another random)
+    if (
+      !opts?.skipShuffleHistory &&
+      get().playMode === "shuffle" &&
+      curId != null &&
+      String(curId) !== String(t.id)
+    ) {
+      set({
+        shuffleHistory: pushShuffleHistory(get().shuffleHistory, curId),
+      });
     }
 
     // 1) Instant cut: kill previous audio BEFORE any network
@@ -1646,6 +1670,29 @@ export const usePlayer = create<State>((set, get) => ({
       ? q.findIndex((x) => String(x.id) === String(get().curTrack!.id))
       : -1;
 
+    // Shuffle 上一首: real previous song from history stack (not another random)
+    if (delta < 0 && get().playMode === "shuffle") {
+      const { id: prevId, rest } = popShuffleHistory(get().shuffleHistory);
+      if (prevId) {
+        const hit = q.find((x) => String(x.id) === String(prevId));
+        if (hit) {
+          set({ shuffleHistory: rest, predictedNextId: null });
+          void get().playTrack(hit, {
+            from: get().queueSource,
+            skipShuffleHistory: true,
+          });
+          return;
+        }
+        // id no longer in queue — drop and try older
+        set({ shuffleHistory: rest });
+        if (rest.length) {
+          get().next(-1);
+          return;
+        }
+      }
+      // empty history: fall through to list-order previous
+    }
+
     // Prefer sticky predicted next (matches what we prefetched)
     if (delta === 1 && get().playMode !== "single") {
       const pred = get().predictedNextId;
@@ -1653,6 +1700,7 @@ export const usePlayer = create<State>((set, get) => ({
         const hit = q.find((x) => String(x.id) === String(pred));
         if (hit) {
           set({ predictedNextId: null });
+          // playTrack will push current onto shuffle history
           void get().playTrack(hit, { from: get().queueSource });
           return;
         }
@@ -1879,7 +1927,12 @@ export const usePlayer = create<State>((set, get) => ({
     } catch {
       /* */
     }
-    set({ playMode: m, predictedNextId: null });
+    set({
+      playMode: m,
+      predictedNextId: null,
+      // History only meaningful in shuffle
+      shuffleHistory: m === "shuffle" ? get().shuffleHistory : [],
+    });
     get().showToast(playModeLabel(m));
     // Mode change → re-pick next and re-warm (gated)
     if (get().curTrack) {

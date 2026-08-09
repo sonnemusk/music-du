@@ -12,7 +12,9 @@ import {
   nextQueueIndex,
   parseLyric,
   playModeLabel,
+  popShuffleHistory,
   predictNextIndex,
+  pushShuffleHistory,
   withCoverSize,
 } from "../client/src/lib/player-core.js";
 
@@ -28,6 +30,21 @@ describe("player-core", () => {
     expect(nextQueueIndex(0, 5, "list", 1)).toBe(1);
     expect(nextQueueIndex(0, 5, "list", -1)).toBe(4);
     expect(nextQueueIndex(2, 5, "single", 1)).toBe(2);
+  });
+
+  it("shuffle history push/pop for 上一首", () => {
+    let h: string[] = [];
+    h = pushShuffleHistory(h, "a");
+    h = pushShuffleHistory(h, "b");
+    h = pushShuffleHistory(h, "b"); // no consecutive dup
+    expect(h).toEqual(["a", "b"]);
+    const p1 = popShuffleHistory(h);
+    expect(p1.id).toBe("b");
+    expect(p1.rest).toEqual(["a"]);
+    const p2 = popShuffleHistory(p1.rest);
+    expect(p2.id).toBe("a");
+    expect(p2.rest).toEqual([]);
+    expect(popShuffleHistory([]).id).toBeNull();
   });
 
   it("predicts next for list / single", () => {
