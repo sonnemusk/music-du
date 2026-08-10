@@ -161,18 +161,23 @@
   min-width: 0;
 }
 .now-playing.lg .np-cover {
-  width: min(168px, 42vw);
-  height: min(168px, 42vw);
+  /* Never wider than player column (old 42vw broke side layout on phones) */
+  width: min(168px, 100%);
+  max-width: 100%;
+  aspect-ratio: 1;
+  height: auto;
 }
 .np-cover {
   width: 108px;
   height: 108px;
+  max-width: 100%;
   display: grid;
   place-items: center;
   overflow: hidden;
   flex-shrink: 0;
   font-size: 36px;
   opacity: 0.5;
+  box-sizing: border-box;
 }
 .np-cover.has {
   opacity: 1;
@@ -918,12 +923,21 @@ button.badge,
   /* visible: seek tip floats above bar; overflow:auto was clipping it under 沉浸/♥ */
   overflow: visible;
   min-height: 0;
+  min-width: 0;
   align-self: stretch;
+  box-sizing: border-box;
+}
+.side-player .now-playing {
+  max-width: 100%;
+  min-width: 0;
 }
 .side-player .transport {
   margin-top: 4px;
+  width: 100%;
+  max-width: 100%;
   /* tip floats above seek bar; don't clip it inside the player column */
   overflow: visible;
+  box-sizing: border-box;
 }
 .imm-now .transport {
   overflow: visible;
@@ -934,6 +948,35 @@ button.badge,
   overflow: auto;
   padding: 12px 14px 16px;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Phone / narrow: stack player above list (side-by-side was ~34vw + 42vw cover overflow) */
+@media (max-width: 860px) {
+  .side-main {
+    flex-direction: column;
+    padding: 0 12px 12px;
+    gap: 0;
+    overflow: hidden;
+  }
+  .side-player {
+    width: 100%;
+    max-width: none;
+    flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: flex-start;
+    padding: 14px 14px 12px;
+    /* Contain cover; seek tip still ok above transport within padded card */
+    overflow: hidden;
+  }
+  .side-player .now-playing.lg .np-cover {
+    width: min(140px, 38vw);
+    max-width: min(140px, 100%);
+  }
+  .side-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
 }
 
 /* ========== Immersive ========== */

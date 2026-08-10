@@ -281,7 +281,12 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--line);
   }
+  /* Stacked: full border on both; top card keeps bottom join soft */
+  .skin-host .side-player {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
   .skin-host .side-panel {
     border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   }
 }
