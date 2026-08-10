@@ -74,9 +74,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env demo
-      - name: Smoke demo (workers.dev; custom domain music.du.dev is optional)
+      - name: Smoke demo (public read-only)
         env:
-          # workers_dev=true on env.demo; bind music.du.dev in CF after first deploy
-          SMOKE_BASE: https://music-du-demo.sonnemusk.workers.dev
+          # Custom domain (preferred); workers.dev is fallback if DNS not ready
+          SMOKE_BASE: https://music.du.dev
           SMOKE_DEMO: "1"
         run: bash scripts/smoke-prod.sh

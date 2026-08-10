@@ -45,14 +45,29 @@ print('search ok n=', len(d['data']))
 "
 
 echo "==> song resolve"
-curl_json "/api/song/1901371647?level=standard" | python3 -c "
+# Brief retries — brand-new Worker / workers.dev can 404 for a few seconds
+song_ok=0
+for i in 1 2 3 4 5; do
+  if body=$(curl -fsS "${AUTH_HEADERS[@]}" "$BASE/api/song/1901371647?level=standard" 2>/dev/null); then
+    if echo "$body" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 assert d.get('ok') is True, d
 url = (d.get('data') or {}).get('url') or ''
 assert url.startswith('http'), d
 print('song ok level=', (d.get('data') or {}).get('level'))
-"
+"; then
+      song_ok=1
+      break
+    fi
+  fi
+  sleep 2
+done
+if [[ "$song_ok" != "1" ]]; then
+  echo "song resolve failed after retries"
+  curl -sS "${AUTH_HEADERS[@]}" "$BASE/api/song/1901371647?level=standard" | head -c 400 || true
+  exit 1
+fi
 
 if [[ -n "$DEMO" ]]; then
   echo "==> demo library GET (no token)"
