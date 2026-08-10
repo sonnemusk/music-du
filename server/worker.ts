@@ -49,6 +49,7 @@ import {
   pruneResolveCache,
   putResolveCache,
 } from "./resolve-cache.js";
+import { isLibraryReadonly } from "./site-mode.js";
 
 export type Env = {
   CHKSZ_APIKEY?: string;
@@ -60,8 +61,14 @@ export type Env = {
   /**
    * Shared secret for /api/library only (SPA X-Music-Token).
    * /favs + /export are gated by Cloudflare Access (not this token).
+   * Demo (LIBRARY_READONLY): token not required for GET library.
    */
   MUSIC_ACCESS_TOKEN?: string;
+  /**
+   * Demo / public share: library is read-only; no import/export; no token on GET.
+   * Set "true" on music-du-demo only — never on private music-du.
+   */
+  LIBRARY_READONLY?: string;
   ASSETS: Fetcher;
   /** Free D1 library — dashboard name: music-du-library (binding MUSIC_DU_DB). */
   MUSIC_DU_DB?: D1Database;
@@ -297,11 +304,29 @@ async function deleteSid(
   return { conflict: false as const, data: await loadLib(db) };
 }
 
-/** Library / export gate — requires MUSIC_ACCESS_TOKEN when configured. */
+function envReadonly(env: Env): boolean {
+  return isLibraryReadonly(env.LIBRARY_READONLY);
+}
+
+/** JSON 403 for demo write / export / import. */
+function readOnlyForbidden(message = "read-only demo"): Response {
+  return new Response(
+    JSON.stringify({ ok: false, error: message, readOnly: true }),
+    { status: 403, headers: { "Content-Type": "application/json;charset=utf-8" } }
+  );
+}
+
+/**
+ * Library gate for private site: MUSIC_ACCESS_TOKEN when configured.
+ * Demo (LIBRARY_READONLY): public GET library — no token.
+ */
 function libraryUnauthorized(c: {
   env: Env;
   req: { header: (n: string) => string | undefined; url: string };
 }): Response | null {
+  // Public demo: library is open read (writes blocked elsewhere)
+  if (envReadonly(c.env)) return null;
+
   const expected = (c.env.MUSIC_ACCESS_TOKEN || "").trim();
   if (!expected) {
     // Fail closed on production hostnames without token configured
@@ -347,8 +372,9 @@ function withKey(env: Env) {
 
 const app = new Hono<{ Bindings: Env }>();
 
-app.get("/api/health", (c) =>
-  c.json({
+app.get("/api/health", (c) => {
+  const readOnly = envReadonly(c.env);
+  return c.json({
     ok: true,
     service: "music",
     provider: "chksz",
@@ -360,8 +386,10 @@ app.get("/api/health", (c) =>
     api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
     fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
     has_d1: Boolean(c.env.MUSIC_DU_DB),
-    library_auth: Boolean(c.env.MUSIC_ACCESS_TOKEN),
-    project: "music-du",
+    // Demo: no library token; private: token when configured
+    library_auth: readOnly ? false : Boolean(c.env.MUSIC_ACCESS_TOKEN),
+    readOnly,
+    project: readOnly ? "music-du-demo" : "music-du",
     /** Free-tier contract for operators */
     policy: {
       paid_services: false,
@@ -369,13 +397,19 @@ app.get("/api/health", (c) =>
       audio_byte_proxy: false,
       audio_play: "remote-url-direct",
       cover_chart_cache: "workers-cache-api-free",
-      library: c.env.MUSIC_DU_DB ? "music-du-library (d1 free)" : "browser-localStorage",
-      worker_name: "music-du",
+      library: c.env.MUSIC_DU_DB
+        ? readOnly
+          ? "music-du-library (d1 free, read-only demo)"
+          : "music-du-library (d1 free)"
+        : "browser-localStorage",
+      worker_name: readOnly ? "music-du-demo" : "music-du",
       d1_name: "music-du-library",
+      library_readonly: readOnly,
+      export_import: readOnly ? false : true,
     },
     version: 2,
-  })
-);
+  });
+});
 
 app.get("/api/search", async (c) => {
   const q = c.req.query("q") || c.req.query("keyword") || "";
@@ -799,21 +833,30 @@ app.get("/api/library", async (c) => {
         ok: false,
         error: "D1 not configured — browser localStorage only (free)",
         localOnly: true,
+        readOnly: envReadonly(c.env),
       },
       503
     );
   }
-  return c.json({ ok: true, data: await loadLib(c.env.MUSIC_DU_DB) });
+  return c.json({
+    ok: true,
+    data: await loadLib(c.env.MUSIC_DU_DB),
+    readOnly: envReadonly(c.env),
+  });
 });
 
 /**
  * Short URL: open /favs or /export to download favorites JSON.
- * No app token — protect with Cloudflare Access at the edge (see docs/ACCESS.md).
+ * Private: Cloudflare Access at the edge (see docs/ACCESS.md).
+ * Demo (LIBRARY_READONLY): permanently disabled.
  */
 async function favoritesExportResponse(c: {
   env: Env;
   req: { header: (n: string) => string | undefined; url: string };
 }) {
+  if (envReadonly(c.env)) {
+    return readOnlyForbidden("export disabled on demo");
+  }
   if (!c.env.MUSIC_DU_DB) {
     return new Response(
       JSON.stringify({
@@ -947,12 +990,26 @@ function favoritesImportHtml(
 </html>`;
 }
 
-app.get("/import", (c) => c.html(favoritesImportHtml()));
+app.get("/import", (c) => {
+  if (envReadonly(c.env)) {
+    return c.html(
+      favoritesImportHtml("Demo 只读：不允许导入", { ok: false }),
+      403
+    );
+  }
+  return c.html(favoritesImportHtml());
+});
 
 /** Cap name-match rows per request (free-tier rate limits). */
 const IMPORT_NAME_MATCH_CAP = 80;
 
 app.post("/import", async (c) => {
+  if (envReadonly(c.env)) {
+    return c.html(
+      favoritesImportHtml("Demo 只读：不允许导入", { ok: false }),
+      403
+    );
+  }
   if (!c.env.MUSIC_DU_DB) {
     return c.html(favoritesImportHtml("D1 未配置，无法导入"), 503);
   }
@@ -1123,6 +1180,7 @@ app.post("/import", async (c) => {
 });
 
 app.put("/api/library", async (c) => {
+  if (envReadonly(c.env)) return readOnlyForbidden();
   const denied = libraryUnauthorized(c);
   if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
@@ -1193,6 +1251,7 @@ app.put("/api/library", async (c) => {
 });
 
 app.delete("/api/library/:listType/:sid", async (c) => {
+  if (envReadonly(c.env)) return readOnlyForbidden();
   const denied = libraryUnauthorized(c);
   if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {

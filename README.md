@@ -81,7 +81,8 @@ Details: [docs/ACCESS.md](./docs/ACCESS.md) · [docs/ARCHITECTURE.md](./docs/ARC
 | `npm test` / `typecheck` | Tests / TypeScript |
 | `npm run smoke` | Live HTTP smoke (server up) |
 | `npm run setup:d1` | Create free D1 `music-du-library` |
-| `npm run deploy:cf` | `build` + `wrangler deploy` |
+| `npm run deploy:cf` | `build` + `wrangler deploy` (private `music-du`) |
+| `npm run deploy:cf:demo` | `build` + `wrangler deploy --env demo` (public `music-du-demo`) |
 
 ---
 
@@ -113,31 +114,35 @@ Point reverse proxy at the Node port; keep `data/` across deploys; load env from
 
 ---
 
-## Deploy — Cloudflare (`music-du`)
+## Deploy — Cloudflare
 
-| Resource | Name |
-|----------|------|
-| GitHub | `sonnemusk/music-du` (private) |
-| Worker | `music-du` |
-| D1 | `music-du-library` |
-| Domain | `music.dubin.cc` |
+| Resource | Private | Demo |
+|----------|---------|------|
+| GitHub | `sonnemusk/music-du` | same |
+| Worker | `music-du` | `music-du-demo` |
+| D1 | `music-du-library` (rw) | same D1, Worker **read-only** |
+| Domain | `music.dubin.cc` (+ `.one` / `.vip`) | `music.du.dev` |
+| Access | Yes | **No** |
+| Env | — | `LIBRARY_READONLY=true` |
 
-Push to `main` → [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) builds and deploys.
+Push to `main` → [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) tests, deploys private then demo.
 
-**GitHub Actions secrets** (set in repo settings — do not put values in this README):
+**GitHub Actions secrets** (repo settings — do not put values in this README):
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-Same token/account as your other `*-du` Workers is fine if permissions allow.
+**Demo first-time** (once; same ChKSz keys as private, **no** `MUSIC_ACCESS_TOKEN`):
 
-**Worker secrets** (Cloudflare dashboard or `wrangler secret put`, once):
-
-- Upstream gateway key, if required
+```bash
+npx wrangler secret put CHKSZ_APIKEY --env demo
+npx wrangler secret put CHKSZ_FALLBACK_APIKEYS --env demo
+# CF dashboard: Custom Domain music.du.dev → music-du-demo; do not add Access
+```
 
 **Policy:** free tier only; audio plays from resolved remote URLs; no audio body on CF; no paid KV/R2 required.
 
-Manual: `npm run build && npx wrangler deploy`
+Manual: `npm run deploy:cf` · `npm run deploy:cf:demo`
 
 ---
 

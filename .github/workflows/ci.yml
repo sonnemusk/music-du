@@ -49,17 +49,34 @@ jobs:
           # baked into SPA for library X-Music-Token (same value as Worker secret)
           VITE_MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
         run: npm run build
-      - name: Deploy to Cloudflare Workers
+      - name: Deploy private Worker (music-du)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-      - name: Smoke production after deploy
+      - name: Smoke private production after deploy
         env:
           SMOKE_BASE: https://music.dubin.cc
           MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
           # Cloudflare Access service token (free Zero Trust) — bypasses login for CI
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: bash scripts/smoke-prod.sh
+      # Demo SPA must NOT bake MUSIC_ACCESS_TOKEN (public site)
+      - name: Build SPA without library token (demo)
+        env:
+          VITE_MUSIC_ACCESS_TOKEN: ""
+        run: npm run build
+      - name: Deploy demo Worker (music-du-demo, read-only)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env demo
+      - name: Smoke demo (workers.dev; custom domain music.du.dev is optional)
+        env:
+          # workers_dev=true on env.demo; bind music.du.dev in CF after first deploy
+          SMOKE_BASE: https://music-du-demo.sonnemusk.workers.dev
+          SMOKE_DEMO: "1"
         run: bash scripts/smoke-prod.sh

@@ -68,6 +68,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   const addToPlaylist = usePlayer((s) => s.addToPlaylist);
   const removeFromPlaylist = usePlayer((s) => s.removeFromPlaylist);
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
+  const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   /** Track previous mode so we detect entering 喜欢 (including first mount). */
   const prevModeRef = useRef<string | null>(null);
@@ -256,7 +257,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
               </div>
             </div>
             <div className="track-acts" onClick={(e) => e.stopPropagation()}>
-              {mode === "playlist" && (
+              {!libraryReadOnly && mode === "playlist" && (
                 <button
                   type="button"
                   className="icon-btn danger"
@@ -266,7 +267,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   ✕
                 </button>
               )}
-              {mode === "favorites" && (
+              {!libraryReadOnly && mode === "favorites" && (
                 <button
                   type="button"
                   className="icon-btn danger"
@@ -276,7 +277,12 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   ♥
                 </button>
               )}
-              {mode === "history" && (
+              {libraryReadOnly && mode === "favorites" && isFavorite(t.id) ? (
+                <span className="icon-btn" title="已收藏（只读）" aria-hidden="true">
+                  ♥
+                </span>
+              ) : null}
+              {!libraryReadOnly && mode === "history" && (
                 <>
                   <button
                     type="button"
@@ -296,7 +302,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   </button>
                 </>
               )}
-              {(mode === "search" || mode === "charts") && (
+              {!libraryReadOnly && (mode === "search" || mode === "charts") && (
                 <>
                   <button
                     type="button"

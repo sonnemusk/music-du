@@ -4,6 +4,29 @@
   color-scheme: dark;
 }
 
+/* Public demo (LIBRARY_READONLY) */
+.demo-readonly-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  padding: calc(6px + var(--safe-t)) 12px 6px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1e1b4b;
+  background: linear-gradient(90deg, #c4b5fd, #a78bfa 40%, #fcd34d);
+  box-shadow: 0 4px 16px #0005;
+  pointer-events: none;
+}
+
+.app-shell[data-readonly="1"] {
+  /* leave room for banner under status/notch */
+  --demo-banner-h: calc(28px + var(--safe-t));
+}
+
 *,
 *::before,
 *::after {

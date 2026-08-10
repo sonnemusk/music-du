@@ -3,7 +3,21 @@
 Whole site + export are protected at the **edge** with Cloudflare Access  
 (no paid products — free Zero Trust seats / Access policies).
 
-## What is protected
+## Private vs Demo
+
+| | Private (`music-du`) | Demo (`music-du-demo`) |
+|--|--|--|
+| Domains | `music.dubin.cc` / `.one` / `.vip` | `music.du.dev` |
+| Access | **Yes** (`music-site`) | **No** — public |
+| Library | Read/write + `MUSIC_ACCESS_TOKEN` | **Read-only**, **no** app token |
+| `/favs` `/export` `/import` | Access-gated | **403** always |
+| D1 | `music-du-library` | Same D1 (GET only; writes blocked in Worker) |
+| Env | (default) | `LIBRARY_READONLY=true` |
+
+**Never** put the Demo hostname into the private Access app.  
+**Never** set `LIBRARY_READONLY` on the private Worker.
+
+## What is protected (private only)
 
 | Resource | How |
 |----------|-----|

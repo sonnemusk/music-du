@@ -40,3 +40,33 @@ migrations_dir = "migrations"
 #   music.dubin.cc  ·  music.dubin.one  ·  music.dubin.vip
 # Debug: https://music-du.sonnemusk.workers.dev
 # Free tier: Cache API for covers/meta; no R2/paid KV; no audio body on CF.
+
+# ── Public demo (read-only library) ──────────────────────────────────────────
+# Deploy: npm run deploy:cf:demo
+# Domain: music.du.dev (bind Custom Domain in CF → music-du-demo; NO Access)
+# Same D1 as private (read via GET); all writes /favs /export /import → 403
+# Secrets: copy CHKSZ_* from music-du (no MUSIC_ACCESS_TOKEN on demo)
+[env.demo]
+name = "music-du-demo"
+workers_dev = true
+preview_urls = false
+
+[env.demo.observability]
+enabled = true
+head_sampling_rate = 1
+
+[env.demo.vars]
+CHKSZ_API_BASE = "https://api.chksz.top"
+CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
+LIBRARY_READONLY = "true"
+
+[env.demo.assets]
+directory = "./dist/client"
+binding = "ASSETS"
+run_worker_first = true
+
+[[env.demo.d1_databases]]
+binding = "MUSIC_DU_DB"
+database_name = "music-du-library"
+database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
+migrations_dir = "migrations"

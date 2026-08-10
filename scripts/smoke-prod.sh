@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Post-deploy smoke against production (or SMOKE_BASE).
 # Whole site may sit behind Cloudflare Access — pass service token headers when set.
+# SMOKE_DEMO=1 → public read-only demo (no Access, no export, library open GET).
 set -euo pipefail
 BASE="${SMOKE_BASE:-https://music.dubin.cc}"
 UA="music-du-smoke/1.0"
+DEMO="${SMOKE_DEMO:-}"
 
 AUTH_HEADERS=(-A "$UA")
-if [[ -n "${CF_ACCESS_CLIENT_ID:-}" && -n "${CF_ACCESS_CLIENT_SECRET:-}" ]]; then
+if [[ -z "$DEMO" && -n "${CF_ACCESS_CLIENT_ID:-}" && -n "${CF_ACCESS_CLIENT_SECRET:-}" ]]; then
   AUTH_HEADERS+=(
     -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}"
     -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}"
@@ -21,11 +23,16 @@ curl_json() {
 
 echo "==> health $BASE/api/health"
 curl_json "/api/health" | python3 -c "
-import sys, json
+import sys, json, os
 d = json.load(sys.stdin)
 assert d.get('ok') is True, d
 assert d.get('service') == 'music', d
-print('health ok', 'library_auth=', d.get('library_auth'))
+demo = os.environ.get('SMOKE_DEMO')
+if demo:
+    assert d.get('readOnly') is True, d
+    print('health ok DEMO readOnly project=', d.get('project'))
+else:
+    print('health ok', 'library_auth=', d.get('library_auth'))
 "
 
 echo "==> search"
@@ -46,6 +53,32 @@ url = (d.get('data') or {}).get('url') or ''
 assert url.startswith('http'), d
 print('song ok level=', (d.get('data') or {}).get('level'))
 "
+
+if [[ -n "$DEMO" ]]; then
+  echo "==> demo library GET (no token)"
+  curl_json "/api/library" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+assert d.get('ok') is True, d
+assert d.get('readOnly') is True, d
+fav = (d.get('data') or {}).get('favorites') or []
+print('library ok fav=', len(fav), 'revision=', (d.get('data') or {}).get('revision'))
+assert len(fav) >= 1, 'favorites empty on demo — check D1 binding'
+"
+  echo "==> demo favs must be forbidden"
+  code=$(curl -sS -A "$UA" -o /tmp/smoke-favs.body -w '%{http_code}' "$BASE/favs" || true)
+  echo "favs HTTP $code"
+  [[ "$code" == "403" ]] || { echo "expected favs 403 on demo"; head -c 200 /tmp/smoke-favs.body; exit 1; }
+  echo "==> demo PUT library must be forbidden"
+  code=$(curl -sS -A "$UA" -o /tmp/smoke-put.body -w '%{http_code}' \
+    -X PUT -H 'Content-Type: application/json' \
+    -d '{"favorites":[],"playlist":[],"history":[],"revision":0}' \
+    "$BASE/api/library" || true)
+  echo "PUT library HTTP $code"
+  [[ "$code" == "403" ]] || { echo "expected PUT 403 on demo"; head -c 200 /tmp/smoke-put.body; exit 1; }
+  echo "smoke-prod DEMO OK"
+  exit 0
+fi
 
 echo "==> library (token when configured)"
 if [[ -n "${MUSIC_ACCESS_TOKEN:-}" ]]; then

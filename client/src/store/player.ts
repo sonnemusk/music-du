@@ -288,6 +288,11 @@ type State = {
   curIdx: number;
   /** D1 library optimistic concurrency revision */
   libraryRevision: number;
+  /**
+   * Demo / public share: library is server read-only.
+   * No D1 writes, import, or export; skin/quality still localStorage.
+   */
+  libraryReadOnly: boolean;
   playMode: PlayMode;
   playing: boolean;
   loadingPlay: boolean;
@@ -476,6 +481,7 @@ export const usePlayer = create<State>((set, get) => ({
   curTrack: null,
   curIdx: -1,
   libraryRevision: 0,
+  libraryReadOnly: false,
   playMode: typeof window !== "undefined" ? loadPlayMode() : "shuffle",
   playing: false,
   loadingPlay: false,
@@ -643,6 +649,14 @@ export const usePlayer = create<State>((set, get) => ({
     hydrateSongCache();
     hydrateLyricCache();
 
+    let libraryReadOnly = false;
+    try {
+      const flags = await api.fetchSiteFlags();
+      libraryReadOnly = flags.readOnly;
+    } catch {
+      /* */
+    }
+
     let favorites: Track[] = [];
     let playlist: Track[] = [];
     let history: Track[] = [];
@@ -655,43 +669,49 @@ export const usePlayer = create<State>((set, get) => ({
       history = (lib.history || []).map(norm).filter(Boolean) as Track[];
       curIdx = lib.curIdx ?? -1;
       libraryRevision = Number(lib.revision ?? 0) || 0;
-      // Union D1 + localStorage (D1 order first) — never drop either side's uniques
-      try {
-        const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-        const localFav = ((local?.favorites || []) as Track[])
-          .map(norm)
-          .filter(Boolean) as Track[];
-        const localPl = ((local?.playlist || []) as Track[])
-          .map(norm)
-          .filter(Boolean) as Track[];
-        const localHi = ((local?.history || []) as Track[])
-          .map(norm)
-          .filter(Boolean) as Track[];
-        const before = favorites.length;
-        favorites = unionTracksById(favorites, localFav);
-        playlist = unionTracksById(playlist, localPl);
-        history = unionTracksById(history, localHi);
-        // Local had extras → push merge with server revision (409 → apply server)
-        if (favorites.length > before) {
-          window.setTimeout(() => {
-            persistSoon(get, {});
-          }, 400);
+      // Demo: D1 only — never merge/push local library (no write-back)
+      if (!libraryReadOnly) {
+        // Union D1 + localStorage (D1 order first) — never drop either side's uniques
+        try {
+          const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+          const localFav = ((local?.favorites || []) as Track[])
+            .map(norm)
+            .filter(Boolean) as Track[];
+          const localPl = ((local?.playlist || []) as Track[])
+            .map(norm)
+            .filter(Boolean) as Track[];
+          const localHi = ((local?.history || []) as Track[])
+            .map(norm)
+            .filter(Boolean) as Track[];
+          const before = favorites.length;
+          favorites = unionTracksById(favorites, localFav);
+          playlist = unionTracksById(playlist, localPl);
+          history = unionTracksById(history, localHi);
+          // Local had extras → push merge with server revision (409 → apply server)
+          if (favorites.length > before) {
+            window.setTimeout(() => {
+              persistSoon(get, {});
+            }, 400);
+          }
+        } catch {
+          /* */
         }
-      } catch {
-        /* */
       }
     } catch {
-      try {
-        const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-        if (local) {
-          playlist = local.playlist || [];
-          favorites = local.favorites || [];
-          history = local.history || [];
-          curIdx = local.curIdx ?? -1;
-          libraryRevision = Number(local.revision ?? 0) || 0;
+      // Demo has no offline library merge; private may fall back to localStorage
+      if (!libraryReadOnly) {
+        try {
+          const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+          if (local) {
+            playlist = local.playlist || [];
+            favorites = local.favorites || [];
+            history = local.history || [];
+            curIdx = local.curIdx ?? -1;
+            libraryRevision = Number(local.revision ?? 0) || 0;
+          }
+        } catch {
+          /* */
         }
-      } catch {
-        /* */
       }
     }
 
@@ -702,6 +722,7 @@ export const usePlayer = create<State>((set, get) => ({
       history,
       curIdx,
       libraryRevision,
+      libraryReadOnly,
       tab: "favorites",
       queueSource: "favorites",
     });
@@ -1140,7 +1161,8 @@ export const usePlayer = create<State>((set, get) => ({
       ),
     });
     if (t.cover) prefetchCover(t.cover, "medium");
-    void persistSoon(get);
+    // Demo: history stays in-memory only (no D1 write)
+    if (!get().libraryReadOnly) void persistSoon(get);
 
     // Play at sticky / pre-warmed level (rank intent). Server falls through if missing.
     // Qualities menu is filled on-demand (ensureQualities) — no top-3 probe every play.
@@ -2153,6 +2175,10 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   toggleFavorite: (t) => {
+    if (get().libraryReadOnly) {
+      get().showToast("Demo 只读，无法修改收藏");
+      return;
+    }
     const track = norm(t || get().curTrack);
     if (!track) return;
     let favorites = get().favorites;
@@ -2204,6 +2230,10 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   importFavorites: (tracks) => {
+    if (get().libraryReadOnly) {
+      get().showToast("Demo 只读，无法导入");
+      return;
+    }
     // Prefer /import URL; keep helper for tests — merge + dedupe only
     const incoming = (tracks || []).map(norm).filter(Boolean) as Track[];
     if (!incoming.length) {
@@ -2221,6 +2251,10 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   addToPlaylist: (t) => {
+    if (get().libraryReadOnly) {
+      get().showToast("Demo 只读，无法修改列表");
+      return;
+    }
     const track = norm(t);
     if (!track) return;
     if (get().playlist.some((x) => String(x.id) === String(track.id))) {
@@ -2233,6 +2267,10 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   removeFromPlaylist: (id) => {
+    if (get().libraryReadOnly) {
+      get().showToast("Demo 只读，无法修改列表");
+      return;
+    }
     const playlist = get().playlist.filter((x) => String(x.id) !== String(id));
     set({ playlist });
     void api
@@ -2258,6 +2296,10 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   removeFromHistory: (id) => {
+    if (get().libraryReadOnly) {
+      get().showToast("Demo 只读，无法修改历史");
+      return;
+    }
     const history = get().history.filter((x) => String(x.id) !== String(id));
     set({ history });
     get().showToast("已从历史移除");
@@ -2321,6 +2363,8 @@ function trackIdSetEqual(
 }
 
 function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
+  // Demo never touches D1 (or library localStorage merge path)
+  if (get().libraryReadOnly) return;
   saveDirty = true;
   saveForce = { ...saveForce, ...force };
   if (saveTimer) clearTimeout(saveTimer);
@@ -2330,6 +2374,10 @@ function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
 }
 
 async function flushLibrarySave(get: () => State) {
+  if (get().libraryReadOnly) {
+    saveDirty = false;
+    return;
+  }
   if (saveInflight) return;
   if (!saveDirty) return;
   saveInflight = true;

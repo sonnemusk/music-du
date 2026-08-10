@@ -31,6 +31,7 @@ export function Transport({ compact }: { compact?: boolean }) {
   const toggleFavorite = usePlayer((s) => s.toggleFavorite);
   const curTrack = usePlayer((s) => s.curTrack);
   const isFavorite = usePlayer((s) => s.isFavorite);
+  const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
   const volume = usePlayer((s) => s.volume);
   const muted = usePlayer((s) => s.muted);
   const setVolume = usePlayer((s) => s.setVolume);
@@ -92,8 +93,9 @@ export function Transport({ compact }: { compact?: boolean }) {
               type="button"
               className="t-btn ghost fav"
               onClick={() => toggleFavorite()}
-              aria-label="收藏"
-              title="收藏 F"
+              aria-label={libraryReadOnly ? "Demo 只读" : "收藏"}
+              title={libraryReadOnly ? "Demo 只读，无法修改收藏" : "收藏 F"}
+              disabled={libraryReadOnly}
             >
               {isFavorite(curTrack.id) ? "♥" : "♡"}
             </button>

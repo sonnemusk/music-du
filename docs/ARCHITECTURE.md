@@ -64,8 +64,15 @@ Workers Observability enabled in `wrangler.toml`. Useful log signals:
 
 | URL | Behavior |
 |-----|----------|
-| `GET /favs` | Download export JSON |
-| `GET/POST /import` | (1) `/favs` JSON by id (2) text lines `歌名` / `歌名 - 作者` via search match; **dedupe by id**; clean success → redirect `/?imported=&total=&skipped=&failed=`; name-match misses → stay on import page with escaped fail list (max 200) + open-player link |
+| `GET /favs` | Download export JSON (private only; **403 on demo**) |
+| `GET/POST /import` | (1) `/favs` JSON by id (2) text lines `歌名` / `歌名 - 作者` via search match; **dedupe by id**; clean success → redirect `/?imported=&total=&skipped=&failed=`; name-match misses → stay on import page with escaped fail list (max 200) + open-player link (**403 on demo**) |
+
+## Demo (`music-du-demo`)
+
+- Env `LIBRARY_READONLY=true` · same D1 · public host (e.g. `music.du.dev`) · no CF Access · no library token  
+- Blocks: `PUT/DELETE /api/library`, `/favs`, `/export`, `/import`  
+- Allows: listen, search, charts, `GET /api/library`  
+- Skin / quality prefs: client `localStorage` only |
 
 ## Node
 

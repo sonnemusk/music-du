@@ -193,6 +193,22 @@ export async function loadLibrary(): Promise<Library> {
   return libraryJson("/api/library");
 }
 
+/** Site flags from /api/health (demo read-only etc.). */
+export async function fetchSiteFlags(): Promise<{ readOnly: boolean }> {
+  try {
+    const r = await fetch("/api/health", { credentials: "same-origin" });
+    const j = (await r.json().catch(() => null)) as {
+      readOnly?: boolean;
+      policy?: { library_readonly?: boolean };
+    } | null;
+    return {
+      readOnly: Boolean(j?.readOnly || j?.policy?.library_readonly),
+    };
+  } catch {
+    return { readOnly: false };
+  }
+}
+
 export async function saveLibrary(body: any): Promise<Library> {
   return libraryJson("/api/library", {
     method: "PUT",

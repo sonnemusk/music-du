@@ -14,6 +14,7 @@ export default function App() {
   const setSkinOpen = usePlayer((s) => s.setSkinOpen);
   const skinOpen = usePlayer((s) => s.skinOpen);
   const next = usePlayer((s) => s.next);
+  const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
   const shellRef = useRef<HTMLDivElement>(null);
 
   const showToast = usePlayer((s) => s.showToast);
@@ -88,7 +89,12 @@ export default function App() {
   }, [skinOpen, setSkinOpen]);
 
   return (
-    <div className="app-shell" ref={shellRef}>
+    <div className="app-shell" ref={shellRef} data-readonly={libraryReadOnly ? "1" : undefined}>
+      {libraryReadOnly ? (
+        <div className="demo-readonly-banner" role="status">
+          Demo · 只读分享 · 可听不可改收藏
+        </div>
+      ) : null}
       <SkinHost skin={skin} />
       <AudioEngine />
       <KeyboardShortcuts />
