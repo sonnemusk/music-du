@@ -2299,35 +2299,92 @@ function applyLib(set: (p: Partial<State>) => void) {
 /** Prevents double-fetch when setTab + ChartsPanel mount both call loadCharts */
 let chartsInflight: string | null = null;
 
+/**
+ * Library persist: debounced + single-flight.
+ * playTrack updates history/curIdx often; overlapping PUTs used to 409 and
+ * falsely toast「其他设备更新」. Same-tab revision races retry silently.
+ */
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let saveInflight = false;
+let saveDirty = false;
+let saveForce: Record<string, boolean> = {};
+
+function trackIdSetEqual(
+  a: Track[] | null | undefined,
+  b: Track[] | null | undefined
+): boolean {
+  const A = new Set((a || []).map((t) => String(t.id)).filter(Boolean));
+  const B = new Set((b || []).map((t) => String(t.id)).filter(Boolean));
+  if (A.size !== B.size) return false;
+  for (const id of A) if (!B.has(id)) return false;
+  return true;
+}
+
 function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
+  saveDirty = true;
+  saveForce = { ...saveForce, ...force };
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    const s = get();
-    const payload = {
-      playlist: s.playlist,
-      favorites: s.favorites,
-      history: s.history,
-      curIdx: s.curIdx,
-      revision: s.libraryRevision,
-      ...force,
-    };
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(payload));
-    } catch {
-      /* */
-    }
-    try {
-      const lib = await api.saveLibrary(payload);
+  saveTimer = setTimeout(() => {
+    void flushLibrarySave(get);
+  }, 500);
+}
+
+async function flushLibrarySave(get: () => State) {
+  if (saveInflight) return;
+  if (!saveDirty) return;
+  saveInflight = true;
+  saveDirty = false;
+  const force = { ...saveForce };
+  saveForce = {};
+  const s = get();
+  const payload = {
+    playlist: s.playlist,
+    favorites: s.favorites,
+    history: s.history,
+    curIdx: s.curIdx,
+    revision: s.libraryRevision,
+    ...force,
+  };
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  } catch {
+    /* */
+  }
+  try {
+    const lib = await api.saveLibrary(payload);
+    const rev = Number(lib.revision ?? 0) || 0;
+    if (saveDirty) {
+      // Local changed mid-flight — keep lists, take revision, chain another save
+      usePlayer.setState({ libraryRevision: rev });
+    } else {
       applyLib(usePlayer.setState)(lib);
-    } catch (e) {
-      if (e instanceof api.LibraryConflictError) {
-        // Server wins for structure; toast so user knows
-        applyLib(usePlayer.setState)(e.data);
-        get().showToast("收藏库已在其他设备更新，已同步最新");
-        return;
-      }
-      /* offline ok */
     }
-  }, 220);
+  } catch (e) {
+    if (e instanceof api.LibraryConflictError) {
+      const server = e.data;
+      const rev = Number(server.revision ?? 0) || 0;
+      // Same favorites + playlist ids → our own overlapping save, not another device
+      const sameFavPl =
+        trackIdSetEqual(payload.favorites, server.favorites) &&
+        trackIdSetEqual(payload.playlist, server.playlist);
+      if (sameFavPl) {
+        // Keep local history/curIdx (newer skip), adopt server revision, re-push
+        usePlayer.setState({ libraryRevision: rev });
+        saveDirty = true;
+      } else {
+        // Real multi-device structural change — server wins
+        applyLib(usePlayer.setState)(server);
+        get().showToast("收藏库已在其他设备更新，已同步最新");
+      }
+    }
+    /* offline ok */
+  } finally {
+    saveInflight = false;
+    if (saveDirty) {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        void flushLibrarySave(get);
+      }, 100);
+    }
+  }
 }

@@ -40,6 +40,7 @@ import {
   libraryTokenOk,
   mergeTrackList,
   nextLibraryRevision,
+  trackListSameIds,
 } from "./library-merge.js";
 import {
   ensureResolveCacheSchema,
@@ -237,10 +238,24 @@ async function saveLib(db: D1Database, data: any, opts?: { expectedRevision?: nu
     const current = await loadLib(db);
     return { conflict: true as const, data: current };
   }
-  await writeList(db, "playlist", data.playlist || [], 2000);
-  await writeList(db, "favorites", data.favorites || [], 2000);
-  await writeList(db, "history", data.history || [], 2000);
-  await setMeta(db, "curIdx", String(data.curIdx ?? -1));
+  // Skip rewriting unchanged lists — playTrack used to re-PUT full favorites
+  // (~500+) every skip, causing slow saves and same-tab revision races.
+  const existing = await loadLib(db);
+  const pl = data.playlist || [];
+  const fav = data.favorites || [];
+  const hi = data.history || [];
+  const curIdx = data.curIdx ?? -1;
+  const plChanged = !trackListSameIds(pl, existing.playlist);
+  const favChanged = !trackListSameIds(fav, existing.favorites);
+  const hiChanged = !trackListSameIds(hi, existing.history);
+  const curChanged = String(curIdx) !== String(existing.curIdx ?? -1);
+  if (!plChanged && !favChanged && !hiChanged && !curChanged) {
+    return { conflict: false as const, data: existing };
+  }
+  if (plChanged) await writeList(db, "playlist", pl, 2000);
+  if (favChanged) await writeList(db, "favorites", fav, 2000);
+  if (hiChanged) await writeList(db, "history", hi, 2000);
+  if (curChanged) await setMeta(db, "curIdx", String(curIdx));
   await bumpRevision(db, serverRev);
   return { conflict: false as const, data: await loadLib(db) };
 }

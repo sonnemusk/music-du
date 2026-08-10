@@ -136,6 +136,36 @@ export function nextLibraryRevision(serverRev: number): number {
   return Math.floor(n) + 1;
 }
 
+/** Same track ids in same order (ignores metadata). Used to skip no-op D1 rewrites. */
+export function trackListSameIds(
+  a: Array<{ id?: string | number } | null | undefined> | null | undefined,
+  b: Array<{ id?: string | number } | null | undefined> | null | undefined
+): boolean {
+  const aa = a || [];
+  const bb = b || [];
+  if (aa.length !== bb.length) return false;
+  for (let i = 0; i < aa.length; i++) {
+    if (String(aa[i]?.id ?? "") !== String(bb[i]?.id ?? "")) return false;
+  }
+  return true;
+}
+
+/** Id sets equal (order-insensitive) — detect real multi-device fav/pl drift. */
+export function trackIdSetsEqual(
+  a: Array<{ id?: string | number } | null | undefined> | null | undefined,
+  b: Array<{ id?: string | number } | null | undefined> | null | undefined
+): boolean {
+  const A = new Set(
+    (a || []).map((t) => String(t?.id ?? "")).filter(Boolean)
+  );
+  const B = new Set(
+    (b || []).map((t) => String(t?.id ?? "")).filter(Boolean)
+  );
+  if (A.size !== B.size) return false;
+  for (const id of A) if (!B.has(id)) return false;
+  return true;
+}
+
 /**
  * Union two track lists by id: prefer primary order, then append secondary-only.
  * Used at bootstrap to reconcile localStorage with D1 without thin-client wipe.

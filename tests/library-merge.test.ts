@@ -6,6 +6,8 @@ import {
   nextLibraryRevision,
   planListUpserts,
   sanitizeLibTrack,
+  trackIdSetsEqual,
+  trackListSameIds,
   unionTracksById,
 } from "../server/library-merge.js";
 import { parseFavoritesImport } from "../client/src/lib/library-union.js";
@@ -102,6 +104,23 @@ describe("library revision (optimistic concurrency)", () => {
   it("bumps monotone", () => {
     expect(nextLibraryRevision(0)).toBe(1);
     expect(nextLibraryRevision(9)).toBe(10);
+  });
+
+  it("trackListSameIds is order-sensitive", () => {
+    expect(trackListSameIds([{ id: 1 }, { id: 2 }], [{ id: 1 }, { id: 2 }])).toBe(
+      true
+    );
+    expect(trackListSameIds([{ id: 1 }, { id: 2 }], [{ id: 2 }, { id: 1 }])).toBe(
+      false
+    );
+    expect(trackListSameIds([{ id: 1 }], [{ id: 1 }, { id: 2 }])).toBe(false);
+  });
+
+  it("trackIdSetsEqual ignores order", () => {
+    expect(trackIdSetsEqual([{ id: 1 }, { id: 2 }], [{ id: 2 }, { id: 1 }])).toBe(
+      true
+    );
+    expect(trackIdSetsEqual([{ id: 1 }], [{ id: 1 }, { id: 2 }])).toBe(false);
   });
 });
 
