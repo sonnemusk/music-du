@@ -65,7 +65,7 @@ Workers Observability enabled in `wrangler.toml`. Useful log signals:
 | URL | Behavior |
 |-----|----------|
 | `GET /favs` | Download export JSON |
-| `GET/POST /import` | (1) `/favs` JSON by id (2) text lines `歌名` / `歌名 - 作者` via search match; **dedupe by id**; redirect `/?imported=&total=&skipped=&failed=` |
+| `GET/POST /import` | (1) `/favs` JSON by id (2) text lines `歌名` / `歌名 - 作者` via search match; **dedupe by id**; clean success → redirect `/?imported=&total=&skipped=&failed=`; name-match misses → stay on import page with escaped fail list (max 200) + open-player link |
 
 ## Node
 

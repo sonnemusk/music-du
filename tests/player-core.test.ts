@@ -47,6 +47,14 @@ describe("player-core", () => {
     expect(popShuffleHistory([]).id).toBeNull();
   });
 
+  it("shuffle history round-trips via JSON (sessionStorage shape)", () => {
+    const h = pushShuffleHistory(pushShuffleHistory([], "11"), "22");
+    const raw = JSON.stringify(h);
+    const back = JSON.parse(raw) as string[];
+    expect(back).toEqual(["11", "22"]);
+    expect(popShuffleHistory(back).id).toBe("22");
+  });
+
   it("predicts next for list / single", () => {
     expect(predictNextIndex(0, 5, "list")).toBe(1);
     expect(predictNextIndex(4, 5, "list")).toBe(0);

@@ -87,6 +87,41 @@ const MUTE_KEY = "kazam.v2.muted";
 const MODE_KEY = "kazam.v2.playMode";
 const CHART_KEY = "kazam.v2.chartPlatform";
 const CHART_BOARD_KEY = "kazam.v2.chartBoard";
+/** Session-scoped shuffle 上一首 stack (survives refresh, clears with tab). */
+const SHUFFLE_HIST_KEY = "kazam.v2.shuffleHistory";
+
+function loadShuffleHistory(): string[] {
+  try {
+    const raw = sessionStorage.getItem(SHUFFLE_HIST_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map(String).filter(Boolean).slice(-80);
+  } catch {
+    return [];
+  }
+}
+
+function persistShuffleHistory(hist: string[]) {
+  try {
+    sessionStorage.setItem(
+      SHUFFLE_HIST_KEY,
+      JSON.stringify((hist || []).map(String).filter(Boolean).slice(-80))
+    );
+  } catch {
+    /* */
+  }
+}
+
+function setShuffleHistoryState(
+  set: (p: Partial<State>) => void,
+  hist: string[],
+  extra?: Partial<State>
+) {
+  const h = (hist || []).map(String).filter(Boolean).slice(-80);
+  persistShuffleHistory(h);
+  set({ shuffleHistory: h, ...extra });
+}
 
 function effectivePreferredLevel(
   choices: QualityChoice[],
@@ -461,7 +496,7 @@ export const usePlayer = create<State>((set, get) => ({
   volume: typeof window !== "undefined" ? loadVolume() : 1,
   muted: typeof window !== "undefined" ? loadMuted() : false,
   predictedNextId: null,
-  shuffleHistory: [],
+  shuffleHistory: typeof window !== "undefined" ? loadShuffleHistory() : [],
   locateRequest: null,
 
   setAudio: (el) => {
@@ -996,9 +1031,10 @@ export const usePlayer = create<State>((set, get) => ({
       curId != null &&
       String(curId) !== String(t.id)
     ) {
-      set({
-        shuffleHistory: pushShuffleHistory(get().shuffleHistory, curId),
-      });
+      setShuffleHistoryState(
+        set,
+        pushShuffleHistory(get().shuffleHistory, curId)
+      );
     }
 
     // 1) Instant cut: kill previous audio BEFORE any network
@@ -1676,7 +1712,7 @@ export const usePlayer = create<State>((set, get) => ({
       if (prevId) {
         const hit = q.find((x) => String(x.id) === String(prevId));
         if (hit) {
-          set({ shuffleHistory: rest, predictedNextId: null });
+          setShuffleHistoryState(set, rest, { predictedNextId: null });
           void get().playTrack(hit, {
             from: get().queueSource,
             skipShuffleHistory: true,
@@ -1684,7 +1720,7 @@ export const usePlayer = create<State>((set, get) => ({
           return;
         }
         // id no longer in queue — drop and try older
-        set({ shuffleHistory: rest });
+        setShuffleHistoryState(set, rest);
         if (rest.length) {
           get().next(-1);
           return;
@@ -1927,12 +1963,11 @@ export const usePlayer = create<State>((set, get) => ({
     } catch {
       /* */
     }
-    set({
-      playMode: m,
-      predictedNextId: null,
-      // History only meaningful in shuffle
-      shuffleHistory: m === "shuffle" ? get().shuffleHistory : [],
-    });
+    if (m === "shuffle") {
+      set({ playMode: m, predictedNextId: null });
+    } else {
+      setShuffleHistoryState(set, [], { playMode: m, predictedNextId: null });
+    }
     get().showToast(playModeLabel(m));
     // Mode change → re-pick next and re-warm (gated)
     if (get().curTrack) {

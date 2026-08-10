@@ -845,15 +845,51 @@ async function favoritesExportResponse(c: {
 app.get("/favs", (c) => favoritesExportResponse(c));
 app.get("/export", (c) => favoritesExportResponse(c));
 
+function escHtml(s: string): string {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 /** Import page — Access-gated; supports /favs JSON + name lists. */
-function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
+function favoritesImportHtml(
+  msg?: string,
+  opts?: { ok?: boolean; failed?: string[]; homeQs?: string }
+) {
   const ok = Boolean(opts?.ok);
+  const failed = opts?.failed || [];
+  const homeHref = opts?.homeQs ? `/?${opts.homeQs}` : "/";
+  const failBlock =
+    failed.length > 0
+      ? `<div class="fail">
+          <p class="fail-title">未匹配 ${failed.length} 首（未写入收藏）</p>
+          <ul class="fail-list">${failed
+            .slice(0, 200)
+            .map((x) => `<li>${escHtml(x)}</li>`)
+            .join("")}${
+            failed.length > 200
+              ? `<li>… 另有 ${failed.length - 200} 首未列出</li>`
+              : ""
+          }</ul>
+        </div>`
+      : "";
   const notice = msg
-    ? `<p class="msg${ok ? " ok" : ""}">${msg.replace(/</g, "&lt;")}</p>`
+    ? `<p class="msg${ok ? " ok" : ""}">${escHtml(msg)}</p>`
     : `<p class="hint">支持：<br/>
       1) <code>/favs</code> 导出的 JSON（按 id 精确合并）<br/>
       2) 文本/CSV：每行 <code>歌名</code> 或 <code>歌名 - 作者</code>（搜索匹配，可能有误差）<br/>
       已有收藏按 <strong>id 去重</strong>，不会重复导入。</p>`;
+  const formBlock =
+    ok && failed.length
+      ? `<p class="links"><a class="btn" href="${escHtml(homeHref)}">打开播放器</a>
+         · <a href="/import">继续导入</a> · <a href="/favs">导出 /favs</a></p>`
+      : `<form method="post" action="/import" enctype="multipart/form-data">
+      <input type="file" name="file" accept="application/json,.json,.txt,.csv,text/plain,text/csv" required />
+      <button type="submit">合并导入（自动去重）</button>
+    </form>
+    <p class="links"><a href="${escHtml(homeHref)}">← 返回播放器</a> · <a href="/favs">导出 /favs</a></p>`;
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -863,8 +899,8 @@ function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
     body { margin: 0; min-height: 100vh; display: grid; place-items: center;
-      background: #0b0b12; color: #f4f4f5; }
-    .card { width: min(440px, 92vw); padding: 28px 24px; border-radius: 16px;
+      background: #0b0b12; color: #f4f4f5; padding: 24px 12px; box-sizing: border-box; }
+    .card { width: min(480px, 96vw); padding: 28px 24px; border-radius: 16px;
       background: #18181b; border: 1px solid #27272a; box-shadow: 0 20px 50px #0008; }
     h1 { margin: 0 0 8px; font-size: 1.25rem; }
     .hint, .msg { margin: 0 0 16px; opacity: .7; font-size: .88rem; line-height: 1.5; }
@@ -872,22 +908,25 @@ function favoritesImportHtml(msg?: string, opts?: { ok?: boolean }) {
     .msg.ok { color: #6ee7b7; }
     code { font-size: .85em; opacity: .9; }
     input[type=file] { width: 100%; margin: 12px 0 16px; }
-    button { width: 100%; padding: 12px 16px; border: 0; border-radius: 10px;
-      font-weight: 800; cursor: pointer; background: #a78bfa; color: #1e1b4b; }
-    button:hover { filter: brightness(1.06); }
+    button, a.btn { display: inline-block; width: 100%; padding: 12px 16px; border: 0;
+      border-radius: 10px; font-weight: 800; cursor: pointer; background: #a78bfa;
+      color: #1e1b4b; text-align: center; text-decoration: none; box-sizing: border-box; }
+    button:hover, a.btn:hover { filter: brightness(1.06); }
     a { color: #c4b5fd; }
     .links { margin-top: 18px; font-size: .85rem; opacity: .65; }
+    .fail { margin: 12px 0 8px; max-height: 40vh; overflow: auto;
+      border: 1px solid #3f3f46; border-radius: 10px; padding: 10px 12px; background: #09090b; }
+    .fail-title { margin: 0 0 8px; font-size: .85rem; font-weight: 800; color: #fcd34d; }
+    .fail-list { margin: 0; padding-left: 1.15rem; font-size: .82rem; line-height: 1.45; opacity: .85; }
+    .fail-list li { margin: 2px 0; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>导入收藏</h1>
     ${notice}
-    <form method="post" action="/import" enctype="multipart/form-data">
-      <input type="file" name="file" accept="application/json,.json,.txt,.csv,text/plain,text/csv" required />
-      <button type="submit">合并导入（自动去重）</button>
-    </form>
-    <p class="links"><a href="/">← 返回播放器</a> · <a href="/favs">导出 /favs</a></p>
+    ${failBlock}
+    ${formBlock}
   </div>
 </body>
 </html>`;
@@ -1006,32 +1045,29 @@ app.post("/import", async (c) => {
     }
 
     const onlyNew = filterNewById(existing.favorites || [], resolved);
-    if (!onlyNew.length) {
-      const total = (existing.favorites || []).length;
-      const failQ = failed.length ? `&failed=${failed.length}` : "";
-      return c.redirect(
-        `/?imported=0&total=${total}&skipped=${skippedDup}${failQ}`,
-        303
+    let total = (existing.favorites || []).length;
+    let added = 0;
+
+    if (onlyNew.length) {
+      const fav = mergeTrackList(existing.favorites || [], onlyNew, false, 2000);
+      const result = await saveLib(
+        c.env.MUSIC_DU_DB,
+        {
+          playlist: existing.playlist,
+          favorites: fav,
+          history: existing.history,
+          curIdx: existing.curIdx,
+          revision: existing.revision,
+        },
+        { expectedRevision: existing.revision ?? 0 }
       );
+      if (result.conflict) {
+        return c.html(favoritesImportHtml("库正在被其他端写入，请重试"), 409);
+      }
+      total = (result.data.favorites || []).length;
+      added = onlyNew.length;
     }
 
-    const fav = mergeTrackList(existing.favorites || [], onlyNew, false, 2000);
-    const result = await saveLib(
-      c.env.MUSIC_DU_DB,
-      {
-        playlist: existing.playlist,
-        favorites: fav,
-        history: existing.history,
-        curIdx: existing.curIdx,
-        revision: existing.revision,
-      },
-      { expectedRevision: existing.revision ?? 0 }
-    );
-    if (result.conflict) {
-      return c.html(favoritesImportHtml("库正在被其他端写入，请重试"), 409);
-    }
-    const total = (result.data.favorites || []).length;
-    const added = onlyNew.length;
     const qs = new URLSearchParams({
       imported: String(added),
       total: String(total),
@@ -1040,7 +1076,29 @@ app.post("/import", async (c) => {
     });
     if (failed.length) qs.set("failed", String(failed.length));
     if (overCap > 0) qs.set("capped", String(overCap));
-    return c.redirect(`/?${qs.toString()}`, 303);
+    const homeQs = qs.toString();
+
+    // Name-match failures: show full list on import page (URL can't hold long names)
+    if (failed.length > 0) {
+      const parts = [
+        added > 0 ? `新增 ${added} 首` : "无新歌写入",
+        `收藏共 ${total}`,
+        skippedDup ? `去重 ${skippedDup}` : "",
+        nameMatched ? `名匹配成功 ${nameMatched}` : "",
+        `未匹配 ${failed.length}`,
+        overCap > 0 ? `另有 ${overCap} 行超出名匹配上限未处理` : "",
+      ].filter(Boolean);
+      return c.html(
+        favoritesImportHtml(parts.join(" · "), {
+          ok: true,
+          failed,
+          homeQs,
+        })
+      );
+    }
+
+    // Clean success / all-deduped → jump to player
+    return c.redirect(`/?${homeQs}`, 303);
   } catch (e: any) {
     return c.html(
       favoritesImportHtml(`导入失败：${e?.message || String(e)}`),
