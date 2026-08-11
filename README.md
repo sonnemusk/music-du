@@ -1,5 +1,7 @@
 # music-du
 
+[English](./README.md) · [简体中文](./README.zh-CN.md)
+
 Open-source **personal music web app** — search, charts, favorites, lyrics, many skins.
 
 **Stack:** TypeScript · [Hono](https://hono.dev) BFF · React + Zustand · **Cloudflare Workers + D1** or **Node + SQLite** (VPS / Fly / Docker).
