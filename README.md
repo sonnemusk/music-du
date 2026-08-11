@@ -64,21 +64,27 @@ Every asset below is shown at **the same width (960px)** so the gallery is align
 
 ### 2. Main UI (static, identical size)
 
-Sources are **1440×900** JPEG; README display width **960px** for all three.
+Sources are **1440×900** JPEG (same crop); README display width **960px** for every shot.  
+Header shows **English** language toggle next to theme controls.
 
 <p align="center">
-  <img src="docs/screenshots/favorites-grape.jpg" alt="Favorites tab — Grape skin" width="960" /><br/>
-  <b>Favorites (喜欢)</b> — library + player · skin「葡萄」
+  <img src="docs/screenshots/search-ice.jpg" alt="Search tab — Ice Crystal skin" width="960" /><br/>
+  <b>Search (搜索)</b> — keyword results · skin「冰晶」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics tab — Forest skin" width="960" /><br/>
-  <b>Lyrics (歌词)</b> — bilingual follow-scroll · skin「密林」
+  <img src="docs/screenshots/favorites-grape.jpg" alt="Favorites tab — Amethyst skin" width="960" /><br/>
+  <b>Favorites (喜欢)</b> — liked library + player · skin「紫晶」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/charts-sakura.jpg" alt="Charts tab — Sakura skin" width="960" /><br/>
-  <b>Charts (热榜)</b> — multi-platform boards · skin「墨红花」
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics tab — Rock Grey skin" width="960" /><br/>
+  <b>Lyrics (歌词)</b> — bilingual follow-scroll · skin「岩灰」
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/charts-sakura.jpg" alt="Charts tab — Abyss skin" width="960" /><br/>
+  <b>Charts (热榜)</b> — multi-platform boards · skin「深渊」
 </p>
 
 ---

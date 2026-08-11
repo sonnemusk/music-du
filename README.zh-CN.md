@@ -64,21 +64,27 @@
 
 ### 2. 主要界面（静图，尺寸相同）
 
-源图均为 **1440×900** JPEG；页面展示宽度统一 **960px**。
+源图均为 **1440×900** JPEG（同规格）；页面展示宽度统一 **960px**。  
+顶栏可见 **English** 语言切换与主题 / 一键切换。
 
 <p align="center">
-  <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢页 · 葡萄皮肤" width="960" /><br/>
-  <b>喜欢</b> — 收藏列表 + 播放器 · 皮肤「葡萄」
+  <img src="docs/screenshots/search-ice.jpg" alt="搜索页 · 冰晶皮肤" width="960" /><br/>
+  <b>搜索</b> — 关键词结果 · 皮肤「冰晶」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/lyrics-forest.jpg" alt="歌词页 · 密林皮肤" width="960" /><br/>
-  <b>歌词</b> — 中英歌词跟滚 · 皮肤「密林」
+  <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢页 · 紫晶皮肤" width="960" /><br/>
+  <b>喜欢</b> — 收藏列表 + 播放器 · 皮肤「紫晶」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/charts-sakura.jpg" alt="热榜页 · 墨红花皮肤" width="960" /><br/>
-  <b>热榜</b> — 多平台飙升/热歌/新歌 · 皮肤「墨红花」
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="歌词页 · 岩灰皮肤" width="960" /><br/>
+  <b>歌词</b> — 中英歌词跟滚 · 皮肤「岩灰」
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/charts-sakura.jpg" alt="热榜页 · 深渊皮肤" width="960" /><br/>
+  <b>热榜</b> — 多平台飙升/热歌/新歌 · 皮肤「深渊」
 </p>
 
 ---
