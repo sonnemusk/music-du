@@ -54,6 +54,18 @@ MIT licensed — see [LICENSE](./LICENSE). No warranty.
 
 More: [docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
+### Screenshots
+
+Skin switcher (top-right) cycles themes; layout stays side-player + list on desktop.
+
+| Favorites · 葡萄 | Lyrics · 密林 | Charts · 墨红花 |
+|:---:|:---:|:---:|
+| ![Favorites library with Grape skin](docs/screenshots/favorites-grape.jpg) | ![Synced lyrics with Forest skin](docs/screenshots/lyrics-forest.jpg) | ![Multi-platform charts with Sakura skin](docs/screenshots/charts-sakura.jpg) |
+
+- **喜欢** — favorites list, now-playing, quality / shuffle  
+- **歌词** — bilingual lyric scroll with current line highlight  
+- **热榜** — soar / hot / new boards across Douyin, NetEase, QQ, …
+
 ---
 
 ## Quick start (local)
