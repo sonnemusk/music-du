@@ -23,22 +23,32 @@ SPA ── /api/* ──► Worker / Node ──► your music gateway + library
 
 ## Screenshots
 
-Header: switch **language** (中文 / English) and **theme** (一键切换).
+Top-right: **language** (中文 / English) and **theme** (主题 · 一键切换).
 
 <p align="center">
-  <img src="docs/screenshots/skins-cycle.gif" alt="Skin switch" width="900" /><br/>
-  <sub>Skin switch</sub>
+  <img src="docs/screenshots/skins-cycle.gif" alt="One-click skin switch" width="960" /><br/>
+  <em>One-click skin switch</em>
 </p>
 
-| Search | Liked |
-|:------:|:-----:|
-| <img src="docs/screenshots/search-ice.jpg" alt="Search" width="440" /> | <img src="docs/screenshots/favorites-grape.jpg" alt="Liked" width="440" /> |
-| Search | Liked + player |
+<p align="center">
+  <img src="docs/screenshots/search-ice.jpg" alt="Search" width="960" /><br/>
+  <em>Search</em>
+</p>
 
-| Lyrics | Charts |
-|:------:|:------:|
-| <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics" width="440" /> | <img src="docs/screenshots/charts-sakura.jpg" alt="Charts" width="440" /> |
-| Lyrics | Multi-platform charts |
+<p align="center">
+  <img src="docs/screenshots/favorites-grape.jpg" alt="Liked songs" width="960" /><br/>
+  <em>Liked · player + library</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics" width="960" /><br/>
+  <em>Lyrics · bilingual follow-scroll</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/charts-sakura.jpg" alt="Charts" width="960" /><br/>
+  <em>Charts · multi-platform boards</em>
+</p>
 
 ---
 

@@ -23,22 +23,32 @@ SPA ── /api/* ──► Worker / Node ──► 音乐网关 + 曲库（D1 �
 
 ## 截图
 
-顶栏可切换 **语言**（中文 / English）和 **主题**（一键切换）。
+右上角可切换 **语言**（中文 / English）和 **主题**（主题 · 一键切换）。
 
 <p align="center">
-  <img src="docs/screenshots/skins-cycle.gif" alt="一键换肤" width="900" /><br/>
-  <sub>一键换肤</sub>
+  <img src="docs/screenshots/skins-cycle.gif" alt="一键换肤" width="960" /><br/>
+  <em>一键换肤</em>
 </p>
 
-| 搜索 | 喜欢 |
-|:----:|:----:|
-| <img src="docs/screenshots/search-ice.jpg" alt="搜索" width="440" /> | <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢" width="440" /> |
-| 搜索 | 喜欢 + 播放器 |
+<p align="center">
+  <img src="docs/screenshots/search-ice.jpg" alt="搜索" width="960" /><br/>
+  <em>搜索</em>
+</p>
 
-| 歌词 | 热榜 |
-|:----:|:----:|
-| <img src="docs/screenshots/lyrics-forest.jpg" alt="歌词" width="440" /> | <img src="docs/screenshots/charts-sakura.jpg" alt="热榜" width="440" /> |
-| 歌词 | 多平台榜单 |
+<p align="center">
+  <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢" width="960" /><br/>
+  <em>喜欢 · 收藏 + 播放器</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="歌词" width="960" /><br/>
+  <em>歌词 · 中英跟滚</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/charts-sakura.jpg" alt="热榜" width="960" /><br/>
+  <em>热榜 · 多平台榜单</em>
+</p>
 
 ---
 
