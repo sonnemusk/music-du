@@ -3,7 +3,7 @@
 # Whole site may sit behind Cloudflare Access — pass service token headers when set.
 # SMOKE_DEMO=1 → public read-only demo (no Access, no export, library open GET).
 set -euo pipefail
-BASE="${SMOKE_BASE:-https://music.dubin.cc}"
+BASE="${SMOKE_BASE:-http://127.0.0.1:8787}"
 UA="music-du-smoke/1.0"
 DEMO="${SMOKE_DEMO:-}"
 

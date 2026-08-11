@@ -1,9 +1,14 @@
 {
-  "name": "kazam",
+  "name": "music-du",
   "version": "2.0.0",
   "private": true,
-  "description": "Music — personal music web app. Production: Cloudflare Workers free tier. Node: local/dev only.",
+  "description": "Open-source personal music web app (Hono + React). Cloudflare Workers/D1 or Node/SQLite. Bring your own music API.",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sonnemusk/music-du.git"
+  },
   "scripts": {
     "dev": "tsx watch server/node.ts",
     "build": "vite build && tsc -p tsconfig.server.json",

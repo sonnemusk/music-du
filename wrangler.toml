@@ -1,51 +1,48 @@
-# music-du — Cloudflare Worker (personal music app)
-# Dashboard names (lowercase, same style as shortener-du / nav-du / ios-loc-du):
-#   Worker : music-du
-#   D1     : music-du-library
-#   Domain : music.dubin.cc
-# No KV for this project. Audio is never stored on Cloudflare.
+# music-du — Cloudflare Worker
+#
+# Fork checklist:
+#   1. Change `name` / D1 `database_name`
+#   2. Run `npm run setup:d1` and paste your database_id below
+#   3. `npx wrangler secret put` for gateway keys + MUSIC_ACCESS_TOKEN
+#   4. Bind custom domains in the Cloudflare dashboard
+#
+# Free tier: no R2 / paid KV. Audio is never stored on Cloudflare (302 to CDN).
 
 name = "music-du"
 main = "server/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
-# Disable public workers.dev (not behind CF Access custom hostnames)
+# Prefer custom hostnames behind Access; enable workers_dev for quick tests
 workers_dev = false
 preview_urls = false
 
-# Free Workers Observability (logs/metrics — no paid products)
 [observability]
 enabled = true
 head_sampling_rate = 1
 
 [vars]
-# Primary gateway (always try first)
 CHKSZ_API_BASE = "https://api.chksz.top"
-# Backup gateway — use with secret CHKSZ_FALLBACK_APIKEYS (comma-separated, round-robin)
 CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
+# Fail closed if MUSIC_ACCESS_TOKEN secret missing on these hosts (comma-separated).
+# Forks: set your own domain or leave empty.
+LIBRARY_TOKEN_REQUIRED_HOSTS = "music.dubin.cc,music.dubin.one,music.dubin.vip,dubin.cc,dubin.one,dubin.vip"
 
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
 run_worker_first = true
 
-# Free D1 library (favorites / playlist / history)
+# Free D1 — replace database_id after `npm run setup:d1` / `wrangler d1 create`
 [[d1_databases]]
 binding = "MUSIC_DU_DB"
 database_name = "music-du-library"
 database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
 migrations_dir = "migrations"
 
-# Custom hostnames (DNS + Workers routes managed in CF dashboard/API, not wrangler routes):
-#   music.dubin.cc  ·  music.dubin.one  ·  music.dubin.vip
-# Debug: https://music-du.sonnemusk.workers.dev
-# Free tier: Cache API for covers/meta; no R2/paid KV; no audio body on CF.
-
-# ── Public demo (read-only library) ──────────────────────────────────────────
+# ── Optional public demo (read-only library) ────────────────────────────────
 # Deploy: npm run deploy:cf:demo
-# Domain: music.du.dev (bind Custom Domain in CF → music-du-demo; NO Access)
-# Same D1 as private (read via GET); all writes /favs /export /import → 403
-# Secrets: copy CHKSZ_* from music-du (no MUSIC_ACCESS_TOKEN on demo)
+# Bind a separate hostname; do NOT put it behind private Access.
+# Secrets: gateway keys only (no MUSIC_ACCESS_TOKEN). Same or separate D1.
 [env.demo]
 name = "music-du-demo"
 workers_dev = true

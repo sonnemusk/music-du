@@ -1,83 +1,60 @@
-# Cloudflare Access (free Zero Trust)
+# Optional edge auth (Cloudflare Access)
 
-Whole site + export are protected at the **edge** with Cloudflare Access  
-(no paid products — free Zero Trust seats / Access policies).
+Private installs can put the **whole site** (or only export/import paths) behind free Cloudflare Zero Trust **Access**. This is independent of the app’s `MUSIC_ACCESS_TOKEN`.
 
-## Private vs Demo
+## Suggested layout
 
-| | Private (`music-du`) | Demo (`music-du-demo`) |
-|--|--|--|
-| Domains | `music.dubin.cc` / `.one` / `.vip` | `music.du.dev` |
-| Access | **Yes** (`music-site`) | **No** — public |
-| Library | Read/write + `MUSIC_ACCESS_TOKEN` | **Read-only**, **no** app token |
-| `/favs` `/export` `/import` | Access-gated | **403** always |
-| D1 | `music-du-library` | Same D1 (GET only; writes blocked in Worker) |
-| Env | (default) | `LIBRARY_READONLY=true` |
+| Resource | Protection |
+|----------|------------|
+| Private music hostname | Access app (email OTP / IdP allow-list) |
+| `GET/POST /import`, `GET /favs` | Access (humans) + optional path rules |
+| `GET/PUT/DELETE /api/library` | Access **and** `MUSIC_ACCESS_TOKEN` |
+| Public demo hostname | **No** Access · `LIBRARY_READONLY=true` |
 
-**Never** put the Demo hostname into the private Access app.  
-**Never** set `LIBRARY_READONLY` on the private Worker.
+**Never** put the public demo hostname in the same Access application as your private site.
 
-## What is protected (private only)
+## Application examples
 
-| Resource | How |
-|----------|-----|
-| `music.dubin.cc` / `.one` / `.vip` **entire site** | Access app **`music-site`** |
-| Browser users | Email OTP allow-list (same as NAS) |
-| CI smoke | Access **Service Token** (non-identity policy) |
-| `/api/library` | Additionally: app `MUSIC_ACCESS_TOKEN` (`X-Music-Token`) |
-| `/import` | Access only — `/favs` JSON **or** 歌名/歌名+作者 文本（搜索匹配，按 id 去重） |
-
-`/favs` `/export` `/import` no longer use the app token; they rely on Access  
-(login for humans, service token for automation).
-
-## Applications (account)
-
-1. **`music-site`** — self-hosted domains:
-   - `music.dubin.cc`
-   - `music.dubin.one`
-   - `music.dubin.vip`
-2. **`music-favorites-export`** — path-level (legacy, still fine as extra layer):
-   - `…/favs`, `…/export`
+1. **music-site** — include only your private hostnames  
+2. Optional path app for `/favs` `/export` `/import` if you want finer rules  
 
 ## Policies
 
-**Allow music owners** (identity):
+- **Allow** your identity providers / emails  
+- **CI service token** (non-identity) if automated smoke must bypass login:
+  - Headers: `CF-Access-Client-Id`, `CF-Access-Client-Secret`
+  - Store as GitHub Actions secrets, not in git  
 
-- `sonnemusk@gmail.com`
-- `beanbest@outlook.com`
-- `admin@dubin.cc`
+## App library token
 
-**CI service token** (non_identity):
+When Worker secret `MUSIC_ACCESS_TOKEN` is set:
 
-- Service token name: `music-du-ci-smoke`
-- Headers on requests:
-  - `CF-Access-Client-Id`
-  - `CF-Access-Client-Secret`
+```http
+GET /api/library
+X-Music-Token: <token>
+```
 
-GitHub Actions secrets:
+SPA: build-time `VITE_MUSIC_ACCESS_TOKEN` or runtime `localStorage.music.accessToken`.
 
-- `CF_ACCESS_CLIENT_ID`
-- `CF_ACCESS_CLIENT_SECRET`
-- `MUSIC_ACCESS_TOKEN` (library API only)
+Optional Worker var `LIBRARY_TOKEN_REQUIRED_HOSTS=your.domain.com` — if the secret is missing on that host, library APIs return **503** (fail closed).
 
-## Local smoke
+## Local smoke through Access
 
 ```bash
 export CF_ACCESS_CLIENT_ID=...
 export CF_ACCESS_CLIENT_SECRET=...
 export MUSIC_ACCESS_TOKEN=...
+export SMOKE_BASE=https://your-private-host
 bash scripts/smoke-prod.sh
 ```
 
-Without the service token, unauthenticated `curl` to the site gets **302** to  
-`*.cloudflareaccess.com` login — expected.
+Unauthenticated browser hits get **302** to `*.cloudflareaccess.com` — expected.
 
 ## Library multi-device (app layer)
 
-Independent of Access: D1 stores `library_meta.revision`.
+Independent of Access: D1/SQLite `revision`.
 
-- `GET /api/library` → `{ …, revision }`
-- `PUT /api/library` with body `revision` — mismatch → **409** + current data
-- `DELETE …?revision=` — same
+- `GET /api/library` → data + `revision`  
+- `PUT` / `DELETE` with matching `revision` — else **409** + current data  
 
-Client applies 409 payload and toasts “已在其他设备更新”.
+Details: [API.md](./API.md).

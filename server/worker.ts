@@ -66,11 +66,16 @@ export type Env = {
   MUSIC_ACCESS_TOKEN?: string;
   /**
    * Demo / public share: library is read-only; no import/export; no token on GET.
-   * Set "true" on music-du-demo only — never on private music-du.
+   * Set "true" on demo Worker only — never on a writable production Worker.
    */
   LIBRARY_READONLY?: string;
+  /**
+   * Comma-separated hostnames that must have MUSIC_ACCESS_TOKEN configured
+   * (fail closed with 503 if token secret missing). Example: app.example.com
+   */
+  LIBRARY_TOKEN_REQUIRED_HOSTS?: string;
   ASSETS: Fetcher;
-  /** Free D1 library — dashboard name: music-du-library (binding MUSIC_DU_DB). */
+  /** Free D1 library binding MUSIC_DU_DB. */
   MUSIC_DU_DB?: D1Database;
 };
 
@@ -329,10 +334,17 @@ function libraryUnauthorized(c: {
 
   const expected = (c.env.MUSIC_ACCESS_TOKEN || "").trim();
   if (!expected) {
-    // Fail closed on production hostnames without token configured
+    // Fail closed on hosts listed in LIBRARY_TOKEN_REQUIRED_HOSTS (comma-separated)
     try {
-      const host = new URL(c.req.url).hostname;
-      if (host.endsWith("dubin.cc") || host.endsWith("dubin.one") || host.endsWith("dubin.vip")) {
+      const host = new URL(c.req.url).hostname.toLowerCase();
+      const required = String(c.env.LIBRARY_TOKEN_REQUIRED_HOSTS || "")
+        .split(/[,;\s]+/)
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean);
+      const hit = required.some(
+        (h) => host === h || host.endsWith(`.${h}`) || host.endsWith(h)
+      );
+      if (hit) {
         return new Response(
           JSON.stringify({
             ok: false,
@@ -878,9 +890,9 @@ async function favoritesExportResponse(c: {
   }));
   const host = (() => {
     try {
-      return new URL(c.req.url).host || "music.dubin.cc";
+      return new URL(c.req.url).host || "localhost";
     } catch {
-      return "music.dubin.cc";
+      return "localhost";
     }
   })();
   const stamp = new Date().toISOString().slice(0, 10);

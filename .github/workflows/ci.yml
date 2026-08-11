@@ -31,9 +31,14 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  # Production deploy: only the upstream repo (forks run `test` only).
+  # Set GitHub secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, MUSIC_ACCESS_TOKEN,
+  # optional CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET for Access-gated smoke.
   deploy:
     needs: test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: >
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.repository == 'sonnemusk/music-du'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -43,27 +48,26 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      # SPA assets must exist under dist/client before wrangler upload
       - name: Build client + server
         env:
-          # baked into SPA for library X-Music-Token (same value as Worker secret)
           VITE_MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
         run: npm run build
-      - name: Deploy private Worker (music-du)
+      - name: Deploy primary Worker (music-du)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-      - name: Smoke private production after deploy
+      - name: Smoke primary
         env:
-          SMOKE_BASE: https://music.dubin.cc
+          # Override with repo secret SMOKE_BASE if set
+          SMOKE_BASE: ${{ secrets.SMOKE_BASE }}
           MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
-          # Cloudflare Access service token (free Zero Trust) — bypasses login for CI
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-        run: bash scripts/smoke-prod.sh
-      # Demo SPA must NOT bake MUSIC_ACCESS_TOKEN (public site)
+        run: |
+          export SMOKE_BASE="${SMOKE_BASE:-https://music.dubin.cc}"
+          bash scripts/smoke-prod.sh
       - name: Build SPA without library token (demo)
         env:
           VITE_MUSIC_ACCESS_TOKEN: ""
@@ -76,7 +80,8 @@ jobs:
           command: deploy --env demo
       - name: Smoke demo (public read-only)
         env:
-          # Custom domain (preferred); workers.dev is fallback if DNS not ready
-          SMOKE_BASE: https://music.du.dev
+          SMOKE_BASE: ${{ secrets.SMOKE_DEMO_BASE }}
           SMOKE_DEMO: "1"
-        run: bash scripts/smoke-prod.sh
+        run: |
+          export SMOKE_BASE="${SMOKE_BASE:-https://music.du.dev}"
+          bash scripts/smoke-prod.sh

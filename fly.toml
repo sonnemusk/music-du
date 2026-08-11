@@ -1,0 +1,36 @@
+# Fly.io example — https://fly.io/docs/
+#   fly launch --no-deploy
+#   fly secrets set CHKSZ_APIKEY=... MUSIC_ACCESS_TOKEN=...
+#   fly volumes create music_data --size 1
+#   fly deploy
+
+app = "music-du" # change me
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8787"
+  NODE_ENV = "production"
+  MUSIC_DATA_DIR = "/data"
+  CHKSZ_API_BASE = "https://api.chksz.top"
+  CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[mounts]]
+  source = "music_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
