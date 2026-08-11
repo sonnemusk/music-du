@@ -1,11 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePlayer } from "../store/player";
 
 export function SearchBar({ className, placeholder }: { className?: string; placeholder?: string }) {
   const search = usePlayer((s) => s.search);
   const searching = usePlayer((s) => s.searching);
-  const q0 = usePlayer((s) => s.searchQuery);
-  const [q, setQ] = useState(q0);
+  const searchQuery = usePlayer((s) => s.searchQuery);
+  const tab = usePlayer((s) => s.tab);
+  const [q, setQ] = useState(searchQuery);
+
+  // Store is source of truth after submit / tab leave (setTab clears searchQuery).
+  useEffect(() => {
+    if (tab !== "search") {
+      setQ("");
+      return;
+    }
+    setQ(searchQuery);
+  }, [tab, searchQuery]);
 
   return (
     <form

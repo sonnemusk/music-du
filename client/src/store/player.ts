@@ -563,7 +563,13 @@ export const usePlayer = create<State>((set, get) => ({
     set({ locateRequest: { id, nonce } });
   },
   setTab: (t) => {
-    set({ tab: t });
+    // Keep searchResults when leaving 搜索; clear the query string so the
+    // header input does not still show the old keyword on other tabs.
+    if (t !== "search") {
+      set({ tab: t, searchQuery: "" });
+    } else {
+      set({ tab: t });
+    }
     if (t === "charts") void get().loadCharts();
     // Switching tabs → pre-resolve visible list so click/play hits cache
     const resolve = (id: string | number, opts?: { level?: string }) =>
