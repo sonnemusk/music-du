@@ -2,12 +2,20 @@
 
 [English](./README.md) · [简体中文](./README.zh-CN.md)
 
+[![CI](https://github.com/sonnemusk/music-du/actions/workflows/ci.yml/badge.svg)](https://github.com/sonnemusk/music-du/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
+
 Open-source **personal music web app** — search, charts, favorites, lyrics, many skins.
 
 **Stack:** TypeScript · [Hono](https://hono.dev) BFF · React + Zustand · **Cloudflare Workers + D1** or **Node + SQLite** (VPS / Fly / Docker).
 
-> **Self-hosting?** Deploy the **normal writable app** (`npm run deploy:cf` / Node / Fly).  
-> **Demo / read-only** is optional showcase only — see [below](#optional-read-only-demo). You do **not** need it for your own site.
+| | |
+|--|--|
+| **Live demo** (read-only) | https://music.du.dev — listen & browse; cannot edit favorites |
+| **Your install** (default) | Writable site via `npm run deploy:cf` / Node / Fly — see [Deploy](#deploy-your-site--default) |
+
+> Self-hosting always means the **normal writable app**. Demo mode is optional showcase only.
 
 ```text
 Browser SPA  ──same-origin /api/*──►  Worker or Node BFF
@@ -16,15 +24,45 @@ Browser SPA  ──same-origin /api/*──►  Worker or Node BFF
                                        └─ charts · covers · lyrics
 ```
 
+<details>
+<summary><strong>Table of contents</strong></summary>
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick start](#quick-start-local)
+- [Deploy](#deploy-your-site--default)
+- [Environment](#environment)
+- [Documentation](#documentation)
+- [Scripts](#scripts)
+- [Project layout](#project-layout)
+- [HTTP API](#http-api-index)
+- [Optional demo](#optional-read-only-demo)
+- [Disclaimer](#disclaimer)
+- [Contributing](#contributing)
+- [License](#license)
+
+</details>
+
 ---
 
 ## Screenshots
 
-Top-right **主题 / 一键切换** cycles skins. Desktop uses a side player + list.
+Top-right **主题 / 一键切换** cycles skins. Desktop: side player + list.
 
-| 喜欢 · 葡萄 | 歌词 · 密林 | 热榜 · 墨红花 |
-|:---:|:---:|:---:|
-| ![Favorites · Grape skin](docs/screenshots/favorites-grape.jpg) | ![Lyrics · Forest skin](docs/screenshots/lyrics-forest.jpg) | ![Charts · Sakura skin](docs/screenshots/charts-sakura.jpg) |
+<p align="center">
+  <img src="docs/screenshots/favorites-grape.jpg" alt="Favorites library — Grape skin" width="920" />
+  <br />
+  <sub>Favorites · Grape skin</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics — Forest skin" width="440" />
+  &nbsp;
+  <img src="docs/screenshots/charts-sakura.jpg" alt="Charts — Sakura skin" width="440" />
+  <br />
+  <sub>Lyrics · Forest &nbsp;·&nbsp; Charts · Sakura</sub>
+</p>
 
 ---
 
@@ -46,7 +84,7 @@ Details: [docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs
 
 - **Node.js ≥ 20**
 - Optional: Cloudflare account + [Wrangler](https://developers.cloudflare.com/workers/wrangler/) for Workers  
-- A music **gateway you are allowed to use** (see disclaimer)
+- A music **gateway you are allowed to use** (see [Disclaimer](#disclaimer))
 
 ---
 
@@ -71,22 +109,23 @@ npm run build && npm run start:prod
 
 ## Deploy (your site — default)
 
-Full guide: **[docs/DEPLOY.md](./docs/DEPLOY.md)** (Cloudflare · VPS · Fly · Docker · Vercel notes).
+Full guide: **[docs/DEPLOY.md](./docs/DEPLOY.md)** · index: **[docs/README.md](./docs/README.md)**
 
 | Target | One-liner |
 |--------|-----------|
 | **Cloudflare** | `npm run setup:d1` → secrets → **`npm run deploy:cf`** |
 | **Node VPS** | `npm run build && HOST=0.0.0.0 node dist/server/node.js` |
 | **Fly.io** | `fly launch` + volume + secrets → `fly deploy` |
-| **Vercel** | Not a full-stack drop-in — SPA only or API elsewhere ([why](./docs/DEPLOY.md#4-vercel)) |
-| **Demo read-only** | Optional: `npm run deploy:cf:demo` — **not** for normal self-host |
+| **Docker** | `docker build -t music-du .` + volume `/data` |
+| **Vercel** | Not full-stack drop-in — [why](./docs/DEPLOY.md#4-vercel) |
+| **Demo read-only** | Optional `npm run deploy:cf:demo` — **not** for normal self-host |
 
 ### Cloudflare (most common)
 
 ```bash
 npm run setup:d1                              # paste database_id into wrangler.toml
 npx wrangler secret put MUSIC_ACCESS_TOKEN    # recommended for private installs
-npx wrangler secret put CHKSZ_FALLBACK_APIKEYS  # if your backup gateway needs keys
+npx wrangler secret put CHKSZ_FALLBACK_APIKEYS  # if backup gateway needs keys
 npm run deploy:cf                             # writable install — not demo
 ```
 
@@ -106,6 +145,17 @@ docker run -d -p 8787:8787 -v music-data:/data \
 ```
 
 Persist `MUSIC_DATA_DIR` / the volume (SQLite + caches).
+
+### Fly.io
+
+```bash
+fly launch --no-deploy
+fly volumes create music_data --size 1
+fly secrets set MUSIC_ACCESS_TOKEN=… CHKSZ_FALLBACK_APIKEYS=…
+fly deploy
+```
+
+See [`Dockerfile`](./Dockerfile) · [`fly.toml`](./fly.toml).
 
 ---
 
@@ -129,14 +179,15 @@ Copy [`.env.example`](./.env.example). **Never commit** `.env`, `.dev.vars`, or 
 
 | Doc | Contents |
 |-----|----------|
-| **[docs/DEPLOY.md](./docs/DEPLOY.md)** | Step-by-step: CF · VPS · Fly · Docker · Vercel |
+| **[docs/README.md](./docs/README.md)** | Doc index |
+| **[docs/DEPLOY.md](./docs/DEPLOY.md)** | CF · VPS · Fly · Docker · Vercel |
 | **[docs/API.md](./docs/API.md)** | Full HTTP API |
-| **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)** | Music APIs, copyright, plug-in guide |
+| **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)** | Music APIs, copyright, plug-in |
 | **[docs/ACCESS.md](./docs/ACCESS.md)** | Cloudflare Access + library token |
 | **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | Runtime design |
 | **[SECURITY.md](./SECURITY.md)** | Secrets & reporting |
 
-**Agents:** [docs/DEPLOY.md §8](./docs/DEPLOY.md) checklist → then [docs/API.md](./docs/API.md). Deploy the **writable** app unless the user asked for a read-only gallery.
+**Agents:** [docs/DEPLOY.md §8](./docs/DEPLOY.md) → [docs/API.md](./docs/API.md). Deploy the **writable** app unless the user asked for a read-only gallery.
 
 ---
 
@@ -192,9 +243,11 @@ Full reference: **[docs/API.md](./docs/API.md)**.
 
 ## Optional: read-only demo
 
-Ignore this if you only want **your own** music site.
+Skip this for a normal personal install.
 
-For a **second** public “listen only” Worker (no edit favorites / no export):
+Public showcase (listen only): **https://music.du.dev**
+
+To run your **own** second Worker the same way:
 
 ```bash
 npm run deploy:cf:demo    # wrangler --env demo
@@ -210,6 +263,7 @@ LIBRARY_READONLY = "true"
 | Command | `deploy:cf` / Node / Fly | `deploy:cf:demo` only |
 | Library | Read **and write** | Read-only |
 | `LIBRARY_READONLY` | Unset | `true` |
+| Example | your domain | https://music.du.dev |
 
 ---
 
@@ -219,7 +273,7 @@ This repo is a **player + BFF**. It does **not** ship a licensed music catalog.
 
 - You must use a **lawful** API / content source.  
 - Default env may point at a community NetEase-compatible gateway for convenience; **availability and legality are yours**.  
-- How to plug in your own API: **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)**.
+- Plug in your own API: **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)**.
 
 ---
 
