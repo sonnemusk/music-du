@@ -13,7 +13,7 @@ Technical docs are in **English** (commands and paths are language-neutral). Sta
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Runtime design |
 | [FEATURES.md](./FEATURES.md) | Product | Feature checklist |
 | [../SECURITY.md](../SECURITY.md) | Everyone | Secrets & reporting |
-| [screenshots/](./screenshots/) | README | UI stills |
+| [screenshots/](./screenshots/) | README | UI stills + `skins-cycle.gif` |
 
 ## Deploy reminder
 

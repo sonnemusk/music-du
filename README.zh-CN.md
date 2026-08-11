@@ -51,6 +51,12 @@
 右上角 **主题 / 一键切换** 换肤。桌面端：侧栏播放器 + 列表。
 
 <p align="center">
+  <img src="docs/screenshots/skins-cycle.gif" alt="一键切换皮肤动图" width="880" />
+  <br />
+  <sub>一键切换皮肤</sub>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢 · 葡萄皮肤" width="920" />
   <br />
   <sub>喜欢 · 葡萄</sub>

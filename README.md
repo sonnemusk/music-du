@@ -51,6 +51,12 @@ Browser SPA  ──same-origin /api/*──►  Worker or Node BFF
 Top-right **主题 / 一键切换** cycles skins. Desktop: side player + list.
 
 <p align="center">
+  <img src="docs/screenshots/skins-cycle.gif" alt="Cycling through skins with one-click switch" width="880" />
+  <br />
+  <sub>One-click skin switch</sub>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/favorites-grape.jpg" alt="Favorites library — Grape skin" width="920" />
   <br />
   <sub>Favorites · Grape skin</sub>
