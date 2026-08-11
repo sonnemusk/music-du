@@ -48,26 +48,37 @@ Browser SPA  ──same-origin /api/*──►  Worker or Node BFF
 
 ## Screenshots
 
-Top-right **主题 / 一键切换** cycles skins. Desktop: side player + list.
+Every asset below is shown at **the same width (960px)** so the gallery is aligned and easy to compare.
+
+### 1. Skin switch (animated GIF)
+
+- **What:** click top-right **主题 · …** or **一键切换** to cycle themes  
+- **File:** `docs/screenshots/skins-cycle.gif`  
+- **Quality:** **1280×800** source, **1s per skin**, palette without dither (sharper UI text)
 
 <p align="center">
-  <img src="docs/screenshots/skins-cycle.gif" alt="Cycling through skins with one-click switch" width="880" />
-  <br />
-  <sub>One-click skin switch</sub>
+  <img src="docs/screenshots/skins-cycle.gif" alt="GIF: one-click skin switch across themes" width="960" />
+</p>
+
+<p align="center"><b>One-click skin switch</b></p>
+
+### 2. Main UI (static, identical size)
+
+Sources are **1440×900** JPEG; README display width **960px** for all three.
+
+<p align="center">
+  <img src="docs/screenshots/favorites-grape.jpg" alt="Favorites tab — Grape skin" width="960" /><br/>
+  <b>Favorites (喜欢)</b> — library + player · skin「葡萄」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/favorites-grape.jpg" alt="Favorites library — Grape skin" width="920" />
-  <br />
-  <sub>Favorites · Grape skin</sub>
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics tab — Forest skin" width="960" /><br/>
+  <b>Lyrics (歌词)</b> — bilingual follow-scroll · skin「密林」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/lyrics-forest.jpg" alt="Lyrics — Forest skin" width="440" />
-  &nbsp;
-  <img src="docs/screenshots/charts-sakura.jpg" alt="Charts — Sakura skin" width="440" />
-  <br />
-  <sub>Lyrics · Forest &nbsp;·&nbsp; Charts · Sakura</sub>
+  <img src="docs/screenshots/charts-sakura.jpg" alt="Charts tab — Sakura skin" width="960" /><br/>
+  <b>Charts (热榜)</b> — multi-platform boards · skin「墨红花」
 </p>
 
 ---

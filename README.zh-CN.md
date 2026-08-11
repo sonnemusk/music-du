@@ -48,26 +48,37 @@
 
 ## 截图
 
-右上角 **主题 / 一键切换** 换肤。桌面端：侧栏播放器 + 列表。
+以下资源在 README 中**统一按 960px 宽**展示，大小一致、对齐整齐。
+
+### 1. 一键换肤（GIF 动图）
+
+- **操作：** 右上角 **主题 · …** 或 **一键切换**，循环切换皮肤  
+- **文件：** `docs/screenshots/skins-cycle.gif`  
+- **清晰度：** 源图 **1280×800**，每个主题约 **1 秒**，高清色板、**无抖动**（界面文字更清楚）
 
 <p align="center">
-  <img src="docs/screenshots/skins-cycle.gif" alt="一键切换皮肤动图" width="880" />
-  <br />
-  <sub>一键切换皮肤</sub>
+  <img src="docs/screenshots/skins-cycle.gif" alt="GIF：一键切换皮肤" width="960" />
+</p>
+
+<p align="center"><b>一键换肤演示</b></p>
+
+### 2. 主要界面（静图，尺寸相同）
+
+源图均为 **1440×900** JPEG；页面展示宽度统一 **960px**。
+
+<p align="center">
+  <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢页 · 葡萄皮肤" width="960" /><br/>
+  <b>喜欢</b> — 收藏列表 + 播放器 · 皮肤「葡萄」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/favorites-grape.jpg" alt="喜欢 · 葡萄皮肤" width="920" />
-  <br />
-  <sub>喜欢 · 葡萄</sub>
+  <img src="docs/screenshots/lyrics-forest.jpg" alt="歌词页 · 密林皮肤" width="960" /><br/>
+  <b>歌词</b> — 中英歌词跟滚 · 皮肤「密林」
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/lyrics-forest.jpg" alt="歌词 · 密林皮肤" width="440" />
-  &nbsp;
-  <img src="docs/screenshots/charts-sakura.jpg" alt="热榜 · 墨红花皮肤" width="440" />
-  <br />
-  <sub>歌词 · 密林 &nbsp;·&nbsp; 热榜 · 墨红花</sub>
+  <img src="docs/screenshots/charts-sakura.jpg" alt="热榜页 · 墨红花皮肤" width="960" /><br/>
+  <b>热榜</b> — 多平台飙升/热歌/新歌 · 皮肤「墨红花」
 </p>
 
 ---
