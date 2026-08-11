@@ -1,70 +1,50 @@
 # music-du
 
-Open-source **personal music web app**: search, multi-platform charts, favorites/playlist/history, lyrics, many skins, keyboard shortcuts.
+Open-source **personal music web app** — search, charts, favorites, lyrics, many skins.
 
-**Stack:** TypeScript · [Hono](https://hono.dev) BFF · React + Zustand · **Cloudflare Workers + D1** (production) or **Node + SQLite** (local / VPS / Fly).
+**Stack:** TypeScript · [Hono](https://hono.dev) BFF · React + Zustand · **Cloudflare Workers + D1** or **Node + SQLite** (VPS / Fly / Docker).
+
+> **Self-hosting?** Deploy the **normal writable app** (`npm run deploy:cf` / Node / Fly).  
+> **Demo / read-only** is optional showcase only — see [below](#optional-read-only-demo). You do **not** need it for your own site.
 
 ```text
 Browser SPA  ──same-origin /api/*──►  Worker or Node BFF
                                        ├─ your music gateway (env)
                                        ├─ library (D1 or SQLite)
-                                       └─ charts / covers / lyrics helpers
+                                       └─ charts · covers · lyrics
 ```
-
-### Default deploy = **your** full site (not the demo)
-
-When you follow this README / `docs/DEPLOY.md`, you deploy a **normal, writable personal install**:
-
-- You own the library (favorites / playlist / history can be changed)
-- Commands: `npm run deploy:cf` · `npm run start:prod` · Fly `fly deploy` · Docker, etc.
-- **Do not** set `LIBRARY_READONLY=true` unless you intentionally want a public showcase
-
-The **demo (read-only)** mode is **optional** and only for sharing a look-only instance (e.g. “visitors can listen, cannot edit my favorites”). It is **not** the default, and you **do not need it** for self-hosting.
-
-| | Your site (default) | Demo (optional) |
-|--|--|--|
-| Command | `npm run deploy:cf` / Node / Fly | `npm run deploy:cf:demo` only |
-| Library | Read **and write** | Read-only |
-| Env | (no `LIBRARY_READONLY`) | `LIBRARY_READONLY=true` |
-| Who needs it | **Everyone self-hosting** | Only if you want a public gallery |
 
 ---
 
-## Disclaimer (read this)
+## Screenshots
 
-This repository is a **player + integration layer**. It does **not** include licensed music.
+Top-right **主题 / 一键切换** cycles skins. Desktop uses a side player + list.
 
-- You must supply a **lawful** music/metadata/stream API (or self-host one you are allowed to use).  
-- Default env points at a **community NetEase-compatible gateway** for convenience; availability and legality are **your** responsibility.  
-- See **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)** for options and how to plug in your own API.
-
-MIT licensed — see [LICENSE](./LICENSE). No warranty.
+| 喜欢 · 葡萄 | 歌词 · 密林 | 热榜 · 墨红花 |
+|:---:|:---:|:---:|
+| ![Favorites · Grape skin](docs/screenshots/favorites-grape.jpg) | ![Lyrics · Forest skin](docs/screenshots/lyrics-forest.jpg) | ![Charts · Sakura skin](docs/screenshots/charts-sakura.jpg) |
 
 ---
 
 ## Features
 
-- Playback: direct CDN URL preferred; list / single / shuffle; Media Session  
-- Library: playlist · favorites · history · multi-device `revision` lock  
-- Search + charts (soar / hot / new across several platforms)  
-- Lyrics with local cache  
-- Many visual themes (side / immersive / compact layouts)  
-- Import/export favorites (`/favs`, `/import`)  
-- Optional read-only **demo** mode (showcase only — skip for your own deploy)  
+- **Play** — direct CDN URL, list / single / shuffle, Media Session, quality pick  
+- **Library** — playlist · favorites · history · multi-device `revision` lock  
+- **Discover** — keyword search · multi-platform charts (soar / hot / new)  
+- **Lyrics** — multi-source resolve + local cache + follow scroll  
+- **Skins** — many themes × side / immersive / compact layouts  
+- **Import / export** — `/favs` JSON, `/import` (id or name list)  
+- **Shortcuts** — `Space` play/pause · `N` / `P` next/prev · more in-app  
 
-More: [docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+Details: [docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
-### Screenshots
+---
 
-Skin switcher (top-right) cycles themes; layout stays side-player + list on desktop.
+## Requirements
 
-| Favorites · 葡萄 | Lyrics · 密林 | Charts · 墨红花 |
-|:---:|:---:|:---:|
-| ![Favorites library with Grape skin](docs/screenshots/favorites-grape.jpg) | ![Synced lyrics with Forest skin](docs/screenshots/lyrics-forest.jpg) | ![Multi-platform charts with Sakura skin](docs/screenshots/charts-sakura.jpg) |
-
-- **喜欢** — favorites list, now-playing, quality / shuffle  
-- **歌词** — bilingual lyric scroll with current line highlight  
-- **热榜** — soar / hot / new boards across Douyin, NetEase, QQ, …
+- **Node.js ≥ 20**
+- Optional: Cloudflare account + [Wrangler](https://developers.cloudflare.com/workers/wrangler/) for Workers  
+- A music **gateway you are allowed to use** (see disclaimer)
 
 ---
 
@@ -74,7 +54,7 @@ Skin switcher (top-right) cycles themes; layout stays side-player + list on desk
 git clone https://github.com/sonnemusk/music-du.git
 cd music-du
 cp .env.example .env
-# Edit .env — at least leave free primary base; add keys if you use a paid fallback
+# Edit .env — gateway base URL / keys (server-only). See .env.example comments.
 
 npm ci
 npm run dev          # http://127.0.0.1:8787
@@ -87,36 +67,74 @@ npm run build && npm run start:prod
 
 ---
 
-## Documentation map
+## Deploy (your site — default)
 
-| Doc | Contents |
-|-----|----------|
-| **[docs/DEPLOY.md](./docs/DEPLOY.md)** | Cloudflare · Node VPS · **Fly.io** · **Vercel** notes · Docker |
-| **[docs/API.md](./docs/API.md)** | Full HTTP API reference |
-| **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)** | Music APIs, copyright, plug-in guide |
-| **[docs/ACCESS.md](./docs/ACCESS.md)** | Optional Cloudflare Access + library token |
-| **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | Runtime design |
-| **[SECURITY.md](./SECURITY.md)** | Secrets & reporting |
+Full guide: **[docs/DEPLOY.md](./docs/DEPLOY.md)** (Cloudflare · VPS · Fly · Docker · Vercel notes).
 
-**Agents / automation:** start with `docs/DEPLOY.md` §8 checklist, then `docs/API.md`.
+| Target | One-liner |
+|--------|-----------|
+| **Cloudflare** | `npm run setup:d1` → secrets → **`npm run deploy:cf`** |
+| **Node VPS** | `npm run build && HOST=0.0.0.0 node dist/server/node.js` |
+| **Fly.io** | `fly launch` + volume + secrets → `fly deploy` |
+| **Vercel** | Not a full-stack drop-in — SPA only or API elsewhere ([why](./docs/DEPLOY.md#4-vercel)) |
+| **Demo read-only** | Optional: `npm run deploy:cf:demo` — **not** for normal self-host |
+
+### Cloudflare (most common)
+
+```bash
+npm run setup:d1                              # paste database_id into wrangler.toml
+npx wrangler secret put MUSIC_ACCESS_TOKEN    # recommended for private installs
+npx wrangler secret put CHKSZ_FALLBACK_APIKEYS  # if your backup gateway needs keys
+npm run deploy:cf                             # writable install — not demo
+```
+
+Bind a custom domain in the Cloudflare dashboard. Optional: [Access](./docs/ACCESS.md).
+
+### Node / Docker
+
+```bash
+# bare metal
+npm ci && npm run build
+HOST=0.0.0.0 PORT=8787 NODE_ENV=production node dist/server/node.js
+
+# Docker
+docker build -t music-du .
+docker run -d -p 8787:8787 -v music-data:/data \
+  -e MUSIC_ACCESS_TOKEN=… -e CHKSZ_FALLBACK_APIKEYS=… music-du
+```
+
+Persist `MUSIC_DATA_DIR` / the volume (SQLite + caches).
 
 ---
 
-## Environment (names only)
+## Environment
 
-Copy [`.env.example`](./.env.example). Important variables:
+Copy [`.env.example`](./.env.example). **Never commit** `.env`, `.dev.vars`, or `data/*`.
 
 | Variable | Where | Purpose |
 |----------|--------|---------|
 | `CHKSZ_API_BASE` | Server | Primary music gateway base URL |
-| `CHKSZ_FALLBACK_BASE` / `CHKSZ_FALLBACK_APIKEYS` | Server | Backup host + keys (never expose to browser) |
+| `CHKSZ_FALLBACK_BASE` / `CHKSZ_FALLBACK_APIKEYS` | Server | Backup host + keys (**never** in the browser) |
 | `MUSIC_ACCESS_TOKEN` | Server | Protects `/api/library` when set |
-| `VITE_MUSIC_ACCESS_TOKEN` | Build (optional) | SPA default `X-Music-Token` — avoid on public demos |
-| `LIBRARY_READONLY` | Worker **demo only** | Leave **unset** for your own site. `true` = showcase, no writes / no export |
-| `LIBRARY_TOKEN_REQUIRED_HOSTS` | Worker | Hosts that must have library token configured |
+| `VITE_MUSIC_ACCESS_TOKEN` | Build (optional) | SPA default token — avoid on public demos |
+| `LIBRARY_READONLY` | Worker **demo only** | Leave **unset** for your site |
+| `LIBRARY_TOKEN_REQUIRED_HOSTS` | Worker | Hosts that must have library token set |
 | `HOST` / `PORT` / `MUSIC_DATA_DIR` | Node | Listen address + SQLite directory |
 
-**Never commit** `.env`, `.dev.vars`, or `data/*` libraries.
+---
+
+## Documentation
+
+| Doc | Contents |
+|-----|----------|
+| **[docs/DEPLOY.md](./docs/DEPLOY.md)** | Step-by-step: CF · VPS · Fly · Docker · Vercel |
+| **[docs/API.md](./docs/API.md)** | Full HTTP API |
+| **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)** | Music APIs, copyright, plug-in guide |
+| **[docs/ACCESS.md](./docs/ACCESS.md)** | Cloudflare Access + library token |
+| **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | Runtime design |
+| **[SECURITY.md](./SECURITY.md)** | Secrets & reporting |
+
+**Agents:** [docs/DEPLOY.md §8](./docs/DEPLOY.md) checklist → then [docs/API.md](./docs/API.md). Deploy the **writable** app unless the user asked for a read-only gallery.
 
 ---
 
@@ -126,54 +144,12 @@ Copy [`.env.example`](./.env.example). Important variables:
 |--------|---------|
 | `npm run dev` | Local Hono + Vite |
 | `npm run build` | `dist/client` + `dist/server` |
-| `npm run start:prod` | Node production server (**your** site) |
-| `npm test` / `typecheck` | Vitest / `tsc` |
-| `npm run smoke` | Local smoke (server up) |
-| `npm run setup:d1` | Create free D1 database |
-| `npm run deploy:cf` | **Default CF deploy** — your writable Worker |
-| `npm run deploy:cf:demo` | Optional second Worker — read-only showcase only |
-
----
-
-## Deploy (short)
-
-Self-hosters only need the **default** path below. Skip anything labeled “demo”.
-
-### Cloudflare Workers (your site)
-
-```bash
-npm run setup:d1          # paste database_id into wrangler.toml
-npx wrangler secret put MUSIC_ACCESS_TOKEN
-npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if needed
-npm run deploy:cf         # ← this is YOUR install (writable). Not demo.
-```
-
-Full steps: [docs/DEPLOY.md §1](./docs/DEPLOY.md).
-
-### Node VPS
-
-```bash
-npm ci && npm run build
-HOST=0.0.0.0 PORT=8787 NODE_ENV=production node dist/server/node.js
-```
-
-Put TLS reverse proxy in front; persist `MUSIC_DATA_DIR`.
-
-### Fly.io
-
-```bash
-fly launch --no-deploy
-fly volumes create music_data --size 1
-fly secrets set MUSIC_ACCESS_TOKEN=… CHKSZ_FALLBACK_APIKEYS=…
-fly deploy
-```
-
-See [`Dockerfile`](./Dockerfile) · [`fly.toml`](./fly.toml) · [docs/DEPLOY.md §3](./docs/DEPLOY.md).
-
-### Vercel
-
-**Not a drop-in full-stack target** (no durable SQLite/D1 on serverless as used here).  
-Use Vercel for static SPA only + API on Workers/Fly/VPS, or pick another host. Details: [docs/DEPLOY.md §4](./docs/DEPLOY.md).
+| `npm run start:prod` | Node production (**your** site) |
+| `npm test` / `typecheck` | Vitest / TypeScript |
+| `npm run smoke` | HTTP smoke against a running server |
+| `npm run setup:d1` | Create free D1 |
+| `npm run deploy:cf` | **Default** CF deploy (writable) |
+| `npm run deploy:cf:demo` | Optional read-only second Worker |
 
 ---
 
@@ -181,8 +157,8 @@ Use Vercel for static SPA only + API on Workers/Fly/VPS, or pick another host. D
 
 ```text
 client/       React SPA (Vite)
-server/       Hono BFF — node.ts (VPS) · worker.ts (Cloudflare)
-docs/         Deploy, API, providers, architecture
+server/       Hono BFF — node.ts · worker.ts
+docs/         Deploy, API, providers, screenshots
 migrations/   D1 SQL
 scripts/      smoke, D1 setup
 tests/        Vitest
@@ -197,60 +173,59 @@ data/         Runtime only (gitignored)
 |--------|------|--------|
 | GET | `/api/health` | Flags, `readOnly` |
 | GET | `/api/search` | `?q=` |
-| GET | `/api/charts` · `/api/charts/:platform` | Boards soar/hot/new |
+| GET | `/api/charts` · `/api/charts/:platform` | soar / hot / new |
 | GET | `/api/song/:sid` | Resolve stream URL |
 | GET | `/api/song/:sid/qualities` | Quality ladder |
 | GET | `/api/stream/:sid` | CF: **302** to CDN |
 | GET | `/api/lyric/:sid` | Lyrics |
 | GET | `/api/cover-proxy` | Cover proxy |
 | GET/PUT | `/api/library` | Token when configured |
-| DELETE | `/api/library/:listType/:sid` | playlist/favorites/history |
-| GET | `/favs` · `/export` | Favorites JSON download |
-| GET/POST | `/import` | Merge favorites / name list |
+| DELETE | `/api/library/:listType/:sid` | playlist / favorites / history |
+| GET | `/favs` · `/export` | Favorites JSON |
+| GET/POST | `/import` | Merge by id or name list |
 
 Full reference: **[docs/API.md](./docs/API.md)**.
 
 ---
 
-## Read-only demo mode (optional showcase only)
+## Optional: read-only demo
 
-**You can ignore this entire section** if you only want your own music site.
+Ignore this if you only want **your own** music site.
 
-Demo is for a **second**, public “look but don’t touch” deployment (maintainer gallery, screenshots, etc.). Default `npm run deploy:cf` / Node / Fly **do not** enable it.
+For a **second** public “listen only” Worker (no edit favorites / no export):
 
 ```bash
-# Only if you deliberately want a public read-only mirror:
-npm run deploy:cf:demo
+npm run deploy:cf:demo    # wrangler --env demo
 ```
 
 ```toml
-# wrangler [env.demo] only — do NOT put this on your main Worker
+# [env.demo] only — never on the default Worker
 LIBRARY_READONLY = "true"
 ```
 
-Effects: listen + browse library OK; favorite / import / export blocked. Skin/volume stay in the visitor’s `localStorage`.
+| | Your site (default) | Demo (optional) |
+|--|--|--|
+| Command | `deploy:cf` / Node / Fly | `deploy:cf:demo` only |
+| Library | Read **and write** | Read-only |
+| `LIBRARY_READONLY` | Unset | `true` |
 
 ---
 
-## Security hygiene before you go public
+## Disclaimer
 
-1. Repo → **Settings → General → Change repository visibility** only after this list  
-2. Confirm `.env` / `.dev.vars` / `data/*` dumps are **not** in git (`git status`, `git log --all -- data/`)  
-3. Rotate any keys that ever sat in chat logs or old commits  
-4. Demo Worker: **no** `MUSIC_ACCESS_TOKEN`, **no** Access on public hostname  
-5. Private Worker: Access + library token  
+This repo is a **player + BFF**. It does **not** ship a licensed music catalog.
 
-See [SECURITY.md](./SECURITY.md).
+- You must use a **lawful** API / content source.  
+- Default env may point at a community NetEase-compatible gateway for convenience; **availability and legality are yours**.  
+- How to plug in your own API: **[docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)**.
 
 ---
 
 ## Contributing
 
-Issues and PRs welcome. Please:
-
-- Keep gateway keys server-side  
-- Run `npm test && npm run typecheck`  
-- Avoid committing personal libraries or real hostnames/secrets in samples  
+- Keep gateway keys **server-side** only  
+- `npm test && npm run typecheck` before PR  
+- Do not commit `.env`, personal libraries, or real secrets  
 
 ---
 
