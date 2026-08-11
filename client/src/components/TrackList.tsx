@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useT } from "../i18n";
 import * as api from "../lib/api";
 import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
@@ -58,7 +59,7 @@ function flashRow(el: HTMLElement) {
   window.setTimeout(() => el.classList.remove("track-row--flash"), 900);
 }
 
-export function TrackList({ tracks, mode, empty = "暂无内容", className }: Props) {
+export function TrackList({ tracks, mode, empty, className }: Props) {
   const playTrack = usePlayer((s) => s.playTrack);
   const curTrack = usePlayer((s) => s.curTrack);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
@@ -69,6 +70,9 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   const removeFromPlaylist = usePlayer((s) => s.removeFromPlaylist);
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
+  const emptyText = empty ?? tr("empty.generic");
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   /** Track previous mode so we detect entering 喜欢 (including first mount). */
   const prevModeRef = useRef<string | null>(null);
@@ -198,7 +202,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
   if (!tracks.length) {
     return (
       <div className={className || "track-list"}>
-        <div className="empty">{empty}</div>
+        <div className="empty">{emptyText}</div>
       </div>
     );
   }
@@ -228,7 +232,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
             onFocus={() => warmRow(t)}
             role="button"
             tabIndex={0}
-            title={isTouchUi() ? "点击播放" : "双击播放"}
+            title={isTouchUi() ? tr("track.clickPlay") : tr("track.dblPlay")}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -239,7 +243,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
             {mode === "charts" ? (
               <span
                 className={`track-rank ${rank <= 3 ? `top${rank}` : ""}`}
-                aria-label={`第 ${rank} 名`}
+                aria-label={tr("track.rankAria", { n: rank })}
               >
                 {rank}
               </span>
@@ -261,7 +265,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                 <button
                   type="button"
                   className="icon-btn danger"
-                  title="移除"
+                  title={tr("track.remove")}
                   onClick={() => removeFromPlaylist(t.id)}
                 >
                   ✕
@@ -271,14 +275,14 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                 <button
                   type="button"
                   className="icon-btn danger"
-                  title="取消收藏"
+                  title={tr("track.unfav")}
                   onClick={() => toggleFavorite(t)}
                 >
                   ♥
                 </button>
               )}
               {libraryReadOnly && mode === "favorites" && isFavorite(t.id) ? (
-                <span className="icon-btn" title="已收藏（只读）" aria-hidden="true">
+                <span className="icon-btn" title={tr("track.favReadonly")} aria-hidden="true">
                   ♥
                 </span>
               ) : null}
@@ -287,7 +291,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   <button
                     type="button"
                     className="icon-btn"
-                    title="加入列表"
+                    title={tr("track.addList")}
                     onClick={() => addToPlaylist(t)}
                   >
                     ＋
@@ -295,7 +299,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   <button
                     type="button"
                     className="icon-btn danger"
-                    title="从历史删除"
+                    title={tr("track.removeHistory")}
                     onClick={() => removeFromHistory(t.id)}
                   >
                     ✕
@@ -307,7 +311,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   <button
                     type="button"
                     className="icon-btn"
-                    title="加入列表"
+                    title={tr("track.addList")}
                     onClick={() => addToPlaylist(t)}
                   >
                     ＋
@@ -315,7 +319,7 @@ export function TrackList({ tracks, mode, empty = "暂无内容", className }: P
                   <button
                     type="button"
                     className="icon-btn"
-                    title="收藏"
+                    title={tr("track.fav")}
                     onClick={() => toggleFavorite(t)}
                   >
                     {isFavorite(t.id) ? "♥" : "♡"}

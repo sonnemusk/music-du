@@ -5,6 +5,7 @@
  * - User preference is a rank 0/1/2 among those available (default 0 = highest).
  *   So if a song has no 母带, rank 0 becomes whatever is best for that song.
  */
+import { getLocale, t, type Locale } from "../i18n";
 
 export type QualityRank = 0 | 1 | 2;
 
@@ -17,17 +18,16 @@ export type QualityChoice = {
   label: string;
 };
 
-/** Full ladder labels (any API level we might surface). */
-const LABELS: Record<string, { short: string; label: string }> = {
-  jymaster: { short: "母带", label: "超清母带" },
-  sky: { short: "沉浸", label: "沉浸环绕" },
-  jyeffect: { short: "高清", label: "高清环绕" },
-  hires: { short: "HiRes", label: "Hi-Res" },
-  lossless: { short: "无损", label: "无损" },
-  exhigh: { short: "极高", label: "极高" },
-  higher: { short: "较高", label: "较高" },
-  standard: { short: "标准", label: "标准" },
-};
+const LEVEL_IDS = [
+  "jymaster",
+  "sky",
+  "jyeffect",
+  "hires",
+  "lossless",
+  "exhigh",
+  "higher",
+  "standard",
+] as const;
 
 /**
  * Default quality = rank 1 (second of top-3), e.g. 沉浸/sky when available.
@@ -39,13 +39,26 @@ export const DEFAULT_QUALITY = "sky";
 
 export const QUALITY_RANK_KEY = "kazam.v2.qualityRank";
 
-export function labelForLevel(level: string | null | undefined): {
+export function labelForLevel(
+  level: string | null | undefined,
+  locale: Locale = getLocale()
+): {
   short: string;
   label: string;
 } {
   const k = String(level || "").toLowerCase();
-  if (LABELS[k]) return LABELS[k];
-  if (!k) return { short: "自动", label: "自动（第二档）" };
+  if ((LEVEL_IDS as readonly string[]).includes(k)) {
+    return {
+      short: t(`quality.levels.${k}.short`, undefined, locale),
+      label: t(`quality.levels.${k}.label`, undefined, locale),
+    };
+  }
+  if (!k) {
+    return {
+      short: t("quality.autoShort", undefined, locale),
+      label: t("quality.autoLabel", undefined, locale),
+    };
+  }
   return { short: k.toUpperCase().slice(0, 4), label: k.toUpperCase() };
 }
 

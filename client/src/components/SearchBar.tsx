@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 
 export function SearchBar({ className, placeholder }: { className?: string; placeholder?: string }) {
@@ -6,6 +7,8 @@ export function SearchBar({ className, placeholder }: { className?: string; plac
   const searching = usePlayer((s) => s.searching);
   const searchQuery = usePlayer((s) => s.searchQuery);
   const tab = usePlayer((s) => s.tab);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
   const [q, setQ] = useState(searchQuery);
 
   // Store is source of truth after submit / tab leave (setTab clears searchQuery).
@@ -30,14 +33,14 @@ export function SearchBar({ className, placeholder }: { className?: string; plac
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder={placeholder || "搜索歌曲 / 歌手…"}
+        placeholder={placeholder || tr("search.placeholder")}
         enterKeyHint="search"
         autoComplete="off"
         spellCheck={false}
-        aria-label="搜索"
+        aria-label={tr("search.aria")}
       />
-      <button type="submit" disabled={searching} aria-label="提交搜索">
-        {searching ? "…" : "搜索"}
+      <button type="submit" disabled={searching} aria-label={tr("search.submitAria")}>
+        {searching ? "…" : tr("search.submit")}
       </button>
     </form>
   );

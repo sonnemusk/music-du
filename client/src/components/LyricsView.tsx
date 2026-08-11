@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { useT } from "../i18n";
 import { lyricIndexAt } from "../lib/player-core";
 import { usePlayer } from "../store/player";
 
@@ -62,12 +63,15 @@ function centerLine(
  */
 export function LyricsView({
   variant = "panel",
-  empty = "暂无歌词",
+  empty,
 }: Props) {
   const lyrics = usePlayer((s) => s.lyrics);
   const lyricIdx = usePlayer((s) => s.lyricIdx);
   const audioEl = usePlayer((s) => s.audioEl);
   const currentTime = usePlayer((s) => s.currentTime);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
+  const emptyText = empty ?? tr("empty.lyrics");
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
@@ -190,11 +194,11 @@ export function LyricsView({
   if (!lyrics.length) {
     return (
       <div className="empty">
-        {empty}
+        {emptyText}
         <div className="lyrics-empty-hint">
-          正在多源匹配歌词（网易 → 同名重搜 → LRCLIB）
+          {tr("lyrics.loading")}
           <br />
-          若仍无词，可能是纯音乐或未收录
+          {tr("lyrics.loadingHint")}
         </div>
       </div>
     );
@@ -210,7 +214,7 @@ export function LyricsView({
       ref={scrollerRef}
       className={cls}
       role="list"
-      aria-label="歌词"
+      aria-label={tr("lyrics.aria")}
       onWheel={markUserBrowse}
       onTouchStart={markUserBrowse}
       onPointerDown={(e) => {
@@ -229,7 +233,7 @@ export function LyricsView({
             else lineRefs.current.delete(i);
           }}
           onClick={() => seekToLine(l.ms)}
-          title="点击跳到这句"
+          title={tr("lyrics.jumpTitle")}
         >
           <span className="ly-orig">{l.orig}</span>
           {l.tran ? <span className="tr">{l.tran}</span> : null}

@@ -1,8 +1,11 @@
+import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 
 export function Toast() {
   const toast = usePlayer((s) => s.toast);
-  const needAccess = /Cloudflare Access|需要登录/i.test(toast || "");
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
+  const needAccess = /Cloudflare Access|需要登录|Sign in|login/i.test(toast || "");
   return (
     <div className={`toast ${toast ? "show" : ""}`}>
       <span className="toast__text">{toast}</span>
@@ -15,7 +18,7 @@ export function Toast() {
             window.location.assign(window.location.pathname || "/");
           }}
         >
-          重新登录
+          {tr("access.reLogin")}
         </button>
       ) : null}
     </div>

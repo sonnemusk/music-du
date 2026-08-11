@@ -6,6 +6,7 @@ import { Toast } from "./components/Toast";
 import { attachSwipeNav } from "./lib/swipe-nav";
 import { getTheme } from "./skins/theme-catalog";
 import { SkinHost } from "./skins/SkinHost";
+import { t, useT } from "./i18n";
 import { usePlayer } from "./store/player";
 
 export default function App() {
@@ -15,6 +16,8 @@ export default function App() {
   const skinOpen = usePlayer((s) => s.skinOpen);
   const next = usePlayer((s) => s.next);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
   const shellRef = useRef<HTMLDivElement>(null);
 
   const showToast = usePlayer((s) => s.showToast);
@@ -34,12 +37,12 @@ export default function App() {
         const capped = Number(q.get("capped") || 0);
         await reloadLibrary();
         const parts: string[] = [];
-        if (added > 0) parts.push(`新增 ${added} 首`);
-        else parts.push("无新歌");
-        if (total) parts.push(`共 ${total}`);
-        if (skipped) parts.push(`去重 ${skipped}`);
-        if (failed) parts.push(`未匹配 ${failed}`);
-        if (capped) parts.push(`名匹配上限外 ${capped}`);
+        if (added > 0) parts.push(t("import.added", { n: added }));
+        else parts.push(t("import.none"));
+        if (total) parts.push(t("import.total", { n: total }));
+        if (skipped) parts.push(t("import.skipped", { n: skipped }));
+        if (failed) parts.push(t("import.failed", { n: failed }));
+        if (capped) parts.push(t("import.capped", { n: capped }));
         showToast(parts.join(" · "));
         // Clean query so refresh doesn't re-toast
         const url = new URL(window.location.href);
@@ -92,7 +95,7 @@ export default function App() {
     <div className="app-shell" ref={shellRef} data-readonly={libraryReadOnly ? "1" : undefined}>
       {libraryReadOnly ? (
         <div className="demo-readonly-banner" role="status">
-          Demo · 只读分享 · 可听不可改收藏
+          {tr("demo.banner")}
         </div>
       ) : null}
       <SkinHost skin={skin} />

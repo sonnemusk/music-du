@@ -1,5 +1,6 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useRef } from "react";
+import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 import { QualityPicker } from "./QualityPicker";
 
@@ -32,6 +33,8 @@ export function Transport({ compact }: { compact?: boolean }) {
   const curTrack = usePlayer((s) => s.curTrack);
   const isFavorite = usePlayer((s) => s.isFavorite);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
   const volume = usePlayer((s) => s.volume);
   const muted = usePlayer((s) => s.muted);
   const setVolume = usePlayer((s) => s.setVolume);
@@ -62,28 +65,40 @@ export function Transport({ compact }: { compact?: boolean }) {
   return (
     <div className={`transport ${compact ? "compact" : ""}`}>
       {!compact && (
-        <div className="transport-row" role="group" aria-label="播放控制">
-          <button type="button" className="t-btn" onClick={() => next(-1)} aria-label="上一首" title="上一首 [">
+        <div className="transport-row" role="group" aria-label={tr("transport.controlsAria")}>
+          <button
+            type="button"
+            className="t-btn"
+            onClick={() => next(-1)}
+            aria-label={tr("transport.prev")}
+            title={`${tr("transport.prev")} [`}
+          >
             ⏮
           </button>
           <button
             type="button"
             className="t-btn play"
             onClick={togglePlay}
-            aria-label="播放暂停"
-            title="播放/暂停 空格"
+            aria-label={tr("transport.playPause")}
+            title={tr("transport.playPauseTitle")}
           >
             {playing ? "⏸" : "▶"}
           </button>
-          <button type="button" className="t-btn" onClick={() => next(1)} aria-label="下一首" title="下一首 ]">
+          <button
+            type="button"
+            className="t-btn"
+            onClick={() => next(1)}
+            aria-label={tr("transport.next")}
+            title={`${tr("transport.next")} ]`}
+          >
             ⏭
           </button>
           <button
             type="button"
             className="t-btn ghost mode"
             onClick={cycleMode}
-            title={`${modeLabel()} · 按 L 切换`}
-            aria-label={`播放模式：${modeLabel()}`}
+            title={tr("transport.modeTitle", { mode: modeLabel() })}
+            aria-label={tr("transport.modeAria", { mode: modeLabel() })}
           >
             {modeLabel()}
           </button>
@@ -93,8 +108,10 @@ export function Transport({ compact }: { compact?: boolean }) {
               type="button"
               className="t-btn ghost fav"
               onClick={() => toggleFavorite()}
-              aria-label={libraryReadOnly ? "Demo 只读" : "收藏"}
-              title={libraryReadOnly ? "Demo 只读，无法修改收藏" : "收藏 F"}
+              aria-label={libraryReadOnly ? tr("transport.favReadonly") : tr("transport.fav")}
+              title={
+                libraryReadOnly ? tr("transport.favReadonlyTitle") : tr("transport.favTitle")
+              }
               disabled={libraryReadOnly}
             >
               {isFavorite(curTrack.id) ? "♥" : "♡"}
@@ -115,7 +132,10 @@ export function Transport({ compact }: { compact?: boolean }) {
           }
           data-tip={
             duration > 0
-              ? `已播放 ${Math.round(playPct)}% · 已缓冲 ${Math.round(bufPct)}%`
+              ? tr("transport.seekTip", {
+                  play: Math.round(playPct),
+                  buf: Math.round(bufPct),
+                })
               : undefined
           }
           onPointerMove={onSeekPointerMove}
@@ -138,10 +158,10 @@ export function Transport({ compact }: { compact?: boolean }) {
             onChange={(e) => seek(Number(e.target.value) / 1000)}
             onMouseUp={() => setSeeking(false)}
             onTouchEnd={() => setSeeking(false)}
-            aria-label="播放进度"
+            aria-label={tr("transport.seekTip", { play: Math.round(playPct), buf: Math.round(bufPct) })}
             aria-valuetext={
               duration > 0
-                ? `${fmt(currentTime)} / ${fmt(duration)}，已缓冲 ${Math.round(bufPct)}%`
+                ? `${fmt(currentTime)} / ${fmt(duration)} · ${Math.round(bufPct)}%`
                 : undefined
             }
           />
@@ -149,13 +169,13 @@ export function Transport({ compact }: { compact?: boolean }) {
         <span aria-hidden="true">{fmt(duration)}</span>
       </div>
       {!compact && (
-        <div className="vol-row" role="group" aria-label="音量">
+        <div className="vol-row" role="group" aria-label={tr("transport.volume")}>
           <button
             type="button"
             className="t-btn ghost vol-mute"
             onClick={toggleMute}
-            aria-label={muted ? "取消静音" : "静音"}
-            title="静音 M"
+            aria-label={muted ? tr("transport.unmute") : tr("transport.mute")}
+            title={`${tr("transport.mute")} M`}
           >
             {muted || volPct === 0 ? "🔇" : volPct < 40 ? "🔈" : "🔊"}
           </button>

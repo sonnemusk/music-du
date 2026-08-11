@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n";
 import { labelForLevel, qualityShortLabel } from "../lib/quality";
 import { usePlayer } from "../store/player";
 
@@ -13,14 +14,16 @@ export function QualityPicker({ className }: { className?: string }) {
   const setQualityLevel = usePlayer((s) => s.setQualityLevel);
   const ensureQualities = usePlayer((s) => s.ensureQualities);
   const curTrack = usePlayer((s) => s.curTrack);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const currentLevel =
     quality && quality !== "…" ? quality : preferredQuality || "";
-  const short = qualityShortLabel(currentLevel) || "音质";
-  const full = labelForLevel(currentLevel).label;
+  const short = qualityShortLabel(currentLevel) || tr("quality.button");
+  const full = labelForLevel(currentLevel, locale).label;
   const probing = Boolean(curTrack) && open && (loading || availableQualities.length === 0);
 
   useEffect(() => {
@@ -75,22 +78,23 @@ export function QualityPicker({ className }: { className?: string }) {
         className="t-btn ghost mode quality-btn"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`音质：${full}`}
+        aria-label={tr("quality.aria", { name: full })}
         title={
           availableQualities.length
-            ? `音质：${full}（已预解析 ${availableQualities.length} 档，点击切换）`
-            : `音质：${full}`
+            ? tr("quality.ariaReady", { name: full, n: availableQualities.length })
+            : tr("quality.aria", { name: full })
         }
         onClick={() => setOpen((v) => !v)}
       >
         {short}
       </button>
       {open ? (
-        <div className="quality-menu" role="listbox" aria-label="选择音质">
+        <div className="quality-menu" role="listbox" aria-label={tr("quality.menuAria")}>
           {availableQualities.length > 0 ? (
             availableQualities.map((opt) => {
               const active = opt.level === currentLevel;
               const ready = Boolean(opt.url);
+              const lab = labelForLevel(opt.level, locale);
               return (
                 <button
                   key={opt.level}
@@ -100,9 +104,13 @@ export function QualityPicker({ className }: { className?: string }) {
                   className={active ? "quality-opt is-active" : "quality-opt"}
                   onClick={() => pick(opt.level)}
                 >
-                  <span className="quality-opt__name">{opt.label}</span>
+                  <span className="quality-opt__name">{lab.label || opt.label}</span>
                   <span className="quality-opt__id">
-                    {opt.br > 0 ? `${Math.round(opt.br / 1000)}k` : ready ? "就绪" : ""}
+                    {opt.br > 0
+                      ? `${Math.round(opt.br / 1000)}k`
+                      : ready
+                        ? tr("quality.ready")
+                        : ""}
                   </span>
                 </button>
               );
@@ -110,9 +118,9 @@ export function QualityPicker({ className }: { className?: string }) {
           ) : (
             <div className="quality-opt--hint">
               <p className="quality-opt--hint-line">
-                {probing ? "正在探测本曲可用音质…" : "先播放一首歌后再选音质"}
+                {probing ? tr("quality.probing") : tr("quality.needPlay")}
               </p>
-              <p className="quality-opt--hint-sub">默认第二档（如沉浸）</p>
+              <p className="quality-opt--hint-sub">{tr("quality.hint")}</p>
             </div>
           )}
         </div>

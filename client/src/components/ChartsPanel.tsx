@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useT } from "../i18n";
 import type { ChartBoardId, ChartPlatformId } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { TrackList } from "./TrackList";
@@ -19,17 +20,6 @@ const FALLBACK_PLATFORMS: {
   { id: "original", short: "原创", name: "原创", boards: ["hot", "new"] },
 ];
 
-const FALLBACK_BOARDS: {
-  id: ChartBoardId;
-  name: string;
-  short: string;
-  description?: string;
-}[] = [
-  { id: "soar", name: "飙升", short: "飙", description: "近期上升最快" },
-  { id: "hot", name: "热歌", short: "热", description: "综合热度" },
-  { id: "new", name: "新歌", short: "新", description: "新发行" },
-];
-
 export function ChartsPanel() {
   const platforms = usePlayer((s) => s.chartPlatforms);
   const boards = usePlayer((s) => s.chartBoards);
@@ -44,24 +34,62 @@ export function ChartsPanel() {
   const loadCharts = usePlayer((s) => s.loadCharts);
   const setChartPlatform = usePlayer((s) => s.setChartPlatform);
   const setChartBoard = usePlayer((s) => s.setChartBoard);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
 
   useEffect(() => {
     void loadCharts();
   }, [loadCharts]);
 
   const chips = platforms.length ? platforms : FALLBACK_PLATFORMS;
-  const boardChips = boards.length ? boards : FALLBACK_BOARDS;
+  const boardChips = useMemo(
+    () => [
+      {
+        id: "soar" as ChartBoardId,
+        name: tr("charts.board.soar"),
+        short: tr("charts.board.soarShort"),
+        description: tr("charts.board.soarDesc"),
+      },
+      {
+        id: "hot" as ChartBoardId,
+        name: tr("charts.board.hot"),
+        short: tr("charts.board.hotShort"),
+        description: tr("charts.board.hotDesc"),
+      },
+      {
+        id: "new" as ChartBoardId,
+        name: tr("charts.board.new"),
+        short: tr("charts.board.newShort"),
+        description: tr("charts.board.newDesc"),
+      },
+    ],
+    [tr]
+  );
+  // Prefer server board labels when present, else i18n fallback
+  const boardsUi = boards.length
+    ? boards.map((b) => {
+        const fb = boardChips.find((x) => x.id === b.id);
+        return {
+          ...b,
+          name: locale === "en" && fb ? fb.name : b.name || fb?.name || b.id,
+          description:
+            locale === "en" && fb
+              ? fb.description
+              : b.description || fb?.description,
+        };
+      })
+    : boardChips;
 
   const allowedBoards = useMemo(() => {
     const meta = chips.find((p) => p.id === platform);
     const allowed = meta?.boards;
-    if (!allowed?.length) return boardChips;
-    return boardChips.filter((b) => allowed.includes(b.id));
-  }, [chips, platform, boardChips]);
+    if (!allowed?.length) return boardsUi;
+    return boardsUi.filter((b) => allowed.includes(b.id));
+  }, [chips, platform, boardsUi]);
 
   const updated =
     updatedAt > 0
-      ? new Date(updatedAt).toLocaleString("zh-CN", {
+      ? new Date(updatedAt).toLocaleString(locale === "zh" ? "zh-CN" : "en", {
           month: "numeric",
           day: "numeric",
           hour: "2-digit",
@@ -73,28 +101,34 @@ export function ChartsPanel() {
     <div className="charts-panel">
       <div className="charts-head">
         <div className="charts-title-row">
-          <h2 className="charts-title">{metaName || "热榜"}</h2>
+          <h2 className="charts-title">{metaName || tr("charts.title")}</h2>
           <button
             type="button"
             className="charts-refresh"
             disabled={loading}
             onClick={() => void loadCharts(platform, true, board)}
-            title="强制刷新榜单"
+            title={tr("charts.refreshTitle")}
           >
-            {loading ? "加载中…" : "刷新"}
+            {loading ? tr("charts.loading") : tr("charts.refresh")}
           </button>
         </div>
         {desc ? <p className="charts-desc">{desc}</p> : null}
-        {sourceLabel ? <p className="charts-source">数据源：{sourceLabel}</p> : null}
-        {platform === "douyin" ? (
-          <p className="charts-hint">
-            抖音 ≠ 汽水音乐（汽水是字节听歌 App，同系不同产品）。这里优先短视频向热歌。
-          </p>
+        {sourceLabel ? (
+          <p className="charts-source">{tr("charts.source", { label: sourceLabel })}</p>
         ) : null}
-        {updated ? <p className="charts-updated">更新于 {updated}</p> : null}
+        {platform === "douyin" ? (
+          <p className="charts-hint">{tr("charts.douyinNote")}</p>
+        ) : null}
+        {updated ? (
+          <p className="charts-updated">{tr("charts.updated", { time: updated })}</p>
+        ) : null}
       </div>
 
-      <div className="charts-chips charts-chips--board" role="tablist" aria-label="榜单类型">
+      <div
+        className="charts-chips charts-chips--board"
+        role="tablist"
+        aria-label={tr("charts.boardAria")}
+      >
         {allowedBoards.map((b) => (
           <button
             key={b.id}
@@ -110,7 +144,7 @@ export function ChartsPanel() {
         ))}
       </div>
 
-      <div className="charts-chips" role="tablist" aria-label="热榜平台">
+      <div className="charts-chips" role="tablist" aria-label={tr("charts.platformAria")}>
         {chips.map((p) => (
           <button
             key={p.id}
@@ -126,12 +160,12 @@ export function ChartsPanel() {
       </div>
 
       {loading && !tracks.length ? (
-        <div className="empty">正在拉取热榜…</div>
+        <div className="empty">{tr("empty.chartsLoading")}</div>
       ) : (
         <TrackList
           tracks={tracks}
           mode="charts"
-          empty={loading ? "正在拉取热榜…" : "暂无榜单数据，点刷新试试"}
+          empty={loading ? tr("empty.chartsLoading") : tr("empty.charts")}
           className="track-list charts-list"
         />
       )}

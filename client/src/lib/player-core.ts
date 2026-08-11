@@ -1,3 +1,4 @@
+import { getLocale, t, type Locale } from "../i18n";
 import type { LyricLine, PlayMode } from "./types";
 
 export function cyclePlayMode(mode: PlayMode): PlayMode {
@@ -6,10 +7,12 @@ export function cyclePlayMode(mode: PlayMode): PlayMode {
   return "list";
 }
 
-export function playModeLabel(mode: PlayMode): string {
-  return (
-    { list: "列表循环", single: "单曲循环", shuffle: "随机播放" }[mode] || "列表循环"
-  );
+export function playModeLabel(mode: PlayMode, locale?: Locale): string {
+  const loc = locale || getLocale();
+  if (mode === "list" || mode === "single" || mode === "shuffle") {
+    return t(`playMode.${mode}`, undefined, loc);
+  }
+  return t("playMode.list", undefined, loc);
 }
 
 /** Pick a random queue index ≠ cur (for shuffle). */

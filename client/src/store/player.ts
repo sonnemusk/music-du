@@ -32,6 +32,13 @@ import {
   stopPausedBufferPump,
 } from "../lib/buffer-pump";
 import {
+  getLocale,
+  initLocaleFromStorage,
+  setLocaleModule,
+  t as i18n,
+  type Locale,
+} from "../i18n";
+import {
   bufferedRatio,
   clampSeek,
   clampVolume,
@@ -293,6 +300,8 @@ type State = {
    * No D1 writes, import, or export; skin/quality still localStorage.
    */
   libraryReadOnly: boolean;
+  /** UI language: default zh, switchable to en (localStorage). */
+  locale: Locale;
   playMode: PlayMode;
   playing: boolean;
   loadingPlay: boolean;
@@ -334,6 +343,7 @@ type State = {
   setSkin: (s: SkinId) => void;
   cycleSkin: () => void;
   setSkinOpen: (v: boolean) => void;
+  setLocale: (locale: Locale) => void;
   setTab: (t: PanelTab) => void;
   setSeeking: (v: boolean) => void;
   /** Switch to 收藏 (or list that contains current) and scroll to playing row. */
@@ -482,6 +492,7 @@ export const usePlayer = create<State>((set, get) => ({
   curIdx: -1,
   libraryRevision: 0,
   libraryReadOnly: false,
+  locale: typeof window !== "undefined" ? initLocaleFromStorage() : "zh",
   playMode: typeof window !== "undefined" ? loadPlayMode() : "shuffle",
   playing: false,
   loadingPlay: false,
@@ -524,7 +535,7 @@ export const usePlayer = create<State>((set, get) => ({
     set({ skin: s, skinOpen: false });
     if (prev !== s) {
       const meta = SKINS.find((x) => x.id === s);
-      get().showToast(`界面 → ${meta?.name || s}`);
+      get().showToast(i18n("skin.toast", { name: meta?.name || s }));
     }
   },
   cycleSkin: () => {
@@ -534,10 +545,14 @@ export const usePlayer = create<State>((set, get) => ({
     get().setSkin(next);
   },
   setSkinOpen: (v) => set({ skinOpen: v }),
+  setLocale: (locale) => {
+    setLocaleModule(locale);
+    set({ locale });
+  },
   locateCurrentInList: () => {
     const cur = get().curTrack;
     if (!cur) {
-      get().showToast("当前没有播放中的歌曲");
+      get().showToast(i18n("toast.noPlaying"));
       return;
     }
     const id = String(cur.id);
@@ -550,7 +565,7 @@ export const usePlayer = create<State>((set, get) => ({
     else if (inList(get().searchResults)) tab = "search";
     else if (inList(get().chartTracks)) tab = "charts";
     if (!tab) {
-      get().showToast("播放中的歌曲不在当前列表里");
+      get().showToast(i18n("toast.notInList"));
       return;
     }
     const nonce = (get().locateRequest?.nonce || 0) + 1;
@@ -622,7 +637,7 @@ export const usePlayer = create<State>((set, get) => ({
   },
   fmt: fmtTime,
   cover: coverUrl,
-  modeLabel: () => playModeLabel(get().playMode),
+  modeLabel: () => playModeLabel(get().playMode, get().locale || getLocale()),
   isFavorite: (id) => get().favorites.some((x) => String(x.id) === String(id)),
 
   queue: () => {
@@ -855,7 +870,7 @@ export const usePlayer = create<State>((set, get) => ({
         if (!tracks.length) tracks = await ensureDouyin("new", true);
         if (!tracks.length) {
           set({ searching: false, searchResults: [] });
-          get().showToast("热榜暂无数据，请输入关键词搜索");
+          get().showToast(i18n("toast.chartEmptyKw"));
           return;
         }
         const pick = tracks[Math.floor(Math.random() * tracks.length)];
@@ -870,11 +885,11 @@ export const usePlayer = create<State>((set, get) => ({
           limit: 12,
           concurrency: 2,
         });
-        get().showToast(`随机 · ${pick.name || "抖音热歌"}`);
+        get().showToast(i18n("toast.random", { name: pick.name || "Douyin" }));
         void get().playTrack(pick, { from: "search" });
       } catch (e: any) {
         set({ searching: false });
-        get().showToast(e?.message || "随机失败，请输入关键词");
+        get().showToast(e?.message || i18n("toast.randomFail"));
       }
       return;
     }
@@ -887,7 +902,7 @@ export const usePlayer = create<State>((set, get) => ({
         searchResults: list,
         searching: false,
       });
-      if (!data.length) get().showToast("没有结果");
+      if (!data.length) get().showToast(i18n("toast.noResults"));
       // List is ready — resolve top results in background so click/play is instant
       else {
         prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
@@ -898,7 +913,7 @@ export const usePlayer = create<State>((set, get) => ({
       }
     } catch (e: any) {
       set({ searching: false, searchResults: [] });
-      const msg = e?.message || "搜索失败";
+      const msg = e?.message || i18n("toast.searchFail");
       get().showToast(msg);
     }
   },
@@ -1030,10 +1045,10 @@ export const usePlayer = create<State>((set, get) => ({
         concurrency: 2,
         startDelayMs: 400,
       });
-      if (!tracks.length) get().showToast("热榜暂时为空");
+      if (!tracks.length) get().showToast(i18n("toast.chartEmpty"));
     } catch (e: any) {
       set({ chartLoading: false });
-      if (!get().chartTracks.length) get().showToast(e?.message || "热榜加载失败");
+      if (!get().chartTracks.length) get().showToast(e?.message || i18n("toast.chartFail"));
     } finally {
       if (chartsInflight === flightKey) chartsInflight = null;
     }
@@ -1185,7 +1200,7 @@ export const usePlayer = create<State>((set, get) => ({
     );
     const slowHint = window.setTimeout(() => {
       if (get().playToken === token && get().loadingPlay && !hadResolveCache) {
-        get().showToast("正在解析音源…");
+        get().showToast(i18n("toast.resolving"));
       }
     }, 900);
 
@@ -1418,7 +1433,7 @@ export const usePlayer = create<State>((set, get) => ({
         if (!ok) {
           clearSlow();
           set({ loadingPlay: false });
-          get().showToast("无法播放");
+          get().showToast(i18n("toast.cannotPlay"));
         } else {
           clearSlow();
         }
@@ -1449,7 +1464,7 @@ export const usePlayer = create<State>((set, get) => ({
           if (!ok) {
             clearSlow();
             set({ loadingPlay: false });
-            get().showToast("点击播放或按空格键开始");
+            get().showToast(i18n("toast.clickOrSpace"));
           } else {
             clearSlow();
           }
@@ -1460,7 +1475,7 @@ export const usePlayer = create<State>((set, get) => ({
           }
           clearSlow();
           set({ loadingPlay: false });
-          get().showToast(e?.message || "无法播放");
+          get().showToast(e?.message || i18n("toast.cannotPlay"));
         }
       }
     } else {
@@ -1816,7 +1831,7 @@ export const usePlayer = create<State>((set, get) => ({
     }
     applyAudioVolume(get().audioEl, get().volume, muted);
     set({ muted });
-    get().showToast(muted ? "已静音" : "取消静音");
+    get().showToast(muted ? i18n("toast.muted") : i18n("toast.unmuted"));
   },
 
   tick: () => {
@@ -1872,7 +1887,7 @@ export const usePlayer = create<State>((set, get) => ({
     const level = pickLevelForRank(choices, r);
     set({ preferredRank: r, preferredQuality: level });
     const lab = labelForLevel(level);
-    get().showToast(`音质：${lab.label}`);
+    get().showToast(i18n("quality.toast", { name: lab.label }));
     const cur = get().curTrack;
     if (cur) {
       void get().playTrack(cur, { from: get().queueSource });
@@ -1928,7 +1943,7 @@ export const usePlayer = create<State>((set, get) => ({
     savePreferredRank(rank);
     set({ preferredRank: rank, preferredQuality: lv });
     const lab = labelForLevel(lv);
-    get().showToast(`音质：${lab.label}`);
+    get().showToast(i18n("quality.toast", { name: lab.label }));
 
     // Instant path: use pre-probed / pre-cached URL — no network wait
     const choice = idx >= 0 ? choices[idx] : null;
@@ -1996,7 +2011,7 @@ export const usePlayer = create<State>((set, get) => ({
     } else {
       setShuffleHistoryState(set, [], { playMode: m, predictedNextId: null });
     }
-    get().showToast(playModeLabel(m));
+    get().showToast(playModeLabel(m, get().locale));
     // Mode change → re-pick next and re-warm (gated)
     if (get().curTrack) {
       get().recomputePredictedNext();
@@ -2182,7 +2197,7 @@ export const usePlayer = create<State>((set, get) => ({
 
   toggleFavorite: (t) => {
     if (get().libraryReadOnly) {
-      get().showToast("Demo 只读，无法修改收藏");
+      get().showToast(i18n("toast.demoNoFav"));
       return;
     }
     const track = norm(t || get().curTrack);
@@ -2191,7 +2206,7 @@ export const usePlayer = create<State>((set, get) => ({
     const has = favorites.some((x) => String(x.id) === String(track.id));
     if (has) {
       favorites = favorites.filter((x) => String(x.id) !== String(track.id));
-      get().showToast(`已取消收藏: ${track.name}`);
+      get().showToast(i18n("toast.unfav", { name: track.name }));
       set({ favorites });
       void api
         .deleteFromList("favorites", track.id, get().libraryRevision)
@@ -2199,7 +2214,7 @@ export const usePlayer = create<State>((set, get) => ({
         .catch(async (e) => {
           if (e instanceof api.LibraryConflictError) {
             applyLib(set)(e.data);
-            get().showToast("收藏已在其他设备更新，已同步");
+            get().showToast(i18n("toast.favSynced"));
             return;
           }
           // Never forceClear whole list on single-delete failure — retry DELETE once
@@ -2219,7 +2234,7 @@ export const usePlayer = create<State>((set, get) => ({
             } catch {
               /* */
             }
-            get().showToast("取消收藏失败，请重试");
+            get().showToast(i18n("toast.unfavFail"));
           }
         });
     } else {
@@ -2227,7 +2242,7 @@ export const usePlayer = create<State>((set, get) => ({
         0,
         2000
       );
-      get().showToast(`已收藏: ${track.name}`);
+      get().showToast(i18n("toast.faved", { name: track.name }));
       set({ favorites });
       void persistSoon(get);
       // Eagerly cache newly favorited track audio (best-effort; CF 302 may block IDB)
@@ -2237,13 +2252,13 @@ export const usePlayer = create<State>((set, get) => ({
 
   importFavorites: (tracks) => {
     if (get().libraryReadOnly) {
-      get().showToast("Demo 只读，无法导入");
+      get().showToast(i18n("toast.demoNoImport"));
       return;
     }
     // Prefer /import URL; keep helper for tests — merge + dedupe only
     const incoming = (tracks || []).map(norm).filter(Boolean) as Track[];
     if (!incoming.length) {
-      get().showToast("没有有效歌曲");
+      get().showToast(i18n("toast.noValidTracks"));
       return;
     }
     const before = get().favorites.length;
@@ -2251,30 +2266,32 @@ export const usePlayer = create<State>((set, get) => ({
     const added = favorites.length - before;
     set({ favorites });
     get().showToast(
-      added > 0 ? `已导入 ${added} 首（合计 ${favorites.length}）` : "没有新的收藏可导入（已去重）"
+      added > 0
+        ? i18n("toast.imported", { n: added, total: favorites.length })
+        : i18n("toast.importNone")
     );
     void persistSoon(get, {});
   },
 
   addToPlaylist: (t) => {
     if (get().libraryReadOnly) {
-      get().showToast("Demo 只读，无法修改列表");
+      get().showToast(i18n("toast.demoNoList"));
       return;
     }
     const track = norm(t);
     if (!track) return;
     if (get().playlist.some((x) => String(x.id) === String(track.id))) {
-      get().showToast("已在列表中");
+      get().showToast(i18n("toast.alreadyInList"));
       return;
     }
     set({ playlist: [...get().playlist, track] });
-    get().showToast(`+ ${track.name}`);
+    get().showToast(i18n("toast.addedList", { name: track.name }));
     void persistSoon(get);
   },
 
   removeFromPlaylist: (id) => {
     if (get().libraryReadOnly) {
-      get().showToast("Demo 只读，无法修改列表");
+      get().showToast(i18n("toast.demoNoList"));
       return;
     }
     const playlist = get().playlist.filter((x) => String(x.id) !== String(id));
@@ -2285,7 +2302,7 @@ export const usePlayer = create<State>((set, get) => ({
       .catch(async (e) => {
         if (e instanceof api.LibraryConflictError) {
           applyLib(set)(e.data);
-          get().showToast("列表已在其他设备更新，已同步");
+          get().showToast(i18n("toast.listSynced"));
           return;
         }
         try {
@@ -2296,26 +2313,26 @@ export const usePlayer = create<State>((set, get) => ({
             );
           }
         } catch {
-          get().showToast("移除失败，请重试");
+          get().showToast(i18n("toast.removeFail"));
         }
       });
   },
 
   removeFromHistory: (id) => {
     if (get().libraryReadOnly) {
-      get().showToast("Demo 只读，无法修改历史");
+      get().showToast(i18n("toast.demoNoHistory"));
       return;
     }
     const history = get().history.filter((x) => String(x.id) !== String(id));
     set({ history });
-    get().showToast("已从历史移除");
+    get().showToast(i18n("toast.historyRemoved"));
     void api
       .deleteFromList("history", id, get().libraryRevision)
       .then(applyLib(set))
       .catch(async (e) => {
         if (e instanceof api.LibraryConflictError) {
           applyLib(set)(e.data);
-          get().showToast("历史已在其他设备更新，已同步");
+          get().showToast(i18n("toast.historySynced"));
           return;
         }
         try {
@@ -2326,7 +2343,7 @@ export const usePlayer = create<State>((set, get) => ({
             );
           }
         } catch {
-          get().showToast("移除失败，请重试");
+          get().showToast(i18n("toast.removeFail"));
         }
       });
   },
@@ -2428,7 +2445,7 @@ async function flushLibrarySave(get: () => State) {
       } else {
         // Real multi-device structural change — server wins
         applyLib(usePlayer.setState)(server);
-        get().showToast("收藏库已在其他设备更新，已同步最新");
+        get().showToast(i18n("toast.libSynced"));
       }
     }
     /* offline ok */

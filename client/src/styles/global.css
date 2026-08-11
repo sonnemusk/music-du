@@ -90,6 +90,17 @@ img {
   justify-content: flex-end;
   gap: 6px;
 }
+.skin-head__tools {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.locale-switch {
+  min-width: 2.75rem;
+  font-variant-numeric: tabular-nums;
+}
 .skin-switcher__btn {
   min-height: 36px;
   height: 36px;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { SKINS, type SkinId } from "../lib/types";
 import { LAYOUT_META } from "../skins/layouts/layout-ids";
+import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 
 /**
@@ -14,6 +15,8 @@ export function SkinSwitcher() {
   const setSkin = usePlayer((s) => s.setSkin);
   const cycleSkin = usePlayer((s) => s.cycleSkin);
   const setSkinOpen = usePlayer((s) => s.setSkinOpen);
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
   const meta = SKINS.find((x) => x.id === skin) || SKINS[0];
   const [q, setQ] = useState("");
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -60,7 +63,7 @@ export function SkinSwitcher() {
           <div
             className="skin-panel skin-panel--portal"
             role="dialog"
-            aria-label="切换主题"
+            aria-label={tr("skin.dialogAria")}
             // Stop outside-close handlers from treating panel clicks as "outside"
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
@@ -79,13 +82,13 @@ export function SkinSwitcher() {
             }
           >
             <div className="skin-panel__hint">
-              共 {SKINS.length} 套 · {layoutCount} 种布局 · 点选切换
+              {tr("skin.hint", { n: SKINS.length, layouts: layoutCount })}
             </div>
             <input
               className="skin-panel__search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="筛选主题名…"
+              placeholder={tr("skin.filterPh")}
               autoComplete="off"
               onMouseDown={(e) => e.stopPropagation()}
             />
@@ -112,14 +115,14 @@ export function SkinSwitcher() {
                   <div className="skin-card__name">{s.name}</div>
                   <div className="skin-card__tag">
                     {LAYOUT_META[s.layout]?.name
-                      ? `布局·${LAYOUT_META[s.layout].name} · `
+                      ? tr("skin.layoutPrefix", { name: tr(`layout.${s.layout}`) })
                       : ""}
                     {s.tagline}
                   </div>
                 </button>
               ))}
             </div>
-            {!filtered.length && <div className="skin-panel__empty">没有匹配主题</div>}
+            {!filtered.length && <div className="skin-panel__empty">{tr("empty.themes")}</div>}
           </div>,
           document.body
         )
@@ -131,23 +134,23 @@ export function SkinSwitcher() {
         <button
           type="button"
           className={`skin-switcher__btn ${open ? "on" : ""}`}
-          title="打开主题列表"
+          title={tr("skin.openList")}
           onClick={() => setSkinOpen(!open)}
         >
           <span className="skin-switcher__dot" style={{ background: meta.accent }} />
           <span className="skin-switcher__label">
-            <span className="skin-switcher__label-full">主题 · {meta.name}</span>
+            <span className="skin-switcher__label-full">{tr("skin.theme", { name: meta.name })}</span>
             <span className="skin-switcher__label-short">{meta.name}</span>
           </span>
         </button>
         <button
           type="button"
           className="skin-switcher__btn primary"
-          title="一键切换下一主题"
+          title={tr("skin.cycleTitle")}
           onClick={cycleSkin}
         >
-          <span className="skin-switcher__label-full">一键切换</span>
-          <span className="skin-switcher__label-short">切换</span>
+          <span className="skin-switcher__label-full">{tr("skin.cycle")}</span>
+          <span className="skin-switcher__label-short">{tr("skin.cycleShort")}</span>
         </button>
       </div>
       {panel}

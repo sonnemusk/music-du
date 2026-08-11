@@ -92,6 +92,7 @@
 - **皮肤** — 多主题 × 侧栏 / 沉浸 / 紧凑布局  
 - **导入导出** — `/favs` JSON、`/import`（按 id 或歌名列表）  
 - **快捷键** — `空格` 播放/暂停 · `N` / `P` 下一首/上一首 · 应用内还有更多  
+- **语言** — 界面默认**中文**，点顶栏 **EN** 可切到 English（偏好保存在浏览器 `localStorage`）  
 
 说明：[docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 

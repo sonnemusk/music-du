@@ -92,6 +92,7 @@ Sources are **1440×900** JPEG; README display width **960px** for all three.
 - **Skins** — many themes × side / immersive / compact layouts  
 - **Import / export** — `/favs` JSON, `/import` (id or name list)  
 - **Shortcuts** — `Space` play/pause · `N` / `P` next/prev · more in-app  
+- **i18n** — UI default **中文**, switch to **English** via header `EN` / `中文` (stored in `localStorage`)  
 
 Details: [docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
