@@ -1,5 +1,21 @@
 # Deploy guide
 
+## Default = your own writable site (not demo)
+
+**Self-hosting users should deploy the normal app**, not the demo.
+
+| | **Your install (default)** | Demo (optional) |
+|--|--|--|
+| Goal | Personal / team music site | Public showcase only |
+| CF command | `npm run deploy:cf` | `npm run deploy:cf:demo` |
+| Node / Fly / Docker | `start:prod` / `fly deploy` / Docker | Not used for demo |
+| `LIBRARY_READONLY` | **Unset / false** | `true` |
+| Library | Can add/remove favorites, import, export | Read-only; no import/export |
+
+Demo exists so maintainers can share a listen-only link. **Skip demo entirely** unless you explicitly want that. Agents automating deploy: use **§1 / §2 / §3 default steps only**; do not run `deploy:cf:demo` unless the user asked for a read-only gallery.
+
+---
+
 Pick a path by how you want to run the BFF:
 
 | Target | Runtime | Library storage | Good for |
@@ -33,7 +49,7 @@ Fill `.env` (names only — see [`.env.example`](../.env.example)):
 | `VITE_MUSIC_ACCESS_TOKEN` | Optional | Build-time SPA token; prefer runtime for public repos |
 | `HOST` / `PORT` | Node | Default `127.0.0.1:8787` |
 | `MUSIC_DATA_DIR` | Node | Default `./data` |
-| `LIBRARY_READONLY` | Demo | `true` = no library writes / no export |
+| `LIBRARY_READONLY` | **Demo only — leave unset for your site** | `true` = no library writes / no export |
 
 Local:
 
@@ -64,28 +80,36 @@ npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if needed
 # optional: CHKSZ_APIKEY
 ```
 
-4. Optional vars in `wrangler.toml` `[vars]`:
+4. Optional vars in `wrangler.toml` `[vars]` for **your** Worker:
 
 - `LIBRARY_TOKEN_REQUIRED_HOSTS = "your.domain.com"` — fail closed if token secret missing  
-- `LIBRARY_READONLY = "true"` only on a **demo** env  
+- **Do not** set `LIBRARY_READONLY` on the main Worker  
 
 5. Custom domain: Workers → your Worker → **Domains & Routes** → add hostname.  
 6. Optional: [Cloudflare Access](./ACCESS.md) on private hostnames.
 
-### 1.2 Deploy
+### 1.2 Deploy (your site — default)
 
 ```bash
 npm run build
 npx wrangler deploy
-# optional read-only demo worker:
-npm run deploy:cf:demo
+# same as: npm run deploy:cf
 ```
 
-CI (upstream repo): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) deploys only when `github.repository` matches the maintainer repo and secrets exist. Forks run **tests only**.
+This is the install you want: full library read/write. **Stop here** unless you also want a public showcase.
 
-### 1.3 Demo mode
+CI (upstream maintainer repo only): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Forks run **tests only** — wire your own deploy if needed.
+
+### 1.3 Demo mode (optional — skip for self-hosting)
+
+Only if you want a **second** public Worker that cannot change favorites:
+
+```bash
+npm run deploy:cf:demo   # wrangler deploy --env demo
+```
 
 ```toml
+# [env.demo] only — never on the default Worker
 [env.demo.vars]
 LIBRARY_READONLY = "true"
 ```
@@ -93,6 +117,7 @@ LIBRARY_READONLY = "true"
 - `GET /api/library` public (no token)  
 - `PUT` / `DELETE` / `/favs` / `/import` → 403  
 - SPA shows read-only banner  
+- Self-hosters: **ignore this subsection**
 
 ---
 
@@ -247,12 +272,16 @@ Or: `SMOKE_BASE=https://your.host bash scripts/smoke-prod.sh`
 
 ## 8. Agent-oriented “do this” summary
 
+Deploy the **user’s own writable site**. Do **not** enable demo / `LIBRARY_READONLY` / `deploy:cf:demo` unless the user explicitly asked for a public read-only gallery.
+
 ```text
 1. npm ci && cp .env.example .env && fill server secrets
 2. npm test && npm run typecheck
 3a. CF: setup:d1 → paste id → wrangler secret put → npm run deploy:cf
+   (NOT deploy:cf:demo)
 3b. Node: npm run build && HOST=0.0.0.0 node dist/server/node.js
 3c. Fly: fly launch + volume + secrets + fly deploy
 4. curl /api/health and /api/search
 5. Never commit .env or data/
+6. Skip demo unless user asked for LIBRARY_READONLY showcase
 ```

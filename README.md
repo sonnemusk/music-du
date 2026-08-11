@@ -11,7 +11,22 @@ Browser SPA  ──same-origin /api/*──►  Worker or Node BFF
                                        └─ charts / covers / lyrics helpers
 ```
 
-Demo (read-only public share): configure a second Worker with `LIBRARY_READONLY=true`.
+### Default deploy = **your** full site (not the demo)
+
+When you follow this README / `docs/DEPLOY.md`, you deploy a **normal, writable personal install**:
+
+- You own the library (favorites / playlist / history can be changed)
+- Commands: `npm run deploy:cf` · `npm run start:prod` · Fly `fly deploy` · Docker, etc.
+- **Do not** set `LIBRARY_READONLY=true` unless you intentionally want a public showcase
+
+The **demo (read-only)** mode is **optional** and only for sharing a look-only instance (e.g. “visitors can listen, cannot edit my favorites”). It is **not** the default, and you **do not need it** for self-hosting.
+
+| | Your site (default) | Demo (optional) |
+|--|--|--|
+| Command | `npm run deploy:cf` / Node / Fly | `npm run deploy:cf:demo` only |
+| Library | Read **and write** | Read-only |
+| Env | (no `LIBRARY_READONLY`) | `LIBRARY_READONLY=true` |
+| Who needs it | **Everyone self-hosting** | Only if you want a public gallery |
 
 ---
 
@@ -35,7 +50,7 @@ MIT licensed — see [LICENSE](./LICENSE). No warranty.
 - Lyrics with local cache  
 - Many visual themes (side / immersive / compact layouts)  
 - Import/export favorites (`/favs`, `/import`)  
-- Optional **read-only demo** mode for public links  
+- Optional read-only **demo** mode (showcase only — skip for your own deploy)  
 
 More: [docs/FEATURES.md](./docs/FEATURES.md) · [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
@@ -85,7 +100,7 @@ Copy [`.env.example`](./.env.example). Important variables:
 | `CHKSZ_FALLBACK_BASE` / `CHKSZ_FALLBACK_APIKEYS` | Server | Backup host + keys (never expose to browser) |
 | `MUSIC_ACCESS_TOKEN` | Server | Protects `/api/library` when set |
 | `VITE_MUSIC_ACCESS_TOKEN` | Build (optional) | SPA default `X-Music-Token` — avoid on public demos |
-| `LIBRARY_READONLY` | Worker | `true` = demo: no writes / no export |
+| `LIBRARY_READONLY` | Worker **demo only** | Leave **unset** for your own site. `true` = showcase, no writes / no export |
 | `LIBRARY_TOKEN_REQUIRED_HOSTS` | Worker | Hosts that must have library token configured |
 | `HOST` / `PORT` / `MUSIC_DATA_DIR` | Node | Listen address + SQLite directory |
 
@@ -99,24 +114,26 @@ Copy [`.env.example`](./.env.example). Important variables:
 |--------|---------|
 | `npm run dev` | Local Hono + Vite |
 | `npm run build` | `dist/client` + `dist/server` |
-| `npm run start:prod` | Node production server |
+| `npm run start:prod` | Node production server (**your** site) |
 | `npm test` / `typecheck` | Vitest / `tsc` |
 | `npm run smoke` | Local smoke (server up) |
 | `npm run setup:d1` | Create free D1 database |
-| `npm run deploy:cf` | Build + `wrangler deploy` |
-| `npm run deploy:cf:demo` | Build + `wrangler deploy --env demo` |
+| `npm run deploy:cf` | **Default CF deploy** — your writable Worker |
+| `npm run deploy:cf:demo` | Optional second Worker — read-only showcase only |
 
 ---
 
 ## Deploy (short)
 
-### Cloudflare Workers
+Self-hosters only need the **default** path below. Skip anything labeled “demo”.
+
+### Cloudflare Workers (your site)
 
 ```bash
 npm run setup:d1          # paste database_id into wrangler.toml
 npx wrangler secret put MUSIC_ACCESS_TOKEN
 npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if needed
-npm run deploy:cf
+npm run deploy:cf         # ← this is YOUR install (writable). Not demo.
 ```
 
 Full steps: [docs/DEPLOY.md §1](./docs/DEPLOY.md).
@@ -183,14 +200,23 @@ Full reference: **[docs/API.md](./docs/API.md)**.
 
 ---
 
-## Read-only demo mode
+## Read-only demo mode (optional showcase only)
+
+**You can ignore this entire section** if you only want your own music site.
+
+Demo is for a **second**, public “look but don’t touch” deployment (maintainer gallery, screenshots, etc.). Default `npm run deploy:cf` / Node / Fly **do not** enable it.
+
+```bash
+# Only if you deliberately want a public read-only mirror:
+npm run deploy:cf:demo
+```
 
 ```toml
-# wrangler env.demo
+# wrangler [env.demo] only — do NOT put this on your main Worker
 LIBRARY_READONLY = "true"
 ```
 
-Visitors can listen and browse library; cannot favorite, import, or export. Skin/volume stay in **their** `localStorage`.
+Effects: listen + browse library OK; favorite / import / export blocked. Skin/volume stay in the visitor’s `localStorage`.
 
 ---
 
