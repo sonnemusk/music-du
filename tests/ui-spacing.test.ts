@@ -22,6 +22,7 @@ const layoutFiles = [
   "SideLayout.tsx",
   "ImmersiveLayout.tsx",
   "CompactLayout.tsx",
+  "GalleryLayout.tsx",
 ];
 
 describe("cross-layout chrome consistency", () => {

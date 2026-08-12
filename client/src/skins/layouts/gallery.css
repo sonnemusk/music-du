@@ -1,0 +1,633 @@
+/**
+ * Gallery layout — browsing-first shell.
+ *
+ * Breakpoints
+ *   ≥1280  rail with labels │ grid │ docked player column
+ *   ≥1024  icon rail        │ grid │ narrower dock          (iPad landscape)
+ *   ≥721   icon rail        │ grid │ dock becomes a bottom bar (iPad portrait)
+ *   ≤720   grid only, rail becomes a bottom tab bar, dock a mini bar above it
+ *
+ * The track grid is pure CSS over the shared TrackList markup, so playback,
+ * "locate current", cover warming and prefetch behave exactly as elsewhere.
+ */
+
+.layout-gallery {
+  --gal-rail: 208px;
+  --gal-dock: 340px;
+  --gal-gutter: 22px;
+  --gal-card-min: 168px;
+  --gal-bar-h: 0px;
+  background: var(--wallpaper);
+}
+
+.layout-gallery .skin-head {
+  padding-bottom: 6px;
+}
+
+.gal-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--gal-rail) minmax(0, 1fr) var(--gal-dock);
+  gap: var(--gal-gutter);
+  padding: 4px var(--gal-gutter) var(--gal-gutter);
+  align-items: stretch;
+}
+
+/* ── Rail ─────────────────────────────────────────────────────────────── */
+.gal-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 8px;
+  border-radius: var(--radius-lg, 20px);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.gal-rail__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm, 10px);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--fg) 62%, transparent);
+  text-align: left;
+  position: relative;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.gal-rail__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+}
+
+.gal-icon {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gal-rail__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gal-rail__item.on {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* Accent spine on the active entry — the rail's only chrome */
+.gal-rail__item.on::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: -3px -50%;
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .gal-rail__item:hover {
+    color: var(--fg);
+    background: color-mix(in srgb, var(--fg) 6%, transparent);
+  }
+}
+
+/* ── Main ─────────────────────────────────────────────────────────────── */
+.gal-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gal-main__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 2px 2px 0;
+}
+
+.gal-main__title {
+  margin: 0;
+  font-family: var(--display-font, var(--font));
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.gal-main__count {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+
+.gal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 8px;
+  scrollbar-gutter: stable;
+}
+
+/* ── Track grid (restyles the shared row into a card) ─────────────────── */
+.layout-gallery .track-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--gal-card-min), 1fr));
+  gap: 18px 16px;
+  align-content: start;
+}
+
+.layout-gallery .track-row {
+  position: relative;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: var(--radius, 14px);
+}
+
+.layout-gallery .track-row .cov,
+.layout-gallery .track-row .cov img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: var(--radius, 14px);
+}
+
+.layout-gallery .track-row .cov {
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--fg) 55%, transparent);
+  transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 0.22s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .layout-gallery .track-row:hover .cov {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 34px -16px color-mix(in srgb, var(--fg) 62%, transparent);
+  }
+}
+
+.layout-gallery .track-meta {
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.layout-gallery .track-name {
+  font-size: 14px;
+  font-weight: 650;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.layout-gallery .track-sub {
+  font-size: 12px;
+}
+
+/* Rank rides on the artwork instead of taking a column */
+.layout-gallery .track-rank {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: auto;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  opacity: 1;
+  color: var(--accent-fg, #fff);
+  background: color-mix(in srgb, var(--fg) 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.layout-gallery .track-rank.top1,
+.layout-gallery .track-rank.top2,
+.layout-gallery .track-rank.top3 {
+  color: var(--accent-fg, #fff);
+  background: var(--accent);
+}
+
+.layout-gallery .track-acts {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+/* Touch has no hover reveal, so the pill sits on the artwork permanently —
+   keep the primary action only (M-4 hit area is preserved). */
+@media (pointer: coarse) {
+  .layout-gallery .track-acts .icon-btn--secondary {
+    display: none;
+  }
+  .layout-gallery .track-acts {
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+  }
+}
+
+.layout-gallery .track-row.playing .cov {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.layout-gallery .track-row.playing .track-name {
+  color: var(--accent);
+}
+
+.layout-gallery .track-row--skel {
+  aspect-ratio: 1;
+  border-radius: var(--radius, 14px);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+/* Lyrics / charts keep their normal flow inside the grid column */
+.layout-gallery .gal-body > .lyrics-scroller,
+.layout-gallery .gal-body > .charts-panel {
+  display: flex;
+}
+
+.gal-body:has(> .lyrics-scroller) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gal-body > .lyrics-scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+/* ── Dock ─────────────────────────────────────────────────────────────── */
+.gal-dock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 18px 20px;
+  border-radius: var(--radius-lg, 20px);
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  overflow: visible;
+}
+
+.gal-dock__label {
+  align-self: flex-start;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.45;
+}
+
+/* Art + meta + lyric float as one centred group; transport stays pinned low. */
+.gal-dock__art {
+  width: 100%;
+  max-width: 244px;
+  margin-top: auto;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius, 14px);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  box-shadow: 0 20px 40px -22px color-mix(in srgb, var(--fg) 70%, transparent);
+  cursor: pointer;
+}
+
+.gal-dock__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gal-dock__note {
+  font-size: 34px;
+  opacity: 0.35;
+}
+
+.gal-dock.loading .gal-dock__art {
+  opacity: 0.72;
+}
+
+.gal-dock__meta {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.gal-dock__title {
+  margin: 0;
+  font-family: var(--display-font, var(--font));
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.gal-dock__artist {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+/* One line of lyric — the dock's signature detail */
+.gal-dock__lyric {
+  margin: 0 0 auto;
+  min-height: 1.4em;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: 0.9;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.gal-dock .transport {
+  width: 100%;
+  max-width: 100%;
+  margin-top: auto;
+}
+
+/* ── iPad landscape / small desktop: icon rail ────────────────────────── */
+@media (max-width: 1279px) {
+  .layout-gallery {
+    --gal-rail: 74px;
+    --gal-dock: 288px;
+    --gal-gutter: 16px;
+    --gal-card-min: 150px;
+  }
+  .gal-rail__label {
+    display: none;
+  }
+  .gal-rail__item {
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+  }
+  .gal-main__title {
+    font-size: 25px;
+  }
+  .gal-dock__art {
+    max-width: 208px;
+  }
+}
+
+/* ── iPad portrait: dock drops to a full-width bar ────────────────────── */
+@media (max-width: 1023px) {
+  .layout-gallery {
+    --gal-bar-h: 104px;
+  }
+  .gal-shell {
+    grid-template-columns: var(--gal-rail) minmax(0, 1fr);
+    padding-bottom: calc(var(--gal-bar-h) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+  .gal-dock {
+    position: fixed;
+    left: var(--gal-gutter);
+    right: var(--gal-gutter);
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--bg) 88%, var(--card));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 -8px 30px -18px color-mix(in srgb, var(--fg) 70%, transparent);
+  }
+  .gal-dock__label,
+  .gal-dock__lyric {
+    display: none;
+  }
+  .gal-dock__art {
+    width: 72px;
+    height: 72px;
+    max-width: 72px;
+    flex: 0 0 auto;
+    box-shadow: none;
+  }
+  .gal-dock__meta {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+  }
+  .gal-dock__title {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .gal-dock__art {
+    margin-top: 0;
+  }
+  .gal-dock .transport {
+    flex: 0 1 460px;
+    max-width: 460px;
+    margin-top: 0;
+  }
+  /* A bar this short only carries transport + seek; volume, play mode and the
+     quality picker stay in the docked column and the player tab. */
+  .gal-dock .transport .vol-row,
+  .gal-dock .transport .t-btn.ghost.mode,
+  .gal-dock .transport .quality-wrap {
+    display: none;
+  }
+  .gal-dock .transport-row {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .gal-dock .transport .seek-row {
+    margin-top: 6px;
+  }
+}
+
+/* ── Phone: bottom nav + mini player ──────────────────────────────────── */
+@media (max-width: 720px) {
+  /* The search layer is portalled to <body>, so tell it how tall this layout's
+     bottom chrome is (mini bar 66 + tab bar 58) instead of the 72px default. */
+  :root:has(.layout-gallery) {
+    --search-overlay-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+  }
+  .layout-gallery {
+    --gal-gutter: 12px;
+    --gal-card-min: 148px;
+    --gal-bar-h: 66px;
+  }
+  .gal-shell {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 var(--gal-gutter);
+    /* mini bar + tab bar + home indicator */
+    padding-bottom: calc(
+      var(--gal-bar-h) + 58px + 8px + env(safe-area-inset-bottom, 0px)
+    );
+  }
+  .gal-main__head {
+    padding-top: 2px;
+  }
+  .gal-main__title {
+    font-size: 21px;
+  }
+
+  /* rail → bottom tab bar */
+  .gal-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    flex-direction: row;
+    gap: 0;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--line) 90%, transparent);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--bg) 94%, var(--card));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    overflow: visible;
+  }
+  .gal-rail__item {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    min-height: 50px;
+    padding: 4px 0;
+    font-size: 10px;
+    font-weight: 700;
+    background: transparent;
+  }
+  .gal-rail__item.on {
+    background: transparent;
+    color: var(--accent);
+  }
+  .gal-rail__item.on::before {
+    left: 50%;
+    top: 2px;
+    translate: -50% 0;
+    width: 16px;
+    height: 3px;
+  }
+  .gal-rail__label {
+    display: block;
+    font-size: 10px;
+  }
+
+  /* dock → mini bar above the tab bar */
+  .gal-dock {
+    left: 8px;
+    right: 8px;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: var(--radius, 14px);
+  }
+  .gal-dock__art {
+    width: 46px;
+    height: 46px;
+    max-width: 46px;
+    border-radius: var(--radius-sm, 8px);
+  }
+  .gal-dock__title {
+    font-size: 14px;
+  }
+  .gal-dock__artist {
+    font-size: 11px;
+  }
+  /* Mini bar keeps transport controls only — seek/volume stay in the player tab */
+  .gal-dock .transport {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+  }
+  .gal-dock .transport .seek-row,
+  .gal-dock .transport .vol-row,
+  .gal-dock .transport .quality-wrap,
+  .gal-dock .transport .t-btn.ghost.mode {
+    display: none;
+  }
+  .gal-dock .transport-row {
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+  .gal-dock .transport .t-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+  .gal-dock .transport .t-btn.play {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 380px) {
+  .layout-gallery {
+    --gal-card-min: 132px;
+  }
+  .gal-dock .transport .t-btn:not(.play):not(.ghost) {
+    display: none;
+  }
+  .gal-dock .transport .t-btn.play {
+    display: grid;
+  }
+}

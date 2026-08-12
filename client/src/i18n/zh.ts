@@ -128,6 +128,11 @@ export const zh: Dict = {
     side: "侧栏",
     immersive: "沉浸",
     compact: "紧凑",
+    gallery: "画廊",
+  },
+  gallery: {
+    dock: "正在播放",
+    count: "{n} 首",
   },
   charts: {
     platform: {

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { usePlayer } from "../store/player";
 import { getTheme, themeToCssVars, type SkinId } from "./theme-catalog";
 import { CompactLayout } from "./layouts/CompactLayout";
+import { GalleryLayout } from "./layouts/GalleryLayout";
 import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
 import { SideLayout } from "./layouts/SideLayout";
 import "./layouts/layouts.css";
@@ -51,20 +52,30 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
     ensureThemeFont(meta.font);
   }, [meta.font]);
 
-  let layout = null;
-  switch (meta.layout) {
-    case "side":
-      layout = <SideLayout brand={brand} />;
-      break;
-    case "immersive":
-      layout = <ImmersiveLayout brand={brand} />;
-      break;
-    case "compact":
-      layout = <CompactLayout brand={brand} />;
-      break;
-    default:
-      layout = <SideLayout brand={brand} />;
-  }
+  // Portalled surfaces (theme panel, mobile search layer) hang off <body> and
+  // would otherwise miss the tokens set on .skin-host — mirror them on :root.
+  useEffect(() => {
+    const root = document.documentElement;
+    const applied = themeToCssVars(meta);
+    for (const [k, v] of Object.entries(applied)) root.style.setProperty(k, v);
+    return () => {
+      for (const k of Object.keys(applied)) root.style.removeProperty(k);
+    };
+  }, [meta]);
+
+  const layout = (() => {
+    switch (meta.layout) {
+      case "immersive":
+        return <ImmersiveLayout brand={brand} />;
+      case "compact":
+        return <CompactLayout brand={brand} />;
+      case "gallery":
+        return <GalleryLayout brand={brand} />;
+      case "side":
+      default:
+        return <SideLayout brand={brand} />;
+    }
+  })();
 
   return (
     <div

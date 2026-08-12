@@ -127,6 +127,11 @@ export const en: Dict = {
     side: "Side",
     immersive: "Immersive",
     compact: "Compact",
+    gallery: "Gallery",
+  },
+  gallery: {
+    dock: "Now playing",
+    count: "{n} tracks",
   },
   charts: {
     platform: {
