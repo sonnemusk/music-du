@@ -6,6 +6,7 @@
  */
 import type { ChartPayload, ChartPlatform, ChartPlatformId, Track } from "./types";
 import { warmTrackCovers } from "./cover-browser-cache";
+import { getTimed, prunePrefix, setTimed } from "./cache-store";
 import { coverUrl } from "./player-core";
 
 const CHART_PREFIX = "kazam.v2.chartCache.";
@@ -15,28 +16,6 @@ const TTL_MS = 12 * 60 * 60 * 1000; // 12h fresh
 /** Serve stale while revalidating */
 const STALE_MS = 36 * 60 * 60 * 1000; // 36h still paint
 const MAX_CACHED_PLATFORMS = 8;
-
-type Wrapped<T> = { at: number; data: T };
-
-function readWrap<T>(key: string): Wrapped<T> | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const w = JSON.parse(raw) as Wrapped<T>;
-    if (!w || typeof w.at !== "number" || w.data == null) return null;
-    return w;
-  } catch {
-    return null;
-  }
-}
-
-function writeWrap<T>(key: string, data: T) {
-  try {
-    localStorage.setItem(key, JSON.stringify({ at: Date.now(), data }));
-  } catch {
-    /* quota */
-  }
-}
 
 export type ChartCacheHit = {
   payload: ChartPayload;
@@ -53,50 +32,30 @@ export function getCachedChart(
   platform: ChartPlatformId | string,
   board: string = "soar"
 ): ChartCacheHit | null {
-  const w = readWrap<ChartPayload>(chartKey(String(platform), board));
-  if (!w?.data?.tracks?.length) return null;
-  const ageMs = Date.now() - w.at;
-  if (ageMs > STALE_MS) return null;
+  const hit = getTimed<ChartPayload>(chartKey(String(platform), board), TTL_MS, STALE_MS);
+  if (!hit?.data?.tracks?.length) return null;
   return {
-    payload: w.data,
-    stale: ageMs > TTL_MS,
-    ageMs,
+    payload: hit.data,
+    stale: hit.stale,
+    ageMs: hit.ageMs,
   };
 }
 
 export function setCachedChart(payload: ChartPayload) {
   if (!payload?.platform || !payload.tracks?.length) return;
-  writeWrap(chartKey(String(payload.platform), payload.board || "soar"), payload);
-  // prune oldest if too many keys
-  try {
-    const keys: { k: string; at: number }[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith(CHART_PREFIX)) continue;
-      const w = readWrap(k);
-      keys.push({ k, at: w?.at || 0 });
-    }
-    if (keys.length > MAX_CACHED_PLATFORMS) {
-      keys.sort((a, b) => a.at - b.at);
-      for (const drop of keys.slice(0, keys.length - MAX_CACHED_PLATFORMS)) {
-        localStorage.removeItem(drop.k);
-      }
-    }
-  } catch {
-    /* */
-  }
+  setTimed(chartKey(String(payload.platform), payload.board || "soar"), payload);
+  prunePrefix(CHART_PREFIX, MAX_CACHED_PLATFORMS);
 }
 
 export function getCachedPlatforms(): ChartPlatform[] | null {
-  const w = readWrap<ChartPlatform[]>(PLATFORMS_KEY);
-  if (!w?.data?.length) return null;
-  if (Date.now() - w.at > STALE_MS) return null;
-  return w.data;
+  const hit = getTimed<ChartPlatform[]>(PLATFORMS_KEY, STALE_MS, STALE_MS);
+  if (!hit?.data?.length) return null;
+  return hit.data;
 }
 
 export function setCachedPlatforms(list: ChartPlatform[]) {
   if (!list?.length) return;
-  writeWrap(PLATFORMS_KEY, list);
+  setTimed(PLATFORMS_KEY, list);
 }
 
 /** Prefetch cover images so list paint is instant next time / while scrolling. */

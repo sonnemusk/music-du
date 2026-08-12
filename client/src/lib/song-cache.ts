@@ -7,6 +7,7 @@
  * CDN signed URLs expire; durable TTL is ~25 min.
  */
 
+import { readMapStore, writeMapStore } from "./cache-store";
 import { DEFAULT_QUALITY, songCacheKey } from "./quality";
 
 export type CachedSong = {
@@ -43,29 +44,11 @@ function isFresh(hit: CachedSong, ttl: number): boolean {
 }
 
 function readDurableMap(): Record<string, CachedSong> {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, CachedSong>;
-    if (!parsed || typeof parsed !== "object") return {};
-    return parsed;
-  } catch {
-    return {};
-  }
+  return readMapStore<CachedSong>(LS_KEY);
 }
 
 function writeDurableMap(map: Record<string, CachedSong>) {
-  try {
-    const entries = Object.entries(map)
-      .filter(([, v]) => v && isFresh(v, DURABLE_TTL_MS))
-      .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
-      .slice(0, LS_MAX);
-    const next: Record<string, CachedSong> = {};
-    for (const [k, v] of entries) next[k] = v;
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-  } catch {
-    /* quota / private mode */
-  }
+  writeMapStore(LS_KEY, map, { ttlMs: DURABLE_TTL_MS, max: LS_MAX });
 }
 
 function resolveKey(id: string | number, preferredLevel?: string | null): string {

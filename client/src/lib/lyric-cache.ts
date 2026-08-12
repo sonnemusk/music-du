@@ -5,6 +5,8 @@
  *
  * Lyrics almost never change — once we have them, do NOT re-hit the network.
  */
+import { readMapStore, writeMapStore } from "./cache-store";
+
 export type CachedLyric = {
   id: string;
   lrc: string;
@@ -33,28 +35,11 @@ function isFresh(hit: CachedLyric): boolean {
 }
 
 function readAll(): Record<string, CachedLyric> {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return {};
-    const o = JSON.parse(raw);
-    return o && typeof o === "object" ? o : {};
-  } catch {
-    return {};
-  }
+  return readMapStore<CachedLyric>(LS_KEY);
 }
 
 function writeAll(map: Record<string, CachedLyric>) {
-  try {
-    const entries = Object.entries(map)
-      .filter(([, v]) => v && isFresh(v))
-      .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
-      .slice(0, MAX);
-    const next: Record<string, CachedLyric> = {};
-    for (const [k, v] of entries) next[k] = v;
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-  } catch {
-    /* quota */
-  }
+  writeMapStore(LS_KEY, map, { ttlMs: TTL_MS, max: MAX });
 }
 
 /** Call once on bootstrap to hydrate memory from localStorage. */
