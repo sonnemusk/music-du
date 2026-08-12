@@ -49,7 +49,7 @@ async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
   if (ct.includes("text/html") || r.status === 302) {
     throw new Error(accessLoginHint());
   }
-  let j: any = null;
+  let j: any;
   try {
     j = await r.json();
   } catch {
@@ -169,7 +169,7 @@ export class LibraryConflictError extends Error {
 
 async function libraryJson(path: string, opts?: RequestInit): Promise<Library> {
   const r = await fetch(path, withAuthHeaders(opts));
-  let j: any = null;
+  let j: any;
   try {
     j = await r.json();
   } catch {

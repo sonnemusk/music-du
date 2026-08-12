@@ -265,7 +265,7 @@ export function scoreNameMatch(
   const a2 = clean(hitArtist || "").toLowerCase();
   if (a1 && a2) {
     if (a1 === a2) s += 40;
-    else if (a2.includes(a1.split(/[\/,，]/)[0]!) || a1.includes(a2.split(/[\/,，]/)[0]!))
+    else if (a2.includes(a1.split(/[/,，]/)[0]!) || a1.includes(a2.split(/[/,，]/)[0]!))
       s += 25;
   } else if (!a1) {
     // name-only: small bonus for clean non-karaoke titles

@@ -4,7 +4,6 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ViteDevServer } from "vite";
 import { createApp } from "./app.js";
 import {
