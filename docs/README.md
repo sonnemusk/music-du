@@ -13,6 +13,7 @@ Technical docs are in **English** (commands and paths are language-neutral). Sta
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Runtime design |
 | [FEATURES.md](./FEATURES.md) | Product | Feature checklist |
 | [OPTIMIZATION-PLAN.md](./OPTIMIZATION-PLAN.md) | Maintainers & agents | 待办优化清单（移动端 · 前端交互 · D1 成本 · 工程质量） |
+| [GROK-RUNBOOK.md](./GROK-RUNBOOK.md) | Maintainers | 逐条执行手册：32 段现成提示词 + 进度表 |
 | [../SECURITY.md](../SECURITY.md) | Everyone | Secrets & reporting |
 | [screenshots/](./screenshots/) | README | UI stills + `skins-cycle.gif` |
 
