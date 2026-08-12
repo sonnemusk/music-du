@@ -39,10 +39,9 @@
 - 样稿范围：M-1 + M-2 + M-3 简化（真实 CSS，390/320 × aurora/neon/midnight）。
 - 样稿在独立分支/worktree；用户过目后再铺 M-4…。
 
-### 搜索 IA（2026-08-12，待确认）
-- 用户反馈 + 执行评审：**窄屏默认不要全局常驻搜索框**；需要搜时再出现。
-- Cursor 原 M-2（两行 head 撑常驻框）降为中间态，**终态见** `docs/SEARCH-MOBILE-PLAN.md`（方案 A）。
-- 确认前 **不改** 搜索相关业务代码。
+### 搜索 IA（2026-08-12，已确认 · 方案 B）
+- 手机：🔍 + SearchOverlay；桌面头搜不变；**不**绑主题切换。
+- 设计稿 A/B 仍在 `docs/mockups/m2-search-compare.html`（A 不进运行时）。
 
 ### 顺序
 **P0 → M（先样稿再逐条）→ P1 → F → Q**
@@ -64,7 +63,7 @@
 | 1f | P0-1 | 本地 commit（不 push） | [x] | 见 git log |
 | — | M-样稿 | M-1/M-2/M-3 简化可视预览 | [x] | 分支 `wip/m-mobile-mock` @ `5b9db29`；**未合 main、未 push** |
 | 2 | M-1 | immersive 移动端断点 | [x] | 样稿已含；390 imm listW=362 单列 |
-| 3 | M-2 | 头部搜索框 | [x] | 样稿已含；searchW 390≈305–309 |
+| 3 | M-2 | 搜索 IA 方案 B（🔍+层） | [x] | 实现于 main；桌面头搜不变；recent-searches 单测 |
 | 4 | M-3 | 空闲播放器 / 迷你条 | [x] | 样稿级；rowsVisible 390=8 / 320≥3 |
 | 5 | M-4 | 触控 44px | [ ] | |
 | 6 | M-5 | 输入框 16px | [ ] | |

@@ -1,11 +1,16 @@
 # 移动端搜索信息架构方案
 
-状态：**双方案设计稿已出，待你选型后改代码**  
+状态：**已选型并实现方案 B（产品默认）** · 方案 A 仅保留设计稿  
 更新：2026-08-12  
-依据：Cursor 计划 M-2 · 用户反馈 · 执行侧评审 · 现状代码（`SearchBar` / `SkinHead` / `tab === "search"`）
+依据：Cursor 计划 M-2 · 用户反馈 · 执行侧评审 · 用户确认「按执行建议：B」
 
-**可点对比原型（并排 A / B）**  
-→ [`docs/mockups/m2-search-compare.html`](./mockups/m2-search-compare.html)（浏览器直接打开即可）
+**可点对比原型（并排 A / B，A 作对照）**  
+→ [`docs/mockups/m2-search-compare.html`](./mockups/m2-search-compare.html)
+
+**产品决策**
+- 手机 ≤720px：**B** — `brand | 🔍 | 主题` + 全屏搜索层；tab 去掉「搜索」
+- 桌面：头部常驻 `SearchBar` + 6 tab 不变
+- **不**做主题切换 A/B；A 不进双轨运行时
 
 ---
 

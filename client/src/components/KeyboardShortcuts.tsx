@@ -23,11 +23,19 @@ export function KeyboardShortcuts() {
   const locateCurrentInList = usePlayer((s) => s.locateCurrentInList);
   const setSkinOpen = usePlayer((s) => s.setSkinOpen);
   const skinOpen = usePlayer((s) => s.skinOpen);
+  const searchOpen = usePlayer((s) => s.searchOpen);
+  const closeSearchOverlay = usePlayer((s) => s.closeSearchOverlay);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Escape closes search overlay even while input is focused
+      if (e.key === "Escape" && searchOpen) {
+        e.preventDefault();
+        closeSearchOverlay();
+        return;
+      }
       if (isEditableTarget(e.target)) return;
 
       const key = e.key;
@@ -96,6 +104,8 @@ export function KeyboardShortcuts() {
     locateCurrentInList,
     setSkinOpen,
     skinOpen,
+    searchOpen,
+    closeSearchOverlay,
   ]);
 
   return null;

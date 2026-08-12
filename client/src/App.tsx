@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { AudioEngine } from "./components/AudioEngine";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { MediaSession } from "./components/MediaSession";
+import { SearchOverlay } from "./components/SearchOverlay";
 import { Toast } from "./components/Toast";
 import { attachSwipeNav } from "./lib/swipe-nav";
 import { getTheme } from "./skins/theme-catalog";
@@ -99,6 +100,7 @@ export default function App() {
         </div>
       ) : null}
       <SkinHost skin={skin} />
+      <SearchOverlay />
       <AudioEngine />
       <KeyboardShortcuts />
       <MediaSession />

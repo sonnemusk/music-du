@@ -1,21 +1,35 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChartsPanel } from "../../components/ChartsPanel";
 import { CoverImg } from "../../components/CoverImg";
 import { LocaleSwitcher } from "../../components/LocaleSwitcher";
 import { LyricsView } from "../../components/LyricsView";
+import { openMobileSearchFromGesture } from "../../components/SearchOverlay";
 import { SearchBar } from "../../components/SearchBar";
 import { SkinSwitcher } from "../../components/SkinSwitcher";
 import { TrackList } from "../../components/TrackList";
 import { Transport } from "../../components/Transport";
 import { useT } from "../../i18n";
+import { isMobileSearchUi } from "../../lib/mobile-ui";
 import { qualityShortLabel } from "../../lib/quality";
 import type { PanelTab } from "../../lib/types";
 import { usePlayer } from "../../store/player";
 
-export function useTabs() {
+function useMobileSearchChrome() {
+  const [mobile, setMobile] = useState(() => isMobileSearchUi());
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const apply = () => setMobile(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+  return mobile;
+}
+
+export function useTabs(opts?: { hideSearch?: boolean }) {
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);
-  return [
+  const all = [
     { id: "search" as PanelTab, label: tr("tabs.search"), short: tr("tabs.searchShort") },
     { id: "charts" as PanelTab, label: tr("tabs.charts"), short: tr("tabs.chartsShort") },
     { id: "playlist" as PanelTab, label: tr("tabs.playlist"), short: tr("tabs.playlistShort") },
@@ -27,6 +41,8 @@ export function useTabs() {
     { id: "history" as PanelTab, label: tr("tabs.history"), short: tr("tabs.historyShort") },
     { id: "lyrics" as PanelTab, label: tr("tabs.lyrics"), short: tr("tabs.lyricsShort") },
   ];
+  if (opts?.hideSearch) return all.filter((t) => t.id !== "search");
+  return all;
 }
 
 export function usePanelBody() {
@@ -56,7 +72,8 @@ export function TabNav({ short }: { short?: boolean }) {
   const setTab = usePlayer((s) => s.setTab);
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);
-  const tabs = useTabs();
+  const mobile = useMobileSearchChrome();
+  const tabs = useTabs({ hideSearch: mobile });
   return (
     <nav className="skin-tabs" aria-label={tr("tabs.navAria")}>
       {tabs.map((t) => (
@@ -139,8 +156,9 @@ export function NowPlaying({
 
 /**
  * Unified top chrome for ALL layouts (side / compact / immersive).
- * Row 1: brand · search · theme tools  (never a separate global bar)
- * Row 2: tabs (optional)
+ * Desktop: brand · search · theme tools
+ * Mobile (≤720): brand · 🔍 · theme tools — search lives in SearchOverlay (scheme B)
+ * Row 2: tabs (optional; mobile hides the search tab)
  */
 export function SkinHead({
   brand,
@@ -156,9 +174,12 @@ export function SkinHead({
   const parts = brand.split("·").map((s) => s.trim());
   const mark = parts[0] || "Music";
   const themeName = parts.length > 1 ? parts.slice(1).join(" · ") : "";
+  const mobile = useMobileSearchChrome();
+  const locale = usePlayer((s) => s.locale);
+  const tr = useT(locale);
 
   return (
-    <header className="skin-head">
+    <header className="skin-head" data-mobile-search={mobile ? "1" : undefined}>
       <div className="skin-head__main">
         <div className="skin-brand" title={brand}>
           <span className="skin-brand__mark">{mark}</span>
@@ -171,7 +192,19 @@ export function SkinHead({
             </>
           ) : null}
         </div>
-        <SearchBar className="skin-search" />
+        {mobile ? (
+          <button
+            type="button"
+            className="skin-search-launch"
+            aria-label={tr("search.aria")}
+            title={tr("search.aria")}
+            onClick={() => openMobileSearchFromGesture()}
+          >
+            <span aria-hidden>🔍</span>
+          </button>
+        ) : (
+          <SearchBar className="skin-search" />
+        )}
         <div className="skin-head__tools">
           <LocaleSwitcher />
           <SkinSwitcher />

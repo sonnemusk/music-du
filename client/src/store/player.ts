@@ -31,6 +31,7 @@ import {
   startPausedBufferPump,
   stopPausedBufferPump,
 } from "../lib/buffer-pump";
+import { recordRecentSearch } from "../lib/recent-searches";
 import {
   getLocale,
   initLocaleFromStorage,
@@ -338,6 +339,13 @@ type State = {
    * `id` = track id; `nonce` forces re-scroll even if same id.
    */
   locateRequest: { id: string; nonce: number } | null;
+  /**
+   * Mobile search overlay (scheme B). Desktop ignores; header SearchBar stays.
+   * Does not replace tab:"search" — search() still sets tab for results/locate.
+   */
+  searchOpen: boolean;
+  /** Tab to restore when closing the overlay (cancel / back / Escape). */
+  searchReturnTab: PanelTab;
 
   setAudio: (el: HTMLAudioElement | null) => void;
   setSkin: (s: SkinId) => void;
@@ -346,6 +354,10 @@ type State = {
   setLocale: (locale: Locale) => void;
   setTab: (t: PanelTab) => void;
   setSeeking: (v: boolean) => void;
+  /** Open mobile search layer; records return tab. Focus is caller's job (gesture). */
+  openSearchOverlay: () => void;
+  /** Close layer and setTab(searchReturnTab). Optional skipHistory when handling popstate. */
+  closeSearchOverlay: (opts?: { fromPopstate?: boolean }) => void;
   /** Switch to 收藏 (or list that contains current) and scroll to playing row. */
   locateCurrentInList: () => void;
   bootstrap: () => Promise<void>;
@@ -466,7 +478,8 @@ function asQueueSource(from?: QueueSource | PanelTab): QueueSource | null {
 export const usePlayer = create<State>((set, get) => ({
   skin: typeof window !== "undefined" ? loadSkin() : DEFAULT_SKIN,
   skinOpen: false,
-  tab: "search",
+  // Default charts: mobile scheme B hides search tab; empty search tab looks broken.
+  tab: "charts",
   queueSource: "playlist",
   playlist: [],
   favorites: [],
@@ -474,6 +487,8 @@ export const usePlayer = create<State>((set, get) => ({
   searchResults: [],
   searchQuery: "",
   searching: false,
+  searchOpen: false,
+  searchReturnTab: "charts",
   chartPlatforms: [],
   chartBoards: [
     { id: "soar", name: "飙升", short: "飙", description: "近期上升最快" },
@@ -549,6 +564,29 @@ export const usePlayer = create<State>((set, get) => ({
     setLocaleModule(locale);
     set({ locale });
   },
+  openSearchOverlay: () => {
+    const { tab, searchOpen, searchReturnTab } = get();
+    if (searchOpen) return;
+    const ret: PanelTab =
+      tab === "search" ? searchReturnTab || "charts" : tab;
+    set({ searchOpen: true, searchReturnTab: ret });
+  },
+  closeSearchOverlay: (opts) => {
+    const { searchOpen, searchReturnTab } = get();
+    if (!searchOpen) return;
+    set({ searchOpen: false });
+    const dest = searchReturnTab && searchReturnTab !== "search" ? searchReturnTab : "charts";
+    get().setTab(dest);
+    if (!opts?.fromPopstate && typeof window !== "undefined") {
+      try {
+        if (window.history.state?.musicSearchOverlay) {
+          window.history.back();
+        }
+      } catch {
+        /* */
+      }
+    }
+  },
   locateCurrentInList: () => {
     const cur = get().curTrack;
     if (!cur) {
@@ -576,6 +614,16 @@ export const usePlayer = create<State>((set, get) => ({
       get().setTab(tab);
     }
     set({ locateRequest: { id, nonce } });
+    // Mobile: surface search results in the overlay (tab row hides "search")
+    if (tab === "search" && typeof window !== "undefined") {
+      try {
+        if (window.matchMedia("(max-width: 720px)").matches) {
+          get().openSearchOverlay();
+        }
+      } catch {
+        /* */
+      }
+    }
   },
   setTab: (t) => {
     // Keep searchResults when leaving 搜索; clear the query string so the
@@ -905,6 +953,7 @@ export const usePlayer = create<State>((set, get) => ({
       if (!data.length) get().showToast(i18n("toast.noResults"));
       // List is ready — resolve top results in background so click/play is instant
       else {
+        recordRecentSearch(query);
         prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
           limit: 12,
           concurrency: 2,

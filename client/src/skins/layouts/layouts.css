@@ -107,6 +107,188 @@
   cursor: default;
 }
 
+/* Mobile search launch (scheme B) — 44×44 hit target */
+.skin-search-launch {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--fg, #fff) 14%, transparent);
+  background: color-mix(in srgb, var(--fg, #fff) 6%, transparent);
+  color: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.skin-search-launch:active {
+  filter: brightness(1.08);
+}
+@media (max-width: 720px) {
+  .skin-head[data-mobile-search="1"] .skin-brand__theme {
+    display: none;
+  }
+  .skin-head[data-mobile-search="1"] .skin-head__main {
+    min-height: 48px;
+  }
+  /* Desktop SearchBar must not appear as empty flex grow */
+  .skin-head[data-mobile-search="1"] .skin-search {
+    display: none;
+  }
+}
+
+/* Full-screen-ish search layer — leaves bottom for mini player / safe area */
+.search-overlay {
+  /* Reserve space for compact/player-bar / future M-3 mini (~56–64) + home indicator */
+  --search-overlay-bottom: max(72px, env(safe-area-inset-bottom, 0px));
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: var(--search-overlay-bottom);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: color-mix(in srgb, var(--bg, #0b0b12) 92%, #000);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--fg, #f5f5f7);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -8px 40px #0006;
+}
+.search-overlay__top {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: max(10px, env(safe-area-inset-top, 0px)) 12px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg, #fff) 12%, transparent);
+}
+.search-overlay__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.search-overlay__input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--fg, #fff) 16%, transparent);
+  background: color-mix(in srgb, var(--fg, #fff) 6%, transparent);
+  color: inherit;
+  /* ≥16px prevents iOS focus zoom */
+  font-size: 16px;
+  padding: 0 12px;
+  outline: none;
+}
+.search-overlay__cancel,
+.search-overlay__go {
+  flex: 0 0 auto;
+  height: 42px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--fg, #fff) 14%, transparent);
+  background: transparent;
+  color: inherit;
+}
+.search-overlay__go {
+  border: none;
+  background: var(--accent, #a78bfa);
+  color: #1a1030;
+}
+.search-overlay__go:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.search-overlay__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 8px 16px;
+}
+.search-overlay__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  margin: 4px 8px 10px;
+  text-transform: uppercase;
+}
+.search-overlay__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 8px 12px;
+}
+.search-overlay__chip {
+  padding: 8px 12px;
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--fg, #fff) 12%, transparent);
+  background: color-mix(in srgb, var(--fg, #fff) 6%, transparent);
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.search-overlay__hint {
+  text-align: center;
+  opacity: 0.55;
+  font-size: 0.88rem;
+  padding: 20px 16px;
+  margin: 0;
+}
+.search-overlay__empty {
+  text-align: center;
+  padding: 28px 16px;
+  font-weight: 700;
+}
+.search-overlay__skel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.search-overlay__skel-row {
+  height: 52px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--fg, #fff) 6%, transparent) 25%,
+    color-mix(in srgb, var(--fg, #fff) 12%, transparent) 50%,
+    color-mix(in srgb, var(--fg, #fff) 6%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: search-skel 1.2s ease infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-overlay__skel-row {
+    animation: none;
+  }
+}
+@keyframes search-skel {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .skin-head__tools {
   flex: 0 0 auto;
   display: flex;

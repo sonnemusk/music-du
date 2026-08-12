@@ -37,6 +37,12 @@ export const en: Dict = {
     submit: "Search",
     aria: "Search",
     submitAria: "Submit search",
+    cancel: "Cancel",
+    recent: "Recent",
+    recentEmpty: "No recent searches",
+    emptyHint: "Try another keyword, or pick from Charts",
+    loading: "Searching…",
+    overlayAria: "Search",
   },
   nowPlaying: {
     pick: "Pick a track to start",

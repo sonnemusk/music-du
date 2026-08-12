@@ -38,6 +38,12 @@ export const zh: Dict = {
     submit: "搜索",
     aria: "搜索",
     submitAria: "提交搜索",
+    cancel: "取消",
+    recent: "最近搜索",
+    recentEmpty: "暂无最近搜索",
+    emptyHint: "换个关键词试试，或从热榜挑一首",
+    loading: "搜索中…",
+    overlayAria: "搜索",
   },
   nowPlaying: {
     pick: "点选一首歌开始",
