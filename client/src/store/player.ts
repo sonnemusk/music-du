@@ -132,13 +132,6 @@ function setShuffleHistoryState(
   set({ shuffleHistory: h, ...extra });
 }
 
-function effectivePreferredLevel(
-  choices: QualityChoice[],
-  rank: QualityRank
-): string {
-  return pickLevelForRank(choices, rank);
-}
-
 /** Neighbor prefetch must wait so current track owns the network. */
 const PREFETCH_START_DELAY_MS = 900;
 const PREFETCH_POLL_MS = 400;
@@ -765,7 +758,7 @@ export const usePlayer = create<State>((set, get) => ({
           // Local had extras → push merge with server revision (409 → apply server)
           if (favorites.length > before) {
             window.setTimeout(() => {
-              persistSoon(get, {});
+              persistSoon(get, {}, { fast: true });
             }, 400);
           }
         } catch {
@@ -1214,9 +1207,8 @@ export const usePlayer = create<State>((set, get) => ({
 
     // Index inside active queue; also keep playlist membership for library
     let { playlist } = get();
-    let q = get().queue();
-    // Recompute queue after queueSource set
-    q = get().queue();
+    // Recomputed after queueSource is set above
+    const q = get().queue();
     let found = q.findIndex((x) => String(x.id) === String(t.id));
     if (found < 0 && qs === "playlist") {
       playlist = [...playlist, t];
@@ -2316,7 +2308,7 @@ export const usePlayer = create<State>((set, get) => ({
       );
       get().showToast(i18n("toast.faved", { name: track.name }));
       set({ favorites });
-      void persistSoon(get);
+      void persistSoon(get, {}, { fast: true });
       // Eagerly cache newly favorited track audio (best-effort; CF 302 may block IDB)
       void cacheAudioFromStream(track.id, { level: String(track.level || "") });
     }
@@ -2342,7 +2334,7 @@ export const usePlayer = create<State>((set, get) => ({
         ? i18n("toast.imported", { n: added, total: favorites.length })
         : i18n("toast.importNone")
     );
-    void persistSoon(get, {});
+    void persistSoon(get, {}, { fast: true });
   },
 
   addToPlaylist: (t) => {
@@ -2358,7 +2350,7 @@ export const usePlayer = create<State>((set, get) => ({
     }
     set({ playlist: [...get().playlist, track] });
     get().showToast(i18n("toast.addedList", { name: track.name }));
-    void persistSoon(get);
+    void persistSoon(get, {}, { fast: true });
   },
 
   removeFromPlaylist: (id) => {
@@ -2477,35 +2469,38 @@ function mirrorLibraryLocal(get: () => State) {
   }
 }
 
-let saveSlowOnly = false;
 let saveFlushBound = false;
+/** A pending fast save must not be pushed back by later history churn. */
+let savePendingFast = false;
 
-function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
+const SAVE_FAST_MS = 500;
+const SAVE_SLOW_MS = 20_000;
+
+/**
+ * P1-4 two-speed save.
+ * fast (500ms)  — deliberate library edits (fav / queue / import / clears)
+ * slow (20s)    — playback churn only (history, curIdx); flushed on hide/unload
+ * `force` keys alone can't imply "deliberate": most explicit edits pass none.
+ */
+function persistSoon(
+  get: () => State,
+  force: Record<string, boolean> = {},
+  opts: { fast?: boolean } = {}
+) {
   // Demo never touches D1 (or library localStorage merge path)
   if (get().libraryReadOnly) return;
   mirrorLibraryLocal(get);
   saveDirty = true;
   saveForce = { ...saveForce, ...force };
-  // Explicit list clears / structural edits: fast path 500ms
-  const fast =
-    force.forceClearPlaylist ||
-    force.forceClearFavorites ||
-    force.forceClearHistory ||
-    Object.keys(force).length > 0;
-  if (fast) {
-    saveSlowOnly = false;
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
+  const fast = opts.fast === true || Object.keys(force).length > 0 || savePendingFast;
+  savePendingFast = fast;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(
+    () => {
       void flushLibrarySave(get);
-    }, 500);
-  } else {
-    // history/curIdx churn: slow channel 20s (P1-4)
-    saveSlowOnly = true;
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      void flushLibrarySave(get);
-    }, 20_000);
-  }
+    },
+    fast ? SAVE_FAST_MS : SAVE_SLOW_MS
+  );
   if (!saveFlushBound && typeof window !== "undefined") {
     saveFlushBound = true;
     const flush = () => {
@@ -2528,6 +2523,7 @@ async function flushLibrarySave(get: () => State) {
   if (!saveDirty) return;
   saveInflight = true;
   saveDirty = false;
+  savePendingFast = false;
   const force = { ...saveForce };
   saveForce = {};
   const s = get();
