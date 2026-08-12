@@ -284,12 +284,8 @@
   background: color-mix(in srgb, var(--fg) 8%, transparent);
 }
 
-/* Lyrics / charts keep their normal flow inside the grid column */
-.layout-gallery .gal-body > .lyrics-scroller,
-.layout-gallery .gal-body > .charts-panel {
-  display: flex;
-}
-
+/* Lyrics and charts keep their own flow — only the container needs to become a
+   column so the lyric scroller can own the remaining height. */
 .gal-body:has(> .lyrics-scroller) {
   display: flex;
   flex-direction: column;
