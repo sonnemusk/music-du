@@ -117,18 +117,47 @@ node /tmp/audit.mjs    # 见 §附录 A
 
 **验收**：390 与 320 两个视口下 `.imm-sheet` 宽度 ≥ 视口宽度 − 32px；首行 `.track-row` 的 y < 视口高度；前 8 行歌名截断数 = 0。
 
-### M-2 头部单行三段式把搜索框压到 24px（影响全部 49 主题）
+### M-2 移动端搜索改为「模式化」入口，取消常驻搜索框
 
-**现状**：`layouts.css:30-37` 的 `.skin-head__main` 是 `flex-wrap: nowrap`，`.skin-brand`（`:39-52`，`flex: 0 0 auto` + `overflow: visible`）和 `.skin-head__tools`（`:110-117`，`flex: 0 0 auto`）都不收缩，唯一可伸缩的 `.skin-search`（`:67-76`，`flex: 1 1 0; min-width: 0`）承担全部挤压 → 实测 24–47px，输入框只能显示半个占位字。工具区在手机上还并排放着 3 个按钮（语言、主题名、切换）。
+> 本条已取代旧版 M-2（「头部改两行、给搜索框整宽」）。如果搜索框不再常驻，旧方案就没有意义了。
+> 依赖：建议在 M-3（迷你条）与 M-10（tab 形态）之后做——移动端导航外壳定下来，搜索入口放哪才能定。
 
-**目标**：手机上搜索框可用宽度 ≥ 视口 60%。
+**现状**
 
-**改法**
-1. `max-width: 720px` 时把头部改成两行：第一行 `brand + tools`，第二行整宽 `search`。`SkinHead` 的 DOM 契约在 `layouts/shared.tsx`，用 CSS `order` + `flex-basis: 100%` 实现，不动结构。
-2. 手机上收起 `.skin-brand__theme`（`layouts.css:60-65`，主题名对移动端没信息价值，主题名已在工具区按钮里出现一次）。
-3. 工具区在手机上合并：语言切换收进主题面板，头部只留「主题」一个入口（`LocaleSwitcher` 复用了 `.skin-switcher__btn` 类名，见 `components/LocaleSwitcher.tsx:12`，顺手给它独立类名，避免选择器互相牵连）。
+- `layouts/shared.tsx:174` 在 `SkinHead` 里**无条件**渲染 `SearchBar`，三套布局的头部第一行永远是 `brand | search | tools`；头部常驻高度实测 **106px**，占 390×844 视口的 **12.5%**。
+- 而这块空间换来的是一个**不可用**的控件：`.skin-head__main` 是 `flex-wrap: nowrap`（`layouts.css:30-37`），`.skin-brand`（`:39-52`）与 `.skin-head__tools`（`:110-117`）都是 `flex: 0 0 auto` 不收缩，唯一可伸缩的 `.skin-search`（`:67-76`）承担全部挤压 → 实测宽度只剩 **24px**（immersive / compact）到 **47px**（side），只能显示半个占位字。
+- 同时 `useTabs()`（`shared.tsx:18-29`）里已经有一个 `search` tab，其内容就是搜索结果（`shared.tsx:41-42`）；`search()` 提交后会自动切到该 tab（`store/player.ts:862`、`:897`）；`setTab` 离开搜索时清 `searchQuery` 但保留 `searchResults`（`player.ts:580-586`）。
+- 也就是说：**一个功能被拆成两半（头部输入框 + 结果 tab），两半都常驻，而输入框那一半在手机上不能用**；叠加 6 个 tab 在 390px 下还要换行或压成单字（M-10）。
 
-**验收**：390 和 320 两个视口下 `.skin-search input` 宽度 ≥ `0.6 × innerWidth`；头部总高 ≤ 112px。
+**目标**：手机上搜索是「进入 / 退出」的模式而不是常驻控件——不搜索时头部不为它留空间，搜索时输入框获得整宽且位置合适（键盘上方可视区域最大化）。**桌面端行为完全不变。**
+
+**改法**（`max-width: 720px` 或 `pointer: coarse` 生效；桌面继续走现有分支）
+
+1. 头部第一行改成 `brand | 🔍 | 主题`，`🔍` 是 44×44 的入口按钮，不再常驻 `SearchBar`。
+2. 点 `🔍` 打开**全屏搜索层**（覆盖列表区，不覆盖 M-3 的迷你条）：顶部整宽输入框 + 「取消」；输入框下方按状态渲染——
+   - query 为空 → 最近搜索（localStorage，上限 10；这一步顺带完成 F-10a）
+   - 搜索中 → 骨架屏（与 F-4 复用同一组件）
+   - 有结果 → 现有 `TrackList mode="search"`
+   - 无结果 → 空态 + 修改关键词的建议
+3. 提交后停留在层内展示结果；「取消」/系统返回关闭层并回到进入前的 tab（记录来源 tab）。
+4. 移动端 tab 行去掉「搜索」（6 → 5），入口只保留图标，消除双入口；桌面 tab 行不变。
+5. 只新增 UI 状态（如 `searchOpen` + `searchReturnTab`）。**不要改** `setTab` 清 `searchQuery` 的既有逻辑（`player.ts:580-586`）与 `search()` 里 `tab: "search"` 的设置——`locateCurrentInList` 会在搜索结果里定位（`player.ts:565`），改了会连带影响桌面端。
+
+**技术坑（不处理的话 iOS 上一定翻车）**
+
+- 键盘弹起会压缩 visual viewport，`position: fixed` + `100dvh` 的层会被顶出屏幕：输入框放在层**顶部**（受影响最小），并监听 `window.visualViewport` 的 `resize` / `scroll` 校正高度；层底部留 `env(safe-area-inset-bottom)`。
+- 输入框 `font-size ≥ 16px`（与 M-5 一致），否则 iOS 聚焦时整页放大且不还原。
+- iOS 只在用户手势的**同一 tick** 内调 `.focus()` 才会弹出键盘，不能等到 `useEffect` 的下一帧。
+- 用 `history.pushState` 让 Android 系统返回键关闭层而不是退出应用；`Escape` 同样关闭。
+
+**验收**
+
+1. 未进入搜索态时，移动视口下 `.skin-head` 高度 ≤ 56px（现状 106px），且 DOM 中没有可见的 `.skin-search input`。
+2. 进入搜索态后输入框宽度 ≥ 视口宽 − 32px（现状 24–47px），`computedStyle.fontSize` ≥ 16px。
+3. 键盘弹起时输入框完整可见（贴 390×844 键盘态截图，或 `visualViewport` 校正后的坐标）。
+4. 「取消」后回到进入搜索前的 tab，且 `searchResults` 仍保留（与 `setTab` 既有语义一致）。
+5. 桌面 1440 宽下头部与搜索行为与改动前**完全一致**（贴前后截图对比）。
+6. `npm run typecheck && npm test` 全绿。
 
 ### M-3 空闲状态下播放器吃掉半屏到全屏，列表在首屏之外
 

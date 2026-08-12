@@ -82,6 +82,10 @@ TypeScript + Hono + React 19 + Zustand，线上部署是 Cloudflare Worker + D1 
 
 ## M — 移动端（12 条，建议全部做完再动别的）
 
+> **执行顺序：M-1 → M-3 → M-10 → M-2 → M-4 → M-5 → M-6 → M-7 → M-8 → M-9 → M-11 → M-12。**
+> M-3（迷你条）和 M-10（tab 形态）决定移动端的导航外壳，M-2（搜索改模式化入口）要建立在外壳之上，
+> 否则会做两遍。下面的小节按编号排列，照进度表的顺序发即可。
+>
 > 每条移动端任务的验收都用同一个脚本：`OPTIMIZATION-PLAN.md` 附录 A，视口 `390×844` 与 `320×568`，
 > 主题 `aurora`(side) / `neon`(immersive) / `midnight`(compact)。
 
@@ -106,32 +110,54 @@ tab 被压成竖排单字，40 行歌曲变成一列噪点。49 个主题里 21 
 把这四个数字的实测值贴出来。
 ```
 
-### M-2 头部把搜索框挤到 24px
+### M-2 移动端搜索改为模式化入口（取代常驻搜索框）
+
+> 建议排在 M-3、M-10 之后做：移动端导航外壳（迷你条 / tab 形态）定下来，搜索入口放顶部还是底部才能定。
 
 ```
 项目 music-du。先读 docs/OPTIMIZATION-PLAN.md 与 docs/GROK-RUNBOOK.md 的「通用约束」，严格遵守。
-本轮只做 M-2，其他条目一律不动。
+本轮只做 M-2，其他条目一律不动。改前先把方案画给我确认（文字描述层级结构即可），我确认后再写代码。
 
-layouts.css:30-37 的 .skin-head__main 是 flex-wrap:nowrap，.skin-brand（:39-52）和
-.skin-head__tools（:110-117）都是 flex:0 0 auto 不收缩，唯一可伸缩的 .skin-search（:67-76）
-承担全部挤压，实测宽度只剩 24–47px，输入框只能显示半个占位字。
+问题不是"搜索框太窄"，而是一个功能被拆成两半、两半都常驻、其中一半在手机上不可用：
+- layouts/shared.tsx:174 在 SkinHead 里无条件渲染 SearchBar，三套布局头部第一行永远是
+  brand | search | tools，头部常驻 106px（占 390×844 视口 12.5%）。
+- 但 .skin-head__main 是 nowrap（layouts.css:30-37），brand（:39-52）与 tools（:110-117）
+  都不收缩，挤压全落在 .skin-search（:67-76）上，实测只剩 24px（immersive/compact）～47px（side）。
+- 而 useTabs()（shared.tsx:18-29）里已经有一个 search tab，内容就是搜索结果（shared.tsx:41-42），
+  search() 提交后还会自动切过去（store/player.ts:862、:897）→ 双入口、双份空间开销。
 
-按计划文档 M-2 的三步改：≤720px 时头部改两行（第一行 brand+tools，第二行整宽 search）、
-手机上收起 .skin-brand__theme、工具区在手机上只留「主题」一个入口
-（顺手给 LocaleSwitcher 独立类名，它现在复用了 .skin-switcher__btn，见 components/LocaleSwitcher.tsx:12）。
-注意：SkinHead 的 DOM 契约在 layouts/shared.tsx，用 CSS order + flex-basis 实现，不要改结构。
+按计划文档 M-2 的五步改（≤720px 或 pointer:coarse 生效，桌面端完全不变）：
+1. 头部第一行改 brand | 🔍 | 主题，🔍 是 44×44 入口，不再常驻 SearchBar。
+2. 点 🔍 打开全屏搜索层（盖住列表区，不盖 M-3 的迷你条）：输入框整宽置于层顶部 + 「取消」；
+   下方按状态渲染——空 query 显示最近搜索（localStorage 上限 10，顺带完成 F-10a）、
+   搜索中骨架屏（复用 F-4）、有结果用现有 TrackList mode="search"、无结果给空态 + 建议。
+3. 提交后停在层内看结果；「取消」或系统返回关闭层并回到进入前的 tab（记录来源 tab）。
+4. 移动端 tab 行去掉「搜索」（6→5），入口只留图标；桌面 tab 行不变。
+5. 只新增 UI 状态（如 searchOpen / searchReturnTab）。不要改 setTab 清 searchQuery 的既有逻辑
+   （player.ts:580-586）和 search() 里 tab:"search" 的设置——locateCurrentInList 会在搜索结果里
+   定位（player.ts:565），改了会连带影响桌面端。
 
-验收（附录 A 脚本，两个视口）：
-- .skin-search input 宽度 ≥ 0.6 × 视口宽（现状 390 下 24–47）
-- 头部 .skin-head 总高 ≤ 112px
-贴实测值。
+四个 iOS 必踩坑，必须一并处理：
+- 键盘弹起压缩 visual viewport，fixed + 100dvh 的层会被顶出屏幕 → 输入框放层顶部，
+  并监听 window.visualViewport 的 resize/scroll 校正；层底部留 env(safe-area-inset-bottom)。
+- 输入框 font-size ≥ 16px（同 M-5），否则聚焦时整页放大不还原。
+- iOS 只在用户手势同一 tick 内调 .focus() 才弹键盘，不能等 useEffect 下一帧。
+- 用 history.pushState 让安卓返回键关闭层而不是退出应用；Escape 同样关闭。
+
+验收（逐条贴证据）：
+1. 未进入搜索态时移动视口 .skin-head 高度 ≤ 56px（现状 106），DOM 无可见 .skin-search input。
+2. 搜索态输入框宽度 ≥ 视口宽 − 32px（现状 24–47），computedStyle.fontSize ≥ 16px。
+3. 键盘弹起时输入框完整可见（贴 390×844 键盘态截图或校正后坐标）。
+4. 「取消」后回到进入前的 tab，且 searchResults 仍保留。
+5. 桌面 1440 宽下头部与搜索行为与改动前完全一致（贴前后截图对比）。
+6. npm run typecheck && npm test 全绿。
 ```
 
 ### M-3 空闲播放器占半屏到全屏，列表在折叠线外
 
 ```
 项目 music-du。先读 docs/OPTIMIZATION-PLAN.md 与 docs/GROK-RUNBOOK.md 的「通用约束」，严格遵守。
-本轮只做 M-3，其他条目一律不动。前置：M-1、M-2 已完成。
+本轮只做 M-3，其他条目一律不动。前置：M-1 已完成。
 
 三套布局都把 now-playing 当主角，即使没在播：side 402px、immersive 764px、compact 301px。
 叠加头部与榜单元信息后，首行歌曲的 y 实测 815 / 2389 / 685（视口高 844），
@@ -719,15 +745,15 @@ npm run typecheck && npm test 全绿。
 | 0 | — | 开场：读文档 + 跑基线 | ☐ |
 | 1 | P0-1 | demo 与生产共用 D1（需人工建库或走改法 B） | ☐ |
 | 2 | M-1 | immersive 移动端断点 | ☐ |
-| 3 | M-2 | 头部搜索框被挤到 24px | ☐ |
-| 4 | M-3 | 空闲播放器占屏 / 迷你条 | ☐ |
-| 5 | M-4 | 触控目标 44px | ☐ |
-| 6 | M-5 | 输入框 16px 防缩放 | ☐ |
-| 7 | M-6 | hover 态 | ☐ |
-| 8 | M-7 | 安全区 + dvh | ☐ |
-| 9 | M-8 | 主题面板底部抽屉 | ☐ |
-| 10 | M-9 | 歌词全屏 + 居中 | ☐ |
-| 11 | M-10 | tab 标签 | ☐ |
+| 3 | M-3 | 空闲播放器占屏 / 迷你条 | ☐ |
+| 4 | M-10 | tab 标签形态（决定导航外壳） | ☐ |
+| 5 | M-2 | 移动端搜索改模式化入口（取代常驻搜索框） | ☐ |
+| 6 | M-4 | 触控目标 44px | ☐ |
+| 7 | M-5 | 输入框 16px 防缩放 | ☐ |
+| 8 | M-6 | hover 态 | ☐ |
+| 9 | M-7 | 安全区 + dvh | ☐ |
+| 10 | M-8 | 主题面板底部抽屉 | ☐ |
+| 11 | M-9 | 歌词全屏 + 居中 | ☐ |
 | 12 | M-11 | 滑动手势范围 | ☐ |
 | 13 | M-12 | 删死文件 all-themes.css | ☐ |
 | 14 | P1-1 | history 单调 pos（约 200 次写 → 1–2 次） | ☐ |
