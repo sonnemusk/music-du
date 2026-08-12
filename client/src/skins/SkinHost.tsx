@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { usePlayer } from "../store/player";
 import { getTheme, themeToCssVars, type SkinId } from "./theme-catalog";
 import { CompactLayout } from "./layouts/CompactLayout";
 import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
@@ -10,6 +11,8 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
   const meta = getTheme(skin);
   const brand = `Music · ${meta.name}`;
   const vars = themeToCssVars(meta) as CSSProperties;
+  const curTrack = usePlayer((s) => s.curTrack);
+  const idle = !curTrack;
 
   let layout = null;
   switch (meta.layout) {
@@ -31,6 +34,7 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       className={`skin-host surface-${meta.surface} density-${meta.density} radius-${meta.radius}`}
       data-skin={meta.id}
       data-layout={meta.layout}
+      data-idle={idle ? "1" : undefined}
       style={{
         ...vars,
         background: "var(--wallpaper)",
