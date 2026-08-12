@@ -4,20 +4,19 @@ import type { ChartBoardId, ChartPlatformId } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { TrackList } from "./TrackList";
 
-const FALLBACK_PLATFORMS: {
+/** ids only — labels via i18n charts.platform.* (F-6) */
+const FALLBACK_PLATFORM_IDS: {
   id: ChartPlatformId;
-  short: string;
-  name: string;
   boards?: ChartBoardId[];
 }[] = [
-  { id: "douyin", short: "抖音", name: "抖音", boards: ["soar", "hot", "new"] },
-  { id: "network", short: "网络", name: "网络热歌", boards: ["soar", "hot"] },
-  { id: "netease", short: "网易", name: "网易云", boards: ["soar", "hot", "new"] },
-  { id: "qq", short: "QQ", name: "QQ 音乐", boards: ["soar", "hot", "new"] },
-  { id: "kugou", short: "酷狗", name: "酷狗", boards: ["soar", "hot", "new"] },
-  { id: "kuwo", short: "酷我", name: "酷我", boards: ["soar", "hot", "new"] },
-  { id: "index", short: "流行", name: "流行指数", boards: ["soar", "hot"] },
-  { id: "original", short: "原创", name: "原创", boards: ["hot", "new"] },
+  { id: "douyin", boards: ["soar", "hot", "new"] },
+  { id: "network", boards: ["soar", "hot"] },
+  { id: "netease", boards: ["soar", "hot", "new"] },
+  { id: "qq", boards: ["soar", "hot", "new"] },
+  { id: "kugou", boards: ["soar", "hot", "new"] },
+  { id: "kuwo", boards: ["soar", "hot", "new"] },
+  { id: "index", boards: ["soar", "hot"] },
+  { id: "original", boards: ["hot", "new"] },
 ];
 
 export function ChartsPanel() {
@@ -41,7 +40,14 @@ export function ChartsPanel() {
     void loadCharts();
   }, [loadCharts]);
 
-  const chips = platforms.length ? platforms : FALLBACK_PLATFORMS;
+  const chips = platforms.length
+    ? platforms
+    : FALLBACK_PLATFORM_IDS.map((p) => ({
+        id: p.id,
+        short: tr(`charts.platform.${p.id}Short`),
+        name: tr(`charts.platform.${p.id}`),
+        boards: p.boards,
+      }));
   const boardChips = useMemo(
     () => [
       {

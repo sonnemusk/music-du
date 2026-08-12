@@ -7,7 +7,7 @@ export function Toast() {
   const tr = useT(locale);
   const needAccess = /Cloudflare Access|需要登录|Sign in|login/i.test(toast || "");
   return (
-    <div className={`toast ${toast ? "show" : ""}`}>
+    <div className={`toast ${toast ? "show" : ""}`} role="status" aria-live="polite">
       <span className="toast__text">{toast}</span>
       {needAccess ? (
         <button

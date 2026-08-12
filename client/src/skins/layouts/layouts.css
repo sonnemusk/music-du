@@ -1785,3 +1785,15 @@ button.badge,
     min-height: 60vh;
   }
 }
+
+/* F-10b: row actions — desktop hover only; touch always visible */
+@media (hover: hover) and (pointer: fine) {
+  .track-acts {
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .track-row:hover .track-acts,
+  .track-row:focus-within .track-acts {
+    opacity: 1;
+  }
+}
