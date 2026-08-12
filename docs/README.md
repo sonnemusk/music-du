@@ -12,6 +12,7 @@ Technical docs are in **English** (commands and paths are language-neutral). Sta
 | [ACCESS.md](./ACCESS.md) | Private installs | Cloudflare Access + library token |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Runtime design |
 | [FEATURES.md](./FEATURES.md) | Product | Feature checklist |
+| [OPTIMIZATION-PLAN.md](./OPTIMIZATION-PLAN.md) | Maintainers & agents | 待办优化清单（移动端 · 前端交互 · D1 成本 · 工程质量） |
 | [../SECURITY.md](../SECURITY.md) | Everyone | Secrets & reporting |
 | [screenshots/](./screenshots/) | README | UI stills + `skins-cycle.gif` |
 
