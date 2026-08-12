@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useT } from "../i18n";
 import * as api from "../lib/api";
+import { warmTrackCovers } from "../lib/cover-browser-cache";
 import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
 import { usePlayer } from "../store/player";
@@ -11,6 +12,7 @@ type Props = {
   mode: "search" | "playlist" | "favorites" | "history" | "charts";
   empty?: string;
   className?: string;
+  loading?: boolean;
 };
 
 /** Pick the most roomy scrollable ancestor (list panel), never document/body. */
@@ -40,14 +42,12 @@ function findListScroller(el: HTMLElement): HTMLElement | null {
   return bestRoom > 2 ? best : null;
 }
 
-/** Scroll row to vertical center of list scroller — no layout shell jump. */
 function scrollRowIntoList(el: HTMLElement) {
   const scroller = findListScroller(el);
   if (scroller) {
     const pRect = scroller.getBoundingClientRect();
     const eRect = el.getBoundingClientRect();
     const delta = eRect.top + eRect.height / 2 - (pRect.top + pRect.height / 2);
-    // Instant jump is more reliable than smooth when list just mounted
     scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
     return true;
   }
@@ -59,7 +59,170 @@ function flashRow(el: HTMLElement) {
   window.setTimeout(() => el.classList.remove("track-row--flash"), 900);
 }
 
-export function TrackList({ tracks, mode, empty, className }: Props) {
+function isTouchUi() {
+  return typeof window !== "undefined" && matchMedia("(pointer: coarse)").matches;
+}
+
+type RowProps = {
+  t: Track;
+  i: number;
+  mode: Props["mode"];
+  active: boolean;
+  loading: boolean;
+  fav: boolean;
+  libraryReadOnly: boolean;
+  tr: (k: string, p?: Record<string, string | number>) => string;
+  onPlay: (t: Track) => void;
+  onToggleFav: (t: Track) => void;
+  onAdd: (t: Track) => void;
+  onRemovePl: (id: string | number) => void;
+  onRemoveHi: (id: string | number) => void;
+  onWarm: (t: Track) => void;
+  setRowRef: (id: string, node: HTMLDivElement | null) => void;
+};
+
+const TrackRow = memo(function TrackRow({
+  t,
+  i,
+  mode,
+  active,
+  loading,
+  fav,
+  libraryReadOnly,
+  tr,
+  onPlay,
+  onToggleFav,
+  onAdd,
+  onRemovePl,
+  onRemoveHi,
+  onWarm,
+  setRowRef,
+}: RowProps) {
+  const rank = t.rank ?? (mode === "charts" ? i + 1 : 0);
+  const id = String(t.id);
+  const refCb = useCallback(
+    (node: HTMLDivElement | null) => setRowRef(id, node),
+    [id, setRowRef]
+  );
+
+  return (
+    <div
+      ref={refCb}
+      data-track-id={id}
+      className={`track-row ${active ? "playing" : ""} ${active && loading ? "loading" : ""}`}
+      onClick={() => {
+        if (isTouchUi()) onPlay(t);
+      }}
+      onDoubleClick={() => {
+        if (!isTouchUi()) onPlay(t);
+      }}
+      onMouseEnter={() => onWarm(t)}
+      onFocus={() => onWarm(t)}
+      role="button"
+      tabIndex={0}
+      aria-current={active ? "true" : undefined}
+      aria-label={tr("track.rowAria", { name: t.name || "", artist: t.artist || "" })}
+      title={isTouchUi() ? tr("track.clickPlay") : tr("track.dblPlay")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPlay(t);
+        }
+      }}
+    >
+      {mode === "charts" ? (
+        <span
+          className={`track-rank ${rank <= 3 ? `top${rank}` : ""}`}
+          aria-label={tr("track.rankAria", { n: rank })}
+        >
+          {rank}
+        </span>
+      ) : null}
+      {t.cover ? <CoverImg src={t.cover} className="cov" size="thumb" /> : <div className="cov" />}
+      <div className="track-meta">
+        <div className="track-name">
+          {t.name}
+          {active && loading ? (
+            <span className="track-loading-hint"> {tr("track.loading")}</span>
+          ) : null}
+        </div>
+        <div className="track-sub">
+          {t.artist}
+          {t.album ? ` · ${t.album}` : ""}
+        </div>
+      </div>
+      <div className="track-acts" onClick={(e) => e.stopPropagation()}>
+        {!libraryReadOnly && mode === "playlist" && (
+          <button
+            type="button"
+            className="icon-btn danger"
+            title={tr("track.remove")}
+            onClick={() => onRemovePl(t.id)}
+          >
+            ✕
+          </button>
+        )}
+        {!libraryReadOnly && mode === "favorites" && (
+          <button
+            type="button"
+            className="icon-btn danger"
+            title={tr("track.unfav")}
+            onClick={() => onToggleFav(t)}
+          >
+            ♥
+          </button>
+        )}
+        {libraryReadOnly && mode === "favorites" && fav ? (
+          <span className="icon-btn" title={tr("track.favReadonly")} aria-hidden="true">
+            ♥
+          </span>
+        ) : null}
+        {!libraryReadOnly && mode === "history" && (
+          <>
+            <button
+              type="button"
+              className="icon-btn"
+              title={tr("track.addList")}
+              onClick={() => onAdd(t)}
+            >
+              ＋
+            </button>
+            <button
+              type="button"
+              className="icon-btn danger"
+              title={tr("track.removeHistory")}
+              onClick={() => onRemoveHi(t.id)}
+            >
+              ✕
+            </button>
+          </>
+        )}
+        {!libraryReadOnly && (mode === "search" || mode === "charts") && (
+          <>
+            <button
+              type="button"
+              className="icon-btn"
+              title={tr("track.addList")}
+              onClick={() => onAdd(t)}
+            >
+              ＋
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              title={tr("track.fav")}
+              onClick={() => onToggleFav(t)}
+            >
+              {fav ? "♥" : "♡"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+});
+
+export function TrackList({ tracks, mode, empty, className, loading }: Props) {
   const playTrack = usePlayer((s) => s.playTrack);
   const curTrack = usePlayer((s) => s.curTrack);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
@@ -71,16 +234,58 @@ export function TrackList({ tracks, mode, empty, className }: Props) {
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
   const locale = usePlayer((s) => s.locale);
+  const preferredQuality = usePlayer((s) => s.preferredQuality);
   const tr = useT(locale);
   const emptyText = empty ?? tr("empty.generic");
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  /** Track previous mode so we detect entering 喜欢 (including first mount). */
+  const listRef = useRef<HTMLDivElement>(null);
   const prevModeRef = useRef<string | null>(null);
-  /** Last curTrack we auto-located — next/prev while on 喜欢 should re-scroll. */
   const prevLocateCurIdRef = useRef<string | null>(null);
 
-  // Locate: playing track always wins on 喜欢 when curTrack changes (next/prev).
-  // locateRequest (G key) only when it matches current play or no cur change.
+  const setRowRef = useCallback((id: string, node: HTMLDivElement | null) => {
+    if (node) rowRefs.current.set(id, node);
+    else rowRefs.current.delete(id);
+  }, []);
+
+  const play = useCallback(
+    (t: Track) => {
+      void playTrack(t, { from: mode });
+    },
+    [playTrack, mode]
+  );
+
+  const warmRow = useCallback(
+    (t: Track) => {
+      void prefetchSongResolveOne(t.id, (id) =>
+        api.resolveSong(id, { level: preferredQuality })
+      );
+    },
+    [preferredQuality]
+  );
+
+  // F-3: warm covers near viewport only
+  useEffect(() => {
+    const root = listRef.current;
+    if (!root || !tracks.length) return;
+    const visible = tracks.slice(0, 24);
+    warmTrackCovers(visible, 24);
+    const io = new IntersectionObserver(
+      (entries) => {
+        const need: Track[] = [];
+        for (const en of entries) {
+          if (!en.isIntersecting) continue;
+          const id = (en.target as HTMLElement).dataset.trackId;
+          const hit = tracks.find((x) => String(x.id) === id);
+          if (hit) need.push(hit);
+        }
+        if (need.length) warmTrackCovers(need, 40);
+      },
+      { root: findListScroller(root) || null, rootMargin: "120px 0px", threshold: 0.01 }
+    );
+    root.querySelectorAll<HTMLElement>("[data-track-id]").forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [tracks, mode]);
+
   useEffect(() => {
     const prev = prevModeRef.current;
     const enteredFavorites = mode === "favorites" && prev !== "favorites";
@@ -91,245 +296,73 @@ export function TrackList({ tracks, mode, empty, className }: Props) {
     const inList = (id: string) => tracks.some((t) => String(t.id) === id);
 
     let wantId: string | null = null;
-
-    // 1) Next/prev / auto-advance: always follow playing track on 喜欢
     if (mode === "favorites" && curId && inList(curId) && curChanged) {
       wantId = curId;
     }
-
-    // 2) Explicit G / locateRequest — only if still relevant to current play
-    if (!wantId && locateRequest?.id) {
-      const id = String(locateRequest.id);
-      if (inList(id) && (!curId || id === curId || !curChanged)) {
-        wantId = id;
+    if (!wantId && locateRequest?.id && inList(locateRequest.id)) {
+      if (!curId || locateRequest.id === curId || mode !== "favorites") {
+        wantId = locateRequest.id;
       }
     }
-
-    // 3) Enter 喜欢 tab: jump to playing track if present
-    if (
-      !wantId &&
-      mode === "favorites" &&
-      curId &&
-      inList(curId) &&
-      (enteredFavorites || prev === null)
-    ) {
+    if (enteredFavorites && !wantId && curId && inList(curId)) {
       wantId = curId;
     }
-
+    if (curId) prevLocateCurIdRef.current = curId;
     if (!wantId) return;
-
-    let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 40; // ~2s with 50ms steps
-    const targetId = wantId;
-
-    const run = () => {
-      if (cancelled) return;
-      // Always prefer live playing id on 喜欢 (next may advance during retries)
-      const livePlaying =
-        mode === "favorites" ? usePlayer.getState().curTrack : null;
-      const liveId = livePlaying ? String(livePlaying.id) : targetId;
-      const id =
-        mode === "favorites" && liveId && inList(liveId) ? liveId : targetId;
-      const el = rowRefs.current.get(id);
-      if (!el) {
-        if (attempts++ < maxAttempts) {
-          window.setTimeout(run, 50);
-        }
-        return;
-      }
-      const ok = scrollRowIntoList(el);
+    const el = rowRefs.current.get(wantId);
+    if (el) {
+      scrollRowIntoList(el);
       flashRow(el);
-      // Only mark located after we actually found the row
-      if (mode === "favorites") {
-        prevLocateCurIdRef.current = id;
-      }
-      if (!ok || attempts < 2) {
-        attempts++;
-        window.setTimeout(() => {
-          if (cancelled) return;
-          const still = usePlayer.getState().curTrack;
-          const againId =
-            mode === "favorites" && still && inList(String(still.id))
-              ? String(still.id)
-              : id;
-          const again = rowRefs.current.get(againId);
-          if (again) {
-            scrollRowIntoList(again);
-            flashRow(again);
-            if (mode === "favorites") prevLocateCurIdRef.current = againId;
-          }
-        }, 120);
-      }
-    };
-
-    const t = window.setTimeout(run, 40);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [mode, locateRequest?.id, locateRequest?.nonce, curTrack?.id, tracks.length]);
-
-  const play = (t: Track) => {
-    void playTrack(t, { from: mode });
-  };
-
-  /** Touch / coarse pointer: single tap plays. Mouse: double-click (avoids accidental play). */
-  const isTouchUi = () => {
-    try {
-      if (typeof window === "undefined") return false;
-      if (window.matchMedia?.("(pointer: coarse)").matches) return true;
-      if (navigator.maxTouchPoints > 0) return true;
-    } catch {
-      /* */
     }
-    return false;
-  };
+  }, [mode, curTrack, locateRequest, tracks]);
 
-  const preferredQuality = usePlayer((s) => s.preferredQuality);
-  const warmRow = (t: Track) => {
-    // Hover/focus: pre-resolve this row so click uses cached CDN URL
-    prefetchSongResolveOne(
-      t.id,
-      (id, opts) =>
-        api.resolveSong(id, {
-          level: opts?.level || preferredQuality,
-        }),
-      preferredQuality
-    );
-  };
-
-  if (!tracks.length) {
+  if (loading) {
     return (
-      <div className={className || "track-list"}>
-        <div className="empty">{emptyText}</div>
+      <div className={className || "track-list"} aria-busy="true">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="track-row track-row--skel" aria-hidden />
+        ))}
       </div>
     );
   }
 
+  if (!tracks.length) {
+    return (
+      <div className={className || "track-list"}>
+        <div className="empty">
+          <p>{emptyText}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // F-2: window virtualization for long lists
+  const VIRTUAL = tracks.length > 100;
+  // Keep simple window without external lib: render all but memo rows still help
+  // Full virtual scroll needs measured heights — memo is the high-ROI half of F-2.
+
   return (
-    <div className={className || "track-list"}>
-      {tracks.map((t, i) => {
-        const active = curTrack && String(curTrack.id) === String(t.id);
-        const rank = t.rank ?? (mode === "charts" ? i + 1 : 0);
-        return (
-          <div
-            key={`${String(t.id)}-${rank || i}`}
-            ref={(node) => {
-              const k = String(t.id);
-              if (node) rowRefs.current.set(k, node);
-              else rowRefs.current.delete(k);
-            }}
-            data-track-id={String(t.id)}
-            className={`track-row ${active ? "playing" : ""} ${active && loadingPlay ? "loading" : ""}`}
-            onClick={() => {
-              if (isTouchUi()) play(t);
-            }}
-            onDoubleClick={() => {
-              if (!isTouchUi()) play(t);
-            }}
-            onMouseEnter={() => warmRow(t)}
-            onFocus={() => warmRow(t)}
-            role="button"
-            tabIndex={0}
-            title={isTouchUi() ? tr("track.clickPlay") : tr("track.dblPlay")}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                play(t);
-              }
-            }}
-          >
-            {mode === "charts" ? (
-              <span
-                className={`track-rank ${rank <= 3 ? `top${rank}` : ""}`}
-                aria-label={tr("track.rankAria", { n: rank })}
-              >
-                {rank}
-              </span>
-            ) : null}
-            {t.cover ? (
-              <CoverImg src={t.cover} className="cov" size="thumb" />
-            ) : (
-              <div className="cov" />
-            )}
-            <div className="track-meta">
-              <div className="track-name">{t.name}</div>
-              <div className="track-sub">
-                {t.artist}
-                {t.album ? ` · ${t.album}` : ""}
-              </div>
-            </div>
-            <div className="track-acts" onClick={(e) => e.stopPropagation()}>
-              {!libraryReadOnly && mode === "playlist" && (
-                <button
-                  type="button"
-                  className="icon-btn danger"
-                  title={tr("track.remove")}
-                  onClick={() => removeFromPlaylist(t.id)}
-                >
-                  ✕
-                </button>
-              )}
-              {!libraryReadOnly && mode === "favorites" && (
-                <button
-                  type="button"
-                  className="icon-btn danger"
-                  title={tr("track.unfav")}
-                  onClick={() => toggleFavorite(t)}
-                >
-                  ♥
-                </button>
-              )}
-              {libraryReadOnly && mode === "favorites" && isFavorite(t.id) ? (
-                <span className="icon-btn" title={tr("track.favReadonly")} aria-hidden="true">
-                  ♥
-                </span>
-              ) : null}
-              {!libraryReadOnly && mode === "history" && (
-                <>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    title={tr("track.addList")}
-                    onClick={() => addToPlaylist(t)}
-                  >
-                    ＋
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn danger"
-                    title={tr("track.removeHistory")}
-                    onClick={() => removeFromHistory(t.id)}
-                  >
-                    ✕
-                  </button>
-                </>
-              )}
-              {!libraryReadOnly && (mode === "search" || mode === "charts") && (
-                <>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    title={tr("track.addList")}
-                    onClick={() => addToPlaylist(t)}
-                  >
-                    ＋
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    title={tr("track.fav")}
-                    onClick={() => toggleFavorite(t)}
-                  >
-                    {isFavorite(t.id) ? "♥" : "♡"}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })}
+    <div className={className || "track-list"} ref={listRef} data-virtual={VIRTUAL ? "1" : undefined}>
+      {tracks.map((t, i) => (
+        <TrackRow
+          key={`${String(t.id)}-${t.rank || i}`}
+          t={t}
+          i={i}
+          mode={mode}
+          active={Boolean(curTrack && String(curTrack.id) === String(t.id))}
+          loading={Boolean(loadingPlay && curTrack && String(curTrack.id) === String(t.id))}
+          fav={isFavorite(t.id)}
+          libraryReadOnly={libraryReadOnly}
+          tr={tr}
+          onPlay={play}
+          onToggleFav={toggleFavorite}
+          onAdd={addToPlaylist}
+          onRemovePl={removeFromPlaylist}
+          onRemoveHi={removeFromHistory}
+          onWarm={warmRow}
+          setRowRef={setRowRef}
+        />
+      ))}
     </div>
   );
 }

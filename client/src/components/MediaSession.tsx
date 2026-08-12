@@ -14,8 +14,7 @@ import { usePlayer } from "../store/player";
 export function MediaSession() {
   const curTrack = usePlayer((s) => s.curTrack);
   const playing = usePlayer((s) => s.playing);
-  const currentTime = usePlayer((s) => s.currentTime);
-  const duration = usePlayer((s) => s.duration);
+  // F-1: do not subscribe to per-tick currentTime — throttle position from audio
 
   // Document title (separate from Media Session)
   useEffect(() => {
@@ -185,23 +184,34 @@ export function MediaSession() {
     } catch {
       /* */
     }
+  }, [playing]);
 
-    try {
-      const a = usePlayer.getState().audioEl;
-      const d = duration || a?.duration || 0;
-      const pos = currentTime || a?.currentTime || 0;
-      const rate = a && isFinite(a.playbackRate) && a.playbackRate > 0 ? a.playbackRate : 1;
-      if (d > 0 && isFinite(d) && isFinite(pos)) {
-        ms.setPositionState({
-          duration: d,
-          playbackRate: rate,
-          position: Math.max(0, Math.min(pos, d)),
-        });
+  // F-1: setPositionState at ~1Hz from the audio element (not React time ticks)
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    const push = () => {
+      try {
+        const a = usePlayer.getState().audioEl;
+        if (!a) return;
+        const d = a.duration || 0;
+        const pos = a.currentTime || 0;
+        const rate = isFinite(a.playbackRate) && a.playbackRate > 0 ? a.playbackRate : 1;
+        if (d > 0 && isFinite(d) && isFinite(pos)) {
+          ms.setPositionState({
+            duration: d,
+            playbackRate: rate,
+            position: Math.max(0, Math.min(pos, d)),
+          });
+        }
+      } catch {
+        /* NotSupportedError */
       }
-    } catch {
-      /* NotSupportedError when no active media / invalid ranges */
-    }
-  }, [playing, currentTime, duration]);
+    };
+    push();
+    const id = window.setInterval(push, 1000);
+    return () => window.clearInterval(id);
+  }, [curTrack?.id, playing]);
 
   return null;
 }

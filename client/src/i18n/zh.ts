@@ -98,6 +98,8 @@ export const zh: Dict = {
     },
   },
   track: {
+    loading: "加载中",
+    rowAria: "{name} · {artist}",
     clickPlay: "点击播放",
     dblPlay: "双击播放",
     rankAria: "第 {n} 名",

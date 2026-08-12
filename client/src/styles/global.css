@@ -272,11 +272,21 @@ img {
   opacity: 0.95;
   box-shadow: inset 3px 0 0 var(--accent, #67e8f9);
 }
-.track-row.loading .track-name::after {
-  content: " · 加载中";
+.track-loading-hint {
   font-weight: 600;
   font-size: 0.85em;
   opacity: 0.7;
+}
+.track-row--skel {
+  min-height: 56px;
+  border-radius: 10px;
+  margin: 4px 0;
+  background: linear-gradient(90deg, #ffffff08 25%, #ffffff14 50%, #ffffff08 75%);
+  background-size: 200% 100%;
+  animation: search-skel 1.2s ease infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-row--skel { animation: none; }
 }
 .skin-fab button:focus-visible,
 .skin-switcher button:focus-visible {

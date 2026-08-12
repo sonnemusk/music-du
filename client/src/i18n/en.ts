@@ -97,6 +97,8 @@ export const en: Dict = {
     },
   },
   track: {
+    loading: "Loading",
+    rowAria: "{name} · {artist}",
     clickPlay: "Tap to play",
     dblPlay: "Double-click to play",
     rankAria: "Rank {n}",

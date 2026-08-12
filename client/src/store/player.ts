@@ -32,6 +32,7 @@ import {
   stopPausedBufferPump,
 } from "../lib/buffer-pump";
 import { recordRecentSearch } from "../lib/recent-searches";
+import { setPlaybackClock } from "./playback-clock";
 import {
   getLocale,
   initLocaleFromStorage,
@@ -1888,17 +1889,26 @@ export const usePlayer = create<State>((set, get) => ({
     if (!audio) return;
     // Never shrink buffer within a track (paused pump may be ahead of main)
     const buf = Math.max(bufferedRatio(audio), get().buffered);
+    const playing = !audio.paused && !!audio.src;
+    const currentTime = audio.currentTime || 0;
+    const duration = audio.duration || 0;
+    // F-1: high-frequency clock outside main store (TrackList / SkinHead stay quiet)
     if (!get().seeking) {
-      set({
-        currentTime: audio.currentTime || 0,
-        duration: audio.duration || 0,
-        buffered: buf,
-        playing: !audio.paused && !!audio.src,
-      });
+      setPlaybackClock({ currentTime, duration, buffered: buf, playing });
+      // Coarse main-store sync (~2Hz) for anything still reading player.currentTime
+      if (
+        Math.abs(currentTime - get().currentTime) > 0.5 ||
+        Math.abs(duration - get().duration) > 0.25 ||
+        Math.abs(buf - get().buffered) > 0.02 ||
+        playing !== get().playing
+      ) {
+        set({ currentTime, duration, buffered: buf, playing });
+      }
     } else if (Math.abs(buf - get().buffered) > 0.005) {
       set({ buffered: buf });
+      setPlaybackClock({ buffered: buf });
     }
-    const idx = lyricIndexAt(get().lyrics, (audio.currentTime || 0) * 1000);
+    const idx = lyricIndexAt(get().lyrics, currentTime * 1000);
     if (idx !== get().lyricIdx) set({ lyricIdx: idx });
   },
 

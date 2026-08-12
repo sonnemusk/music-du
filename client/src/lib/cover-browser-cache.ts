@@ -7,9 +7,36 @@ import type { Track } from "./types";
 
 const CACHE_NAME = "kazam-covers-v3";
 const warmed = new Set<string>();
+/** F-3: cap Cache Storage entries (approx LRU via delete oldest keys list). */
+const CACHE_MAX_ENTRIES = 200;
+const cacheOrder: string[] = [];
 
 function canCache(): boolean {
   return typeof window !== "undefined" && typeof caches !== "undefined";
+}
+
+function saveDataMode(): boolean {
+  try {
+    const c = (navigator as any).connection;
+    if (!c) return false;
+    if (c.saveData) return true;
+    const t = String(c.effectiveType || "");
+    return t.includes("2g");
+  } catch {
+    return false;
+  }
+}
+
+async function pruneCache(cache: Cache): Promise<void> {
+  while (cacheOrder.length > CACHE_MAX_ENTRIES) {
+    const old = cacheOrder.shift();
+    if (!old) break;
+    try {
+      await cache.delete(old);
+    } catch {
+      /* */
+    }
+  }
 }
 
 async function openCache(): Promise<Cache | null> {
@@ -40,9 +67,13 @@ export async function warmCoverProxy(proxySrc: string): Promise<void> {
       warmed.delete(proxySrc);
       return;
     }
-    if (cache) {
+    if (cache && !saveDataMode()) {
       try {
         await cache.put(proxySrc, res.clone());
+        const ix = cacheOrder.indexOf(proxySrc);
+        if (ix >= 0) cacheOrder.splice(ix, 1);
+        cacheOrder.push(proxySrc);
+        await pruneCache(cache);
       } catch {
         /* quota */
       }

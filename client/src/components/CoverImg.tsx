@@ -1,10 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   coverProxyUrl,
   coverUrl,
   type CoverSize,
 } from "../lib/player-core";
-import { warmCoverFromRemote } from "../lib/cover-browser-cache";
 
 type Props = {
   src?: string;
@@ -53,11 +52,7 @@ export function CoverImg({
     stageRef.current = "direct";
   }, [src, size]);
 
-  useEffect(() => {
-    if (!src) return;
-    // Background warm of proxy for offline / Cache Storage (non-blocking)
-    warmCoverFromRemote(src, size);
-  }, [src, size]);
+  // F-3: no per-row warmCoverFromRemote — list uses IntersectionObserver + warmTrackCovers
 
   if (!src || !display || stage === "empty") {
     return <div className={className || "cov"} aria-hidden />;

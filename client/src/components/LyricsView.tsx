@@ -68,7 +68,6 @@ export function LyricsView({
   const lyrics = usePlayer((s) => s.lyrics);
   const lyricIdx = usePlayer((s) => s.lyricIdx);
   const audioEl = usePlayer((s) => s.audioEl);
-  const currentTime = usePlayer((s) => s.currentTime);
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);
   const emptyText = empty ?? tr("empty.lyrics");
@@ -112,16 +111,16 @@ export function LyricsView({
     if (root) root.scrollTop = 0;
   }, [songKey]);
 
-  // When lyrics first appear mid-song, snap index + center immediately
+  // When lyrics first appear mid-song, snap index once (tick() owns ongoing lyricIdx)
   useEffect(() => {
     if (!lyrics.length) return;
     const audio = audioEl || usePlayer.getState().audioEl;
-    const t = audio?.currentTime ?? currentTime ?? 0;
+    const t = audio?.currentTime ?? 0;
     const idx = lyricIndexAt(lyrics, t * 1000);
     if (idx !== usePlayer.getState().lyricIdx) {
       usePlayer.setState({ lyricIdx: idx });
     }
-  }, [songKey, lyrics, audioEl, currentTime]);
+  }, [songKey, lyrics, audioEl]);
 
   // Follow active line → center
   useLayoutEffect(() => {

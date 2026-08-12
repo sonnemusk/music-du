@@ -1,6 +1,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useRef } from "react";
 import { useT } from "../i18n";
+import { usePlaybackClock } from "../store/playback-clock";
 import { usePlayer } from "../store/player";
 import { QualityPicker } from "./QualityPicker";
 
@@ -17,14 +18,14 @@ function tipXPercent(clientX: number, el: HTMLElement): number {
 
 /** Shared transport controls — skins style via CSS scope. */
 export function Transport({ compact }: { compact?: boolean }) {
-  const playing = usePlayer((s) => s.playing);
+  const playing = usePlaybackClock((c) => c.playing);
+  const currentTime = usePlaybackClock((c) => c.currentTime);
+  const duration = usePlaybackClock((c) => c.duration);
+  const buffered = usePlaybackClock((c) => c.buffered);
   const togglePlay = usePlayer((s) => s.togglePlay);
   const next = usePlayer((s) => s.next);
   const cycleMode = usePlayer((s) => s.cycleMode);
   const modeLabel = usePlayer((s) => s.modeLabel);
-  const currentTime = usePlayer((s) => s.currentTime);
-  const duration = usePlayer((s) => s.duration);
-  const buffered = usePlayer((s) => s.buffered);
   const playSource = usePlayer((s) => s.playSource);
   const fmt = usePlayer((s) => s.fmt);
   const seek = usePlayer((s) => s.seek);
@@ -187,7 +188,7 @@ export function Transport({ compact }: { compact?: boolean }) {
             step={1}
             value={muted ? 0 : volPct}
             onChange={(e) => setVolume(Number(e.target.value) / 100)}
-            aria-label="音量"
+            aria-label={tr("transport.volume")}
           />
         </div>
       )}
