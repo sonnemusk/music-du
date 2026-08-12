@@ -75,13 +75,19 @@ export function SearchOverlay() {
     const layer = layerRef.current;
     if (!layer) return;
     const vv = window.visualViewport;
+    const reset = () => {
+      // Fall back to the stylesheet: top:0 + bottom:var(--search-overlay-bottom),
+      // which keeps the mini player reachable while browsing results.
+      layer.style.top = "";
+      layer.style.height = "";
+      layer.style.bottom = "";
+    };
     const apply = () => {
-      if (!vv) {
-        layer.style.top = "0px";
-        layer.style.height = "";
-        layer.style.bottom = "var(--search-overlay-bottom, 0px)";
-        return;
-      }
+      if (!vv) return reset();
+      // Only take over the box while the keyboard shrinks the visual viewport;
+      // otherwise the JS height would eat the reserved mini-player strip.
+      const keyboardUp = window.innerHeight - vv.height > 80;
+      if (!keyboardUp) return reset();
       layer.style.top = `${vv.offsetTop}px`;
       layer.style.height = `${vv.height}px`;
       layer.style.bottom = "auto";

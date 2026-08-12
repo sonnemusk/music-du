@@ -130,7 +130,9 @@
   filter: brightness(1.08);
 }
 @media (max-width: 720px) {
-  .skin-head[data-mobile-search="1"] .skin-brand__theme {
+  .skin-head[data-mobile-search="1"] .skin-brand__theme,
+  /* separator would dangle after the hidden theme name ("Music ·") */
+  .skin-head[data-mobile-search="1"] .skin-brand__sep {
     display: none;
   }
   .skin-head[data-mobile-search="1"] .skin-head__main {
@@ -1795,5 +1797,13 @@ button.badge,
   .track-row:hover .track-acts,
   .track-row:focus-within .track-acts {
     opacity: 1;
+  }
+}
+
+/* Very narrow phones: two 44px actions cost ~1/3 of the row and clip the title.
+   Keep the primary action (♥ / ✕) and drop "add to queue". */
+@media (max-width: 360px) {
+  .track-acts .icon-btn--secondary {
+    display: none;
   }
 }

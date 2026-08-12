@@ -181,7 +181,7 @@ const TrackRow = memo(function TrackRow({
           <>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn icon-btn--secondary"
               title={tr("track.addList")}
               onClick={() => onAdd(t)}
             >
@@ -201,7 +201,7 @@ const TrackRow = memo(function TrackRow({
           <>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn icon-btn--secondary"
               title={tr("track.addList")}
               onClick={() => onAdd(t)}
             >
