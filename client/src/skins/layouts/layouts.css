@@ -1230,3 +1230,37 @@ button.badge,
   -webkit-overflow-scrolling: touch;
   min-height: 0;
 }
+
+/* ========== M-1: immersive phone — single column list (not 30px strip) ========== */
+@media (max-width: 860px) {
+  .imm-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+  }
+  .imm-now {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    padding: 12px 8px;
+    gap: 10px;
+  }
+  .imm-sheet {
+    min-height: 0;
+  }
+  .imm-bg {
+    inset: -12px;
+    filter: blur(18px) saturate(1.15);
+    transform: none;
+  }
+  .imm-now .np-cover,
+  .imm-now .now-playing.lg .np-cover {
+    width: min(120px, 36vw);
+    max-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .imm-bg {
+    filter: none;
+    transform: none;
+  }
+}
