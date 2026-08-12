@@ -330,3 +330,5 @@ Stored in **browser `localStorage`** (not D1):
 | DELETE | `/api/library/:listType/:sid` |
 | GET | `/favs` `/export` |
 | GET/POST | `/import` |
+
+> Note: `/api/library/import` (and HTML import UI) are **Worker-only**; Node `createApp` does not expose them.

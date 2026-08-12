@@ -1483,7 +1483,7 @@ export const usePlayer = create<State>((set, get) => ({
         if (!ok) {
           clearSlow();
           set({ loadingPlay: false });
-          get().showToast(i18n("toast.cannotPlay"));
+          get().showToast(i18n("toast.noSource"));
         } else {
           clearSlow();
         }
@@ -1514,7 +1514,8 @@ export const usePlayer = create<State>((set, get) => ({
           if (!ok) {
             clearSlow();
             set({ loadingPlay: false });
-            get().showToast(i18n("toast.clickOrSpace"));
+            // F-10c: autoplay often blocked without gesture
+            get().showToast(i18n("toast.autoplayBlocked"));
           } else {
             clearSlow();
           }
@@ -1525,7 +1526,14 @@ export const usePlayer = create<State>((set, get) => ({
           }
           clearSlow();
           set({ loadingPlay: false });
-          get().showToast(e?.message || i18n("toast.cannotPlay"));
+          const msg = String(e?.message || e?.name || "");
+          if (/NotAllowedError|not allowed|user gesture/i.test(msg)) {
+            get().showToast(i18n("toast.autoplayBlocked"));
+          } else if (/network|fetch|Failed to fetch|timeout|abort/i.test(msg)) {
+            get().showToast(i18n("toast.networkFail"));
+          } else {
+            get().showToast(i18n("toast.noSource"));
+          }
         }
       }
     } else {

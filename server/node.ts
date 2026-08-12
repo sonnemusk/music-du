@@ -25,10 +25,22 @@ const clientDist = fs.existsSync(path.join(ROOT, "dist/client"))
   ? path.join(ROOT, "dist/client")
   : path.join(ROOT, "client");
 
+const MAX_BODY = 2 * 1024 * 1024; // 2 MB
+
 async function readBody(req: http.IncomingMessage): Promise<Buffer | undefined> {
   if (!req.method || ["GET", "HEAD"].includes(req.method)) return undefined;
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  let total = 0;
+  for await (const chunk of req) {
+    const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += b.length;
+    if (total > MAX_BODY) {
+      const err = new Error("payload too large") as Error & { statusCode?: number };
+      err.statusCode = 413;
+      throw err;
+    }
+    chunks.push(b);
+  }
   const buf = Buffer.concat(chunks);
   return buf.length ? buf : Buffer.alloc(0);
 }
@@ -48,7 +60,18 @@ async function handleApi(
     if (lk === "transfer-encoding" || lk === "connection") continue;
     headers.set(k, Array.isArray(v) ? v.join(",") : v);
   }
-  const bodyBuf = await readBody(req);
+  let bodyBuf: Buffer | undefined;
+  try {
+    bodyBuf = await readBody(req);
+  } catch (e: any) {
+    if (e?.statusCode === 413) {
+      res.statusCode = 413;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: "payload too large" }));
+      return;
+    }
+    throw e;
+  }
   const hasBody = bodyBuf && bodyBuf.length > 0 && req.method && !["GET", "HEAD"].includes(req.method);
   const response = await api.fetch(
     new Request(url, {
@@ -68,8 +91,27 @@ async function handleApi(
     res.end();
     return;
   }
-  const ab = await response.arrayBuffer();
-  res.end(Buffer.from(ab));
+  // Q-2: stream pipe instead of buffering entire audio/body in memory
+  const reader = response.body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        if (!res.write(Buffer.from(value))) {
+          await new Promise<void>((r) => res.once("drain", () => r()));
+        }
+      }
+    }
+    res.end();
+  } catch (e) {
+    try {
+      res.destroy();
+    } catch {
+      /* */
+    }
+    throw e;
+  }
 }
 
 function serveStaticFile(filePath: string, res: http.ServerResponse) {
@@ -160,6 +202,14 @@ async function main() {
     startChartWarmLoop({ apikey: CHKSZ_APIKEY || undefined });
     console.log("chart warm loop started (12h fresh / 24h ttl, disk cache)");
   });
+
+  const shutdown = () => {
+    console.log("shutting down…");
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(1), 8000).unref();
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 
 main().catch((e) => {

@@ -18,6 +18,7 @@ export function QualityPicker({ className }: { className?: string }) {
   const tr = useT(locale);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const currentLevel =
@@ -84,12 +85,33 @@ export function QualityPicker({ className }: { className?: string }) {
             ? tr("quality.ariaReady", { name: full, n: availableQualities.length })
             : tr("quality.aria", { name: full })
         }
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => {
+            const next = !v;
+            if (next && wrapRef.current) {
+              const r = wrapRef.current.getBoundingClientRect();
+              const w = Math.min(288, window.innerWidth * 0.8);
+              let left = r.left + r.width / 2 - w / 2;
+              left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+              setMenuPos({ top: r.bottom + 6, left });
+            }
+            return next;
+          });
+        }}
       >
         {short}
       </button>
       {open ? (
-        <div className="quality-menu" role="listbox" aria-label={tr("quality.menuAria")}>
+        <div
+          className="quality-menu quality-menu--fixed"
+          role="listbox"
+          aria-label={tr("quality.menuAria")}
+          style={
+            menuPos
+              ? { position: "fixed", top: menuPos.top, left: menuPos.left, right: "auto", transform: "none", zIndex: 1200 }
+              : undefined
+          }
+        >
           {availableQualities.length > 0 ? (
             availableQualities.map((opt) => {
               const active = opt.level === currentLevel;

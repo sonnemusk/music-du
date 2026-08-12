@@ -176,6 +176,9 @@ export const en: Dict = {
     jumpTitle: "Click to seek to this line",
   },
   toast: {
+    autoplayBlocked: "Autoplay blocked — tap play or press Space",
+    networkFail: "Network error — try again",
+    noSource: "No playable source (copyright or resolve failed)",
     noPlaying: "Nothing is playing",
     notInList: "Now playing is not in this list",
     chartEmptyKw: "Charts empty — type a keyword to search",

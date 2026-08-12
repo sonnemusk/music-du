@@ -20,7 +20,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "setup:d1": "bash scripts/setup-d1.sh",
     "deploy:cf": "npm run build && wrangler deploy",
-    "deploy:cf:demo": "npm run build && wrangler deploy --env demo"
+    "deploy:cf:demo": "npm run build && wrangler deploy --env demo",
+    "lint": "npm run typecheck"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.1",

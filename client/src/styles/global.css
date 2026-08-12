@@ -479,3 +479,34 @@ img {
     min-height: 44px;
   }
 }
+
+/* F-5 layout mini thumb on theme cards */
+.skin-card__layout-thumb {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 2px;
+  height: 18px;
+  margin-bottom: 6px;
+  opacity: 0.75;
+}
+.skin-card__layout-thumb[data-layout="immersive"] {
+  grid-template-columns: 1fr;
+}
+.skin-card__layout-thumb[data-layout="compact"] {
+  grid-template-rows: 6px 1fr;
+  grid-template-columns: 1fr;
+}
+.skin-card__layout-a,
+.skin-card__layout-b {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--skin-accent, #a78bfa) 55%, #fff2);
+}
+.skin-card__layout-thumb[data-layout="compact"] .skin-card__layout-a {
+  height: 5px;
+}
+.skin-card__layout-thumb[data-layout="compact"] .skin-card__layout-b {
+  min-height: 8px;
+}
+.skin-card__layout-thumb[data-layout="immersive"] .skin-card__layout-b {
+  display: none;
+}

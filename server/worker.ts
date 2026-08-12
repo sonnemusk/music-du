@@ -536,7 +536,11 @@ app.get("/api/charts/:platform", async (c) => {
   if (!isChartPlatform(platform)) {
     return c.json({ ok: false, error: "unknown platform" }, 400);
   }
-  const force = c.req.query("force") === "1";
+  // Q-1: accept force or refresh (align with Node app.ts)
+  const force =
+    c.req.query("force") === "1" ||
+    c.req.query("refresh") === "1" ||
+    c.req.query("force") === "true";
   // Free CF Cache API — skip when force refresh
   if (!force) {
     const hit = await edgeMatch(c.req.url);

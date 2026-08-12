@@ -178,13 +178,17 @@ export function SkinSwitcher() {
             }}
           >
             <div className="skin-card__swatch" style={{ background: s.accent }} />
-            <div className="skin-card__name">{s.name}</div>
+            <div className="skin-card__layout-thumb" data-layout={s.layout} aria-hidden>
+              <span className="skin-card__layout-a" />
+              <span className="skin-card__layout-b" />
+            </div>
+            <div className="skin-card__name">{locale === "en" ? s.id : s.name}</div>
             {!mobile ? (
               <div className="skin-card__tag">
                 {LAYOUT_META[s.layout]?.name
                   ? tr("skin.layoutPrefix", { name: tr(`layout.${s.layout}`) })
                   : ""}
-                {s.tagline}
+                {locale === "en" ? tr(`layout.${s.layout}`) : s.tagline}
               </div>
             ) : (
               <div className="skin-card__tag">{tr(`layout.${s.layout}`)}</div>
@@ -232,26 +236,30 @@ export function SkinSwitcher() {
   return (
     <div className="skin-switcher" style={{ ["--skin-accent" as string]: meta.accent }}>
       <div className="skin-switcher__bar">
+        {/* F-5: primary = open theme list; cycle is secondary */}
         <button
           type="button"
-          className={`skin-switcher__btn ${open ? "on" : ""}`}
+          className={`skin-switcher__btn primary ${open ? "on" : ""}`}
           title={tr("skin.openList")}
           onClick={() => setSkinOpen(!open)}
         >
           <span className="skin-switcher__dot" style={{ background: meta.accent }} />
           <span className="skin-switcher__label">
-            <span className="skin-switcher__label-full">{tr("skin.theme", { name: meta.name })}</span>
-            <span className="skin-switcher__label-short">{meta.name}</span>
+            <span className="skin-switcher__label-full">{tr("skin.theme", { name: locale === "en" ? meta.id : meta.name })}</span>
+            <span className="skin-switcher__label-short">{locale === "en" ? meta.id : meta.name}</span>
           </span>
         </button>
         <button
           type="button"
-          className="skin-switcher__btn primary"
+          className="skin-switcher__btn"
           title={tr("skin.cycleTitle")}
+          aria-label={tr("skin.cycleTitle")}
           onClick={cycleSkin}
         >
           <span className="skin-switcher__label-full">{tr("skin.cycle")}</span>
-          <span className="skin-switcher__label-short">{tr("skin.cycleShort")}</span>
+          <span className="skin-switcher__label-short" aria-hidden>
+            ↻
+          </span>
         </button>
       </div>
       {panel}

@@ -1,7 +1,20 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { en } from "../client/src/i18n/en.js";
+import { zh } from "../client/src/i18n/zh.js";
 import { getLocale, setLocaleModule, t } from "../client/src/i18n/index.js";
 import { playModeLabel } from "../client/src/lib/player-core.js";
 import { labelForLevel } from "../client/src/lib/quality.js";
+
+function keys(obj: unknown, prefix = ""): string[] {
+  if (!obj || typeof obj !== "object") return prefix ? [prefix] : [];
+  const out: string[] = [];
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    const p = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object") out.push(...keys(v, p));
+    else out.push(p);
+  }
+  return out;
+}
 
 describe("i18n", () => {
   afterEach(() => {
@@ -27,5 +40,11 @@ describe("i18n", () => {
     setLocaleModule("en");
     expect(t("toast.imported", { n: 3, total: 10 })).toContain("3");
     expect(t("toast.imported", { n: 3, total: 10 })).toContain("10");
+  });
+
+  it("en and zh key trees match", () => {
+    const a = keys(zh).sort();
+    const b = keys(en).sort();
+    expect(a).toEqual(b);
   });
 });

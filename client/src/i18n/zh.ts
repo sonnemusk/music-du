@@ -177,6 +177,9 @@ export const zh: Dict = {
     jumpTitle: "点击跳到这句",
   },
   toast: {
+    autoplayBlocked: "浏览器拦截了自动播放，请点播放或按空格",
+    networkFail: "网络失败，请稍后重试",
+    noSource: "暂无可用音源（无版权或未解析）",
     noPlaying: "当前没有播放中的歌曲",
     notInList: "播放中的歌曲不在当前列表里",
     chartEmptyKw: "热榜暂无数据，请输入关键词搜索",

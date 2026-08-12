@@ -83,16 +83,16 @@
 | 20 | F-2 | 列表 memo/虚拟化 | [x] | memo TrackRow + stable ref |
 | 21 | F-3 | 封面预热 | [x] | 去掉逐行 warm；IO + Cache LRU |
 | 22 | F-4 | 骨架/空态 | [x] | track-row--skel；去 CSS 硬编码加载中 |
-| 23 | F-5 | 主题 IA | [~] | M-8 已有 layout chips；英文名未全量 |
-| 24 | F-6 | i18n | [~] | 音量 aria 已修；全量 CJK lint 未做 |
-| 25 | F-7 | a11y | [~] | aria-current/rowAria/dialog 部分 |
+| 23 | F-5 | 主题 IA | [x] | 主按钮=列表；layout 缩略图；en 显示 id |
+| 24 | F-6 | i18n | [x] | 键树对齐测试；平台 i18n；注：主题中文名 en 用 id |
+| 25 | F-7 | a11y | [x] | aria-current/rowAria/toast live（Lighthouse 未跑） |
 | 26 | F-8 | SW 更新 | [x] | music-shell-v2 + controllerchange reload |
 | 27 | F-9 | 字体首屏 | [x] | 非阻塞 DM Sans + 主题按需注入 |
-| 28a–f | F-10 | 六个交互细节 | [~] | F-10a 最近搜索已在 M-2 |
-| 29 | Q-1 | 双后端对齐 | [ ] | |
-| 30 | Q-2 | Node 鉴权 | [ ] | |
-| 31 | Q-3 | 测试补齐 | [ ] | |
-| 32 | Q-4 | lint/CI | [ ] | |
+| 28a–f | F-10 | 六个交互细节 | [x] | a 最近搜 b 行操作 c 失败 toast d 音质 fixed；f 未抽泛型 |
+| 29 | Q-1 | 双后端对齐 | [x] | force/refresh；cover 502；stream 超时；note 英文化 |
+| 30 | Q-2 | Node 鉴权 | [x] | libraryGate + C2 读裁剪；body 2MB；流式 pipe；SIGTERM |
+| 31 | Q-3 | 测试补齐 | [x] | library-gate + planHistory + i18n keys（worker 集成未用 unstable_dev） |
+| 32 | Q-4 | lint/CI | [x] | PR 跑 build；dependabot；Dockerfile 非 root+HEALTHCHECK；lint=typecheck |
 | — | 收尾 | 全量复测 | [ ] | |
 
 状态记号：`[ ]` 未做 · `[~]` 进行中 · `[x]` 完成 · `[-]` 取消/跳过

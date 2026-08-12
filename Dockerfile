@@ -4,7 +4,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Do not bake library tokens into public images
 ENV VITE_MUSIC_ACCESS_TOKEN=
 RUN npm run build
 
@@ -15,9 +14,13 @@ ENV HOST=0.0.0.0
 ENV PORT=8787
 ENV MUSIC_DATA_DIR=/data
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-COPY --from=build /app/dist ./dist
-RUN mkdir -p /data
+RUN npm ci --omit=dev && npm cache clean --force \
+  && groupadd -r music && useradd -r -g music -d /app music \
+  && mkdir -p /data && chown -R music:music /app /data
+COPY --from=build --chown=music:music /app/dist ./dist
+USER music
 EXPOSE 8787
 VOLUME ["/data"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8787)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/server/node.js"]

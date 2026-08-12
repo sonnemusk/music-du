@@ -13,16 +13,45 @@ import { fetchAndCacheCover, readCoverCache } from "./cover-cache.js";
 import { getLibrary, type ListType } from "./library.js";
 import { resolveLyrics } from "./lyrics.js";
 import { chooseAudioSrc, onRemoteError, resolvePlay } from "./play.js";
+import {
+  envLibraryReadonly,
+  libraryGate,
+  publicReadonlyLibraryData,
+} from "./site-mode.js";
 
 export function createApp(opts?: {
   library?: ReturnType<typeof getLibrary>;
   apikey?: string;
+  /** Override env for tests */
+  accessToken?: string | null;
+  readonly?: boolean;
 }) {
   const app = new Hono();
   const lib = opts?.library || getLibrary();
   const keyOf = () => opts?.apikey ?? CHKSZ_APIKEY;
+  const tokenOf = () =>
+    opts?.accessToken !== undefined
+      ? opts.accessToken
+      : process.env.MUSIC_ACCESS_TOKEN || "";
+  const readonlyOf = () =>
+    opts?.readonly !== undefined ? opts.readonly : envLibraryReadonly();
 
-  app.use("/api/*", cors());
+  const checkLib = (c: { req: { method: string; header: (n: string) => string | undefined } }) =>
+    libraryGate({
+      method: c.req.method,
+      tokenHeader: c.req.header("X-Music-Token") || c.req.header("x-music-token"),
+      authHeader: c.req.header("Authorization"),
+      expectedToken: tokenOf(),
+      readonly: readonlyOf(),
+    });
+
+  app.use(
+    "/api/*",
+    cors({
+      origin: (origin) => origin || "*",
+      allowHeaders: ["Content-Type", "X-Music-Token", "Authorization"],
+    })
+  );
 
   app.get("/api/health", (c) =>
     c.json({
@@ -57,7 +86,7 @@ export function createApp(opts?: {
         platforms: listChartPlatforms(),
         boards: listChartBoards(),
         defaultBoard: "soar",
-        note: "默认飙升榜更接近「正在火」；热歌榜偏长青综合热度",
+        note: "default board: soar (trending); hot = long-term popularity",
       },
     })
   );
@@ -191,7 +220,15 @@ export function createApp(opts?: {
       };
       const range = c.req.header("Range");
       if (range) headers.Range = range;
-      const up = await fetch(audioUrl, { headers });
+      // Q-1: AbortController timeout (Node path previously unbounded)
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 45_000);
+      let up: Response;
+      try {
+        up = await fetch(audioUrl, { headers, signal: ac.signal });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!up.ok) return c.body(null, 502);
       const out = new Headers(up.headers);
       out.set("X-Play-Source", "stream-fallback");
@@ -237,7 +274,7 @@ export function createApp(opts?: {
       const hit = await fetchAndCacheCover(url);
       if (!hit) {
         return new Response(null, {
-          status: 404,
+          status: 502,
           headers: { "Cache-Control": "no-store", "CDN-Cache-Control": "no-store" },
         });
       }
@@ -246,16 +283,37 @@ export function createApp(opts?: {
       });
     } catch {
       return new Response(null, {
-        status: 404,
+        status: 502,
         headers: { "Cache-Control": "no-store" },
       });
     }
   });
 
-  app.get("/api/library", (c) => c.json({ ok: true, data: lib.load() }));
+  app.get("/api/library", (c) => {
+    const gate = checkLib(c);
+    if (!gate.ok) return c.json({ ok: false, error: gate.error, readOnly: gate.readOnly }, gate.status as any);
+    const data = lib.load();
+    const payload = readonlyOf() ? publicReadonlyLibraryData(data as any) : data;
+    return c.json({ ok: true, data: payload, readOnly: readonlyOf() });
+  });
 
   /** Short URL: open /favs to download favorites JSON. */
-  const favoritesExport = (c: { req: { url: string } }) => {
+  const favoritesExport = (c: {
+    req: { method: string; url: string; header: (n: string) => string | undefined };
+  }) => {
+    const gate = checkLib(c);
+    if (!gate.ok) {
+      return new Response(JSON.stringify({ ok: false, error: gate.error, readOnly: gate.readOnly }), {
+        status: gate.status,
+        headers: { "Content-Type": "application/json;charset=utf-8" },
+      });
+    }
+    if (readonlyOf()) {
+      return new Response(JSON.stringify({ ok: false, error: "export disabled on demo", readOnly: true }), {
+        status: 403,
+        headers: { "Content-Type": "application/json;charset=utf-8" },
+      });
+    }
     const data = lib.load();
     const favorites = (data.favorites || []).map((t: any) => ({
       id: t.id,
@@ -292,6 +350,8 @@ export function createApp(opts?: {
   app.get("/export", favoritesExport);
 
   app.put("/api/library", async (c) => {
+    const gate = checkLib(c);
+    if (!gate.ok) return c.json({ ok: false, error: gate.error, readOnly: gate.readOnly }, gate.status as any);
     try {
       const body = await c.req.json().catch(() => ({}));
       const data = lib.mergePut(body, {
@@ -301,11 +361,14 @@ export function createApp(opts?: {
       });
       return c.json({ ok: true, data });
     } catch (e: any) {
-      return c.json({ ok: false, error: e?.message || String(e) }, 500);
+      console.error(e);
+      return c.json({ ok: false, error: "library save failed" }, 500);
     }
   });
 
   app.delete("/api/library/:listType/:sid", (c) => {
+    const gate = checkLib(c);
+    if (!gate.ok) return c.json({ ok: false, error: gate.error, readOnly: gate.readOnly }, gate.status as any);
     const listType = c.req.param("listType") as ListType;
     if (!["playlist", "favorites", "history"].includes(listType)) {
       return c.json({ ok: false, error: "bad list" }, 400);
@@ -314,7 +377,8 @@ export function createApp(opts?: {
       const data = lib.deleteSid(listType, c.req.param("sid"));
       return c.json({ ok: true, data });
     } catch (e: any) {
-      return c.json({ ok: false, error: e?.message || String(e) }, 500);
+      console.error(e);
+      return c.json({ ok: false, error: "library delete failed" }, 500);
     }
   });
 
