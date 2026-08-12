@@ -44,7 +44,7 @@ function loadDotenv() {
           if (!s || s.startsWith("#") || !s.includes("=")) continue;
           const i = s.indexOf("=");
           const key = s.slice(0, i).trim();
-          let val = s.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+          const val = s.slice(i + 1).trim().replace(/^["']|["']$/g, "");
           if (key && process.env[key] === undefined) process.env[key] = val;
         }
       } catch {

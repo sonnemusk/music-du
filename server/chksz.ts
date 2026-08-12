@@ -68,7 +68,7 @@ function buildUrl(
   apikey: string
 ) {
   let p = path.startsWith("/") ? path : `/${path}`;
-  let base = baseIn.replace(/\/$/, "");
+  const base = baseIn.replace(/\/$/, "");
   if (base.endsWith("/api") && p.startsWith("/api/")) p = p.slice(4);
   const u = new URL(base + p);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
