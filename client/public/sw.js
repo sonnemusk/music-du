@@ -1,6 +1,10 @@
 /* Music SPA shell cache only — never cache audio/CDN/API. */
-/* F-8: versioned cache name — replaced at build if injected; fallback date stamp */
-const CACHE = self.__MUSIC_SHELL_CACHE || "music-shell-v2";
+/* F-8: build stamp is substituted by the sw-cache-version Vite plugin.
+   Unreplaced (dev / direct file load) → "dev", so local runs never collide
+   with a deployed cache. */
+const BUILD = "__SW_BUILD__";
+const SHELL_PREFIX = "music-shell-";
+const CACHE = SHELL_PREFIX + (BUILD.startsWith("__") ? "dev" : BUILD);
 const SHELL = ["/", "/index.html", "/site.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -11,9 +15,17 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            // Only our own shell caches — never touch kazam-covers-* etc.
+            .filter((k) => k.startsWith(SHELL_PREFIX) && k !== CACHE)
+            .map((k) => caches.delete(k))
+        )
+      )
+      .then(() => self.clients.claim())
   );
 });
 
