@@ -109,6 +109,7 @@ export const zh: Dict = {
     fav: "收藏",
   },
   skin: {
+    close: "关闭",
     openList: "打开主题列表",
     theme: "主题 · {name}",
     cycle: "一键切换",
@@ -116,6 +117,7 @@ export const zh: Dict = {
     cycleTitle: "一键切换下一主题",
     dialogAria: "切换主题",
     hint: "共 {n} 套 · {layouts} 种布局 · 点选切换",
+    filterAll: "全部",
     filterPh: "筛选主题名…",
     layoutPrefix: "布局·{name} · ",
     toast: "界面 → {name}",

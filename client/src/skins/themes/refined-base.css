@@ -51,9 +51,11 @@
   color: var(--muted);
   transition: background 0.12s, color 0.12s, opacity 0.12s;
 }
-.skin-host .skin-tabs button:hover {
-  opacity: 0.85;
-  background: color-mix(in srgb, var(--card) 80%, transparent);
+@media (hover: hover) and (pointer: fine) {
+  .skin-host .skin-tabs button:hover {
+    opacity: 0.85;
+    background: color-mix(in srgb, var(--card) 80%, transparent);
+  }
 }
 .skin-host .skin-tabs button.on {
   color: var(--accent-fg);
@@ -105,8 +107,10 @@
   border-radius: var(--radius);
   transition: background 0.12s, box-shadow 0.12s;
 }
-.skin-host .track-row:hover {
-  background: var(--card);
+@media (hover: hover) and (pointer: fine) {
+  .skin-host .track-row:hover {
+    background: var(--card);
+  }
 }
 .skin-host .track-row.playing {
   background: var(--card);
@@ -129,7 +133,12 @@
   color: var(--fg);
   transition: transform 0.1s, background 0.12s;
 }
-.skin-host .icon-btn:hover {
+@media (hover: hover) and (pointer: fine) {
+  .skin-host .icon-btn:hover {
+    transform: scale(1.04);
+  }
+}
+.skin-host .icon-btn:active {
   transform: scale(1.04);
 }
 .skin-host .icon-btn:active {
@@ -147,8 +156,10 @@
   color: var(--fg);
   transition: transform 0.1s, box-shadow 0.12s, background 0.12s;
 }
-.skin-host .t-btn:hover {
-  background: color-mix(in srgb, var(--card) 70%, var(--accent) 12%);
+@media (hover: hover) and (pointer: fine) {
+  .skin-host .t-btn:hover {
+    background: color-mix(in srgb, var(--card) 70%, var(--accent) 12%);
+  }
 }
 .skin-host .t-btn:active {
   transform: scale(0.96);

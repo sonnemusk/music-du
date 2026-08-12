@@ -65,15 +65,15 @@
 | 2 | M-1 | immersive 移动端断点 | [x] | `8e86b1d`；390 imm cols=362px listW=362 trunc=0 |
 | 3 | M-2 | 搜索 IA 方案 B（🔍+层） | [x] | `136bcac`；桌面头搜不变 |
 | 4 | M-3 | 空闲播放器 / 迷你条 | [x] | data-idle + denser player + charts chips；390 rows≥8 / 320 rows≥4 |
-| 5 | M-4 | 触控 44px | [ ] | |
-| 6 | M-5 | 输入框 16px | [ ] | |
-| 7 | M-6 | hover 态 | [ ] | |
-| 8 | M-7 | 安全区 + dvh | [ ] | |
-| 9 | M-8 | 主题面板抽屉 | [ ] | |
-| 10 | M-9 | 歌词全屏 | [ ] | |
-| 11 | M-10 | tab 标签 | [ ] | |
-| 12 | M-11 | 滑动手势 | [ ] | |
-| 13 | M-12 | 删 all-themes.css | [ ] | |
+| 5 | M-4 | 触控 44px | [x] | pointer:coarse 抬到 44px |
+| 6 | M-5 | 输入框 16px | [x] | coarse 下 input ≥16px |
+| 7 | M-6 | hover 态 | [x] | hover 包 fine pointer；active 反馈 |
+| 8 | M-7 | 安全区 + dvh | [x] | 100dvh + safe-area padding |
+| 9 | M-8 | 主题面板抽屉 | [x] | 底部抽屉 + 关闭 + layout chips |
+| 10 | M-9 | 歌词全屏 | [x] | data-tab=lyrics 藏 NP，spacer 50% |
+| 11 | M-10 | tab 标签 | [x] | 移动端强制全称 ≥2 字 |
+| 12 | M-11 | 滑动手势 | [x] | 迷你条区域 + 阈值 + data-no-swipe |
+| 13 | M-12 | 删 all-themes.css | [x] | 已删死文件 |
 | 14 | P1-1 | history 单调 pos | [ ] | |
 | 15 | P1-2 | PUT 一次 loadLib | [ ] | |
 | 16 | P1-3 | DDL 记忆化 | [ ] | |

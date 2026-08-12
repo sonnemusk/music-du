@@ -12,6 +12,7 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
   const brand = `Music · ${meta.name}`;
   const vars = themeToCssVars(meta) as CSSProperties;
   const curTrack = usePlayer((s) => s.curTrack);
+  const tab = usePlayer((s) => s.tab);
   const idle = !curTrack;
 
   let layout = null;
@@ -35,6 +36,7 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       data-skin={meta.id}
       data-layout={meta.layout}
       data-idle={idle ? "1" : undefined}
+      data-tab={tab}
       style={{
         ...vars,
         background: "var(--wallpaper)",

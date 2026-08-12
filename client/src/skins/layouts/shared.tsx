@@ -74,8 +74,10 @@ export function TabNav({ short }: { short?: boolean }) {
   const tr = useT(locale);
   const mobile = useMobileSearchChrome();
   const tabs = useTabs({ hideSearch: mobile });
+  // M-10: mobile never uses 1-char short labels — keep ≥2 字 full labels, scroll row
+  const useShort = Boolean(short) && !mobile;
   return (
-    <nav className="skin-tabs" aria-label={tr("tabs.navAria")}>
+    <nav className="skin-tabs" aria-label={tr("tabs.navAria")} data-no-swipe>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -83,7 +85,7 @@ export function TabNav({ short }: { short?: boolean }) {
           className={tab === t.id ? "on" : ""}
           onClick={() => setTab(t.id)}
         >
-          {short ? t.short : t.label}
+          {useShort ? t.short : t.label}
         </button>
       ))}
     </nav>

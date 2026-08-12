@@ -57,15 +57,36 @@ export default function App() {
     })();
   }, [bootstrap, reloadLibrary, showToast]);
 
-  // Touch: swipe left = next, swipe right = prev (ignore vertical scroll)
+  // Touch: swipe on now-playing / mini bar only (M-11 — not full shell)
   useEffect(() => {
-    const el = shellRef.current;
-    if (!el) return;
-    return attachSwipeNav(el, {
-      onSwipeLeft: () => next(1),
-      onSwipeRight: () => next(-1),
-    });
-  }, [next]);
+    const shell = shellRef.current;
+    if (!shell) return;
+    const cleanups: Array<() => void> = [];
+    const bind = () => {
+      for (const c of cleanups.splice(0)) c();
+      const nodes = shell.querySelectorAll<HTMLElement>(
+        ".side-player, .imm-now, .compact-now, .player-bar, .now-playing"
+      );
+      const seen = new Set<HTMLElement>();
+      nodes.forEach((node) => {
+        if (seen.has(node)) return;
+        seen.add(node);
+        cleanups.push(
+          attachSwipeNav(node, {
+            onSwipeLeft: () => next(1),
+            onSwipeRight: () => next(-1),
+          })
+        );
+      });
+    };
+    bind();
+    const mo = new MutationObserver(() => bind());
+    mo.observe(shell, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      for (const c of cleanups) c();
+    };
+  }, [next, skin]);
 
   useEffect(() => {
     const meta = getTheme(skin);
@@ -81,15 +102,22 @@ export default function App() {
   // before the card's click fires (manual pick appears broken; cycle still works).
   useEffect(() => {
     if (!skinOpen) return;
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: Event) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
       if (t.closest(".skin-switcher")) return;
       if (t.closest(".skin-panel")) return;
       setSkinOpen(false);
     };
+    // M-8: pointer/touch as well as mouse
+    document.addEventListener("pointerdown", onDown);
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
   }, [skinOpen, setSkinOpen]);
 
   return (

@@ -108,6 +108,7 @@ export const en: Dict = {
     fav: "Like",
   },
   skin: {
+    close: "Close",
     openList: "Open theme list",
     theme: "Theme · {name}",
     cycle: "Next theme",
@@ -115,6 +116,7 @@ export const en: Dict = {
     cycleTitle: "Cycle to next theme",
     dialogAria: "Switch theme",
     hint: "{n} themes · {layouts} layouts · click to apply",
+    filterAll: "All",
     filterPh: "Filter themes…",
     layoutPrefix: "Layout·{name} · ",
     toast: "UI → {name}",

@@ -128,6 +128,7 @@ export function ChartsPanel() {
         className="charts-chips charts-chips--board"
         role="tablist"
         aria-label={tr("charts.boardAria")}
+        data-no-swipe
       >
         {allowedBoards.map((b) => (
           <button
@@ -144,7 +145,7 @@ export function ChartsPanel() {
         ))}
       </div>
 
-      <div className="charts-chips" role="tablist" aria-label={tr("charts.platformAria")}>
+      <div className="charts-chips" role="tablist" aria-label={tr("charts.platformAria")} data-no-swipe>
         {chips.map((p) => (
           <button
             key={p.id}

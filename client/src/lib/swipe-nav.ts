@@ -1,6 +1,6 @@
 /**
  * Horizontal swipe → prev/next track (touch only).
- * Does not use any paid Cloudflare services.
+ * M-11: higher threshold; skip [data-no-swipe] ancestors (chips / h-scroll).
  */
 
 export type SwipeHandlers = {
@@ -8,8 +8,29 @@ export type SwipeHandlers = {
   onSwipeRight?: () => void;
 };
 
-const MIN_DX = 56;
-const MAX_DY = 48;
+/** Horizontal travel must exceed this (px). */
+export const SWIPE_MIN_DX = 60;
+/** Require |dx| > ratio * |dy| so vertical scroll does not flip tracks. */
+export const SWIPE_DX_OVER_DY = 2;
+
+/** Pure decision for unit tests (M-11). */
+export function resolveSwipe(
+  dx: number,
+  dy: number,
+  minDx = SWIPE_MIN_DX,
+  dxOverDy = SWIPE_DX_OVER_DY
+): "left" | "right" | null {
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  if (adx < minDx) return null;
+  if (adx <= dxOverDy * ady) return null;
+  return dx < 0 ? "left" : "right";
+}
+
+function shouldIgnoreTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest("[data-no-swipe]"));
+}
 
 export function attachSwipeNav(
   el: HTMLElement,
@@ -21,6 +42,10 @@ export function attachSwipeNav(
 
   const onStart = (e: TouchEvent) => {
     if (e.touches.length !== 1) return;
+    if (shouldIgnoreTarget(e.target)) {
+      tracking = false;
+      return;
+    }
     tracking = true;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
@@ -29,14 +54,14 @@ export function attachSwipeNav(
   const onEnd = (e: TouchEvent) => {
     if (!tracking) return;
     tracking = false;
+    if (shouldIgnoreTarget(e.target)) return;
     const t = e.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - x0;
     const dy = t.clientY - y0;
-    if (Math.abs(dx) < MIN_DX) return;
-    if (Math.abs(dy) > MAX_DY) return; // vertical scroll
-    if (dx < 0) handlers.onSwipeLeft?.();
-    else handlers.onSwipeRight?.();
+    const dir = resolveSwipe(dx, dy);
+    if (dir === "left") handlers.onSwipeLeft?.();
+    else if (dir === "right") handlers.onSwipeRight?.();
   };
 
   const onCancel = () => {

@@ -433,7 +433,12 @@ button.badge,
   border-style: solid;
   border-width: 0;
 }
-.badge-btn:hover {
+@media (hover: hover) and (pointer: fine) {
+  .badge-btn:hover {
+    filter: brightness(1.08);
+  }
+}
+.badge-btn:active {
   filter: brightness(1.08);
 }
 .now-playing.loading .np-cover,
@@ -681,9 +686,11 @@ button.badge,
   line-height: 1.45;
   border-radius: 10px;
 }
-.lyrics-panel .ly:hover,
-.split-lyrics .ly:hover {
-  opacity: 0.72;
+@media (hover: hover) and (pointer: fine) {
+  .lyrics-panel .ly:hover,
+  .split-lyrics .ly:hover {
+    opacity: 0.72;
+  }
 }
 .lyrics-panel .ly.on {
   opacity: 1;
@@ -841,9 +848,11 @@ button.badge,
   box-sizing: border-box;
   white-space: nowrap;
 }
-.quality-opt:hover {
-  background: color-mix(in srgb, currentColor 12%, transparent);
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .quality-opt:hover {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    opacity: 1;
+  }
 }
 .quality-opt.is-active {
   background: color-mix(in srgb, currentColor 20%, transparent);
@@ -916,8 +925,13 @@ button.badge,
   z-index: 1;
 }
 /* Hovering the bar: tip must paint over 沉浸 / ♥ (not under them) */
-.seek-row:has(.seek-track:hover),
-.seek-row:has(.seek-track:focus-within) {
+@media (hover: hover) and (pointer: fine) {
+  .seek-row:has(.seek-track:hover) {
+    z-index: 30;
+  }
+}
+.seek-row:has(.seek-track:focus-within),
+.seek-row:has(.seek-track:active) {
   z-index: 30;
 }
 .seek-row > span {
@@ -963,7 +977,15 @@ button.badge,
   /* Keep tip within track bounds when near edges */
   max-width: min(100%, 240px);
 }
-.seek-track[data-tip]:hover::after,
+@media (hover: hover) and (pointer: fine) {
+  .seek-track[data-tip]:hover::after,
+  .seek-track[data-tip]:focus-within::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.seek-track[data-tip]:active::after,
 .seek-track[data-tip]:focus-within::after {
   opacity: 1;
   visibility: visible;
@@ -1662,5 +1684,104 @@ button.badge,
   .imm-shell {
     gap: 8px;
     padding-bottom: 8px;
+  }
+}
+
+/* ========== M-4 / M-5: coarse pointer touch targets + 16px inputs ========== */
+@media (pointer: coarse) {
+  .skin-tabs button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 12px;
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+  .charts-chip,
+  .charts-refresh {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+  .t-btn.ghost,
+  .skin-host .t-btn.ghost {
+    min-height: 44px !important;
+    height: auto !important;
+    min-width: 44px;
+    padding: 0 12px !important;
+  }
+  .t-btn:not(.ghost),
+  .skin-host .t-btn:not(.ghost) {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+  .t-btn.play,
+  .skin-host .t-btn.play {
+    min-width: 48px;
+    min-height: 48px;
+    width: 48px;
+    height: 48px;
+  }
+  /* Range hit area 44px tall; keep visual track thin via transparent padding */
+  .seek-row input[type="range"],
+  .seek-track input[type="range"],
+  .vol-row input[type="range"],
+  .seek-track {
+    height: 44px;
+    min-height: 44px;
+    touch-action: none;
+  }
+  .seek-track input[type="range"]::-webkit-slider-thumb,
+  .vol-row input[type="range"]::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+  }
+  .seek-track input[type="range"]::-moz-range-thumb,
+  .vol-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
+  .skin-search input,
+  .search-overlay__input,
+  input[type="search"],
+  input[type="text"],
+  input:not([type]),
+  input[type="range"] {
+    font-size: 16px !important;
+  }
+  .skin-search {
+    height: 44px;
+  }
+  .skin-search input {
+    line-height: 44px;
+  }
+}
+
+/* ========== M-9: mobile lyrics fullscreen-ish ========== */
+@media (max-width: 860px) {
+  .skin-host[data-tab="lyrics"] .side-player,
+  .skin-host[data-tab="lyrics"] .imm-now,
+  .skin-host[data-tab="lyrics"] .compact-now {
+    display: none;
+  }
+  .skin-host[data-tab="lyrics"] .side-panel:has(> .lyrics-scroller),
+  .skin-host[data-tab="lyrics"] .imm-body:has(> .lyrics-scroller),
+  .skin-host[data-tab="lyrics"] .compact-main:has(> .lyrics-scroller) {
+    flex: 1 1 auto;
+    min-height: 60vh;
+  }
+  .skin-host[data-tab="lyrics"] .lyrics-spacer {
+    min-height: calc(50% - 1em);
+    height: calc(50% - 1em);
+  }
+  .skin-host[data-tab="lyrics"] .lyrics-scroller,
+  .side-panel > .lyrics-scroller,
+  .imm-body > .lyrics-scroller,
+  .compact-main > .lyrics-scroller {
+    min-height: 60vh;
   }
 }
