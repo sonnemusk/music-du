@@ -35,6 +35,11 @@ describe("theme catalog", () => {
   it("each theme has full tokens and css vars", () => {
     for (const t of THEME_CATALOG) {
       expect(t.name.length).toBeGreaterThan(0);
+      expect(t.nameEn.length).toBeGreaterThan(0);
+      expect(t.taglineEn.length).toBeGreaterThan(0);
+      // English fields should be Latin-ish (no CJK requirement on zh name)
+      expect(/[\u4e00-\u9fff]/.test(t.nameEn)).toBe(false);
+      expect(/[\u4e00-\u9fff]/.test(t.taglineEn)).toBe(false);
       expect(t.accent).toMatch(/^#|^rgb|oklch|hsl/);
       expect(LAYOUT_IDS).toContain(t.layout);
       const vars = themeToCssVars(t);

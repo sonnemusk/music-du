@@ -1433,3 +1433,7 @@ export default {
     return app.fetch(request, env, ctx);
   },
 };
+
+/** Test / tooling: Hono app without CF inject (pass env as fetch 2nd arg). */
+export { app as workerApp };
+export type { Env as WorkerEnv };

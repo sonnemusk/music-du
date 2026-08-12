@@ -95,7 +95,9 @@ import {
 export const SKINS = THEME_CATALOG.map((t) => ({
   id: t.id as SkinId,
   name: t.name,
+  nameEn: t.nameEn,
   tagline: t.tagline,
+  taglineEn: t.taglineEn,
   accent: t.accent,
   themeColor: t.themeColor,
   layout: t.layout,
@@ -103,12 +105,31 @@ export const SKINS = THEME_CATALOG.map((t) => ({
 
 export const DEFAULT_SKIN: SkinId = "aurora";
 
+/** Localized theme name / tagline for UI */
+export function themeDisplayName(
+  t: { name: string; nameEn?: string; id?: string },
+  locale: string
+): string {
+  if (locale === "en") return t.nameEn || t.id || t.name;
+  return t.name;
+}
+
+export function themeDisplayTagline(
+  t: { tagline: string; taglineEn?: string },
+  locale: string
+): string {
+  if (locale === "en") return t.taglineEn || t.tagline;
+  return t.tagline;
+}
+
 export function skinMeta(id: SkinId | string) {
   const t = getTheme(id);
   return {
     id: t.id as SkinId,
     name: t.name,
+    nameEn: t.nameEn,
     tagline: t.tagline,
+    taglineEn: t.taglineEn,
     accent: t.accent,
     themeColor: t.themeColor,
     layout: t.layout,

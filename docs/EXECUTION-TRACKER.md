@@ -84,21 +84,21 @@
 | 21 | F-3 | 封面预热 | [x] | 去掉逐行 warm；IO + Cache LRU |
 | 22 | F-4 | 骨架/空态 | [x] | track-row--skel；去 CSS 硬编码加载中 |
 | 23 | F-5 | 主题 IA | [x] | 主按钮=列表；layout 缩略图；en 显示 id |
-| 24 | F-6 | i18n | [x] | 键树对齐测试；平台 i18n；注：主题中文名 en 用 id |
+| 24 | F-6 | i18n | [x] | 键树对齐；平台 i18n；主题 **nameEn/taglineEn** 全量 |
 | 25 | F-7 | a11y | [x] | aria-current/rowAria/toast live（Lighthouse 未跑） |
 | 26 | F-8 | SW 更新 | [x] | music-shell-v2 + controllerchange reload |
 | 27 | F-9 | 字体首屏 | [x] | 非阻塞 DM Sans + 主题按需注入 |
 | 28a–f | F-10 | 六个交互细节 | [x] | a–d 已做；**f** `cache-store.ts` + chart/lyric/song 接入 |
 | 29 | Q-1 | 双后端对齐 | [x] | force/refresh；cover 502；stream 超时；note 英文化 |
 | 30 | Q-2 | Node 鉴权 | [x] | libraryGate + C2 读裁剪；body 2MB；流式 pipe；SIGTERM |
-| 31 | Q-3 | 测试补齐 | [x] | library-gate + planHistory + i18n keys + cache-store（无 unstable_dev） |
+| 31 | Q-3 | 测试补齐 | [x] | library-gate + **worker-library** mock 集成 + planHistory + i18n + cache |
 | 32 | Q-4 | lint/CI | [x] | PR 跑 build；dependabot；Dockerfile 非 root+HEALTHCHECK；lint=typecheck |
 | — | 收尾 | 全量复测 | [x] | 2026-08-12：typecheck + **107** tests + build 绿；已 push |
 
-### 收尾说明（刻意不做 / 可另立）
-- 49 主题完整英文化 `nameEn`/`taglineEn` 文案：en 用 `id` + layout i18n 顶替  
-- Lighthouse A11y 实测分数：未跑 CI 仪器  
-- Worker `unstable_dev` 全量集成：未做（有 mock/gate/merge 单测）  
+### 收尾说明
+- ✅ 49 主题 `nameEn` / `taglineEn` + UI `themeDisplayName`  
+- ✅ Worker library 路由 mock 集成测（readonly / token / 缺 D1）  
+- Lighthouse A11y 实测分数：未跑 CI 仪器（可另立）  
 - ESLint/Biome 规则集：`npm run lint` = typecheck  
 - Cloudflare：无 R2/付费 KV/Workers AI；Workers+D1+Cache API 免费档设计
 

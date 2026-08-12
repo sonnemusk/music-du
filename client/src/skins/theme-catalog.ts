@@ -6,7 +6,11 @@ export { LAYOUT_IDS };
 export type ThemeTokens = {
   id: string;
   name: string;
+  /** English display name */
+  nameEn: string;
   tagline: string;
+  /** English tagline */
+  taglineEn: string;
   layout: SkinLayout;
   /** browser chrome */
   themeColor: string;
@@ -35,7 +39,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "aurora",
     name: "极光",
+    nameEn: "Aurora",
     tagline: "北境夜空 · 冰蓝柔光",
+    taglineEn: "Northern lights · ice-blue glow",
     layout: "side",
     themeColor: "#0a1628",
     bg: "#0a1628",
@@ -57,7 +63,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "midnight",
     name: "午夜",
+    nameEn: "Midnight",
     tagline: "OLED 纯黑 · 冷静青线",
+    taglineEn: "OLED black · cool cyan lines",
     layout: "compact",
     themeColor: "#000000",
     bg: "#000000",
@@ -77,7 +85,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "neon",
     name: "霓虹",
+    nameEn: "Neon",
     tagline: "赛博夜色 · 紫青灯牌",
+    taglineEn: "Cyber night · purple-cyan signs",
     layout: "immersive",
     themeColor: "#0f0518",
     bg: "#0f0518",
@@ -99,7 +109,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "ocean",
     name: "深海",
+    nameEn: "Ocean",
     tagline: "远洋靛蓝 · 圆环封面",
+    taglineEn: "Deep indigo · ring covers",
     layout: "side",
     themeColor: "#020617",
     bg: "#020617",
@@ -120,7 +132,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "sakura",
     name: "樱花",
+    nameEn: "Sakura",
     tagline: "春日柔粉 · 圆润轻盈",
+    taglineEn: "Spring pink · soft & rounded",
     layout: "side",
     themeColor: "#fff1f2",
     bg: "#fff1f2",
@@ -140,7 +154,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "terminal",
     name: "终端",
+    nameEn: "Terminal",
     tagline: "CRT 绿字 · 等宽指令",
+    taglineEn: "CRT green · monospace CLI",
     layout: "compact",
     themeColor: "#050a05",
     bg: "#050a05",
@@ -159,7 +175,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "vinyl",
     name: "黑胶",
+    nameEn: "Vinyl",
     tagline: "暖棕复古 · 唱片氛围",
+    taglineEn: "Warm brown · record-shop vibe",
     layout: "immersive",
     themeColor: "#1a120e",
     bg: "#1a120e",
@@ -181,7 +199,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "swiss",
     name: "瑞士",
+    nameEn: "Swiss",
     tagline: "国际主义 · 红白网格",
+    taglineEn: "International style · red/white grid",
     layout: "side",
     themeColor: "#ffffff",
     bg: "#ffffff",
@@ -200,7 +220,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "sunset",
     name: "落日",
+    nameEn: "Sunset",
     tagline: "暮色暖橙 · 晚霞渐变",
+    taglineEn: "Warm dusk · evening gradient",
     layout: "immersive",
     themeColor: "#1c0a05",
     bg: "#1c0a05",
@@ -222,7 +244,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "noir",
     name: "Noir",
+    nameEn: "Noir",
     tagline: "黑白电影 · 高对比",
+    taglineEn: "B&W cinema · high contrast",
     layout: "compact",
     themeColor: "#0a0a0a",
     bg: "#0a0a0a",
@@ -241,7 +265,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "lavender",
     name: "薰衣草",
+    nameEn: "Lavender",
     tagline: "雾紫柔光 · 安静午后",
+    taglineEn: "Misty purple · quiet afternoon",
     layout: "side",
     themeColor: "#1e1b2e",
     bg: "#1e1b2e",
@@ -262,7 +288,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "ember",
     name: "余烬",
+    nameEn: "Ember",
     tagline: "暗室炭火 · 深橙余温",
+    taglineEn: "Dark charcoal · deep orange embers",
     layout: "immersive",
     themeColor: "#1a100c",
     bg: "#1a100c",
@@ -284,7 +312,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "arctic",
     name: "极地",
+    nameEn: "Arctic",
     tagline: "冰蓝冷调 · 雪白界面",
+    taglineEn: "Ice-blue cool · snow-white UI",
     layout: "side",
     themeColor: "#f0f9ff",
     bg: "#f0f9ff",
@@ -304,7 +334,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "grape",
     name: "葡萄",
+    nameEn: "Grape",
     tagline: "深紫果香 · 醇厚夜间",
+    taglineEn: "Deep purple fruit · rich night",
     layout: "side",
     themeColor: "#1a0b24",
     bg: "#1a0b24",
@@ -325,7 +357,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "matrix",
     name: "矩阵",
+    nameEn: "Matrix",
     tagline: "数据雨 · 深空绿码",
+    taglineEn: "Data rain · deep-space green",
     layout: "compact",
     themeColor: "#000800",
     bg: "#000800",
@@ -344,7 +378,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "rose-gold",
     name: "玫瑰金",
+    nameEn: "Rose Gold",
     tagline: "香槟金属 · 轻奢质感",
+    taglineEn: "Champagne metal · light luxury",
     layout: "immersive",
     themeColor: "#1c1214",
     bg: "#1c1214",
@@ -366,7 +402,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "blueprint",
     name: "蓝图",
+    nameEn: "Blueprint",
     tagline: "工程图纸 · 精密网格",
+    taglineEn: "Engineering draft · precision grid",
     layout: "side",
     themeColor: "#0b1f3a",
     bg: "#0b1f3a",
@@ -387,7 +425,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "honey",
     name: "蜂蜜",
+    nameEn: "Honey",
     tagline: "琥珀甜光 · 暖黄日常",
+    taglineEn: "Amber sweet light · warm daily",
     layout: "immersive",
     themeColor: "#1a1408",
     bg: "#1a1408",
@@ -408,7 +448,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "slate",
     name: "岩灰",
+    nameEn: "Slate",
     tagline: "现代中性 · 冷静专业",
+    taglineEn: "Modern neutral · calm professional",
     layout: "compact",
     themeColor: "#0f172a",
     bg: "#0f172a",
@@ -427,7 +469,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "lime",
     name: "青柠",
+    nameEn: "Lime",
     tagline: "酸甜高亮 · 运动活力",
+    taglineEn: "Zesty highlight · sporty energy",
     layout: "side",
     themeColor: "#0a1405",
     bg: "#0a1405",
@@ -448,7 +492,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "copper",
     name: "红铜",
+    nameEn: "Copper",
     tagline: "工业金属 · 铜色高光",
+    taglineEn: "Industrial metal · copper highlights",
     layout: "immersive",
     themeColor: "#1a100c",
     bg: "#1a100c",
@@ -467,7 +513,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "cloud",
     name: "云朵",
+    nameEn: "Cloud",
     tagline: "浅灰天空 · 干净轻盈",
+    taglineEn: "Light sky gray · clean & airy",
     layout: "side",
     themeColor: "#f8fafc",
     bg: "#f8fafc",
@@ -486,7 +534,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "forest",
     name: "密林",
+    nameEn: "Forest",
     tagline: "苔藓深绿 · 林间静谧",
+    taglineEn: "Moss deep green · woodland calm",
     layout: "side",
     themeColor: "#0c140f",
     bg: "#0c140f",
@@ -507,7 +557,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "mocha",
     name: "摩卡",
+    nameEn: "Mocha",
     tagline: "咖啡厅 · 棕调舒适",
+    taglineEn: "Coffee shop · cozy browns",
     layout: "side",
     themeColor: "#211710",
     bg: "#211710",
@@ -526,7 +578,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "ice",
     name: "冰晶",
+    nameEn: "Ice",
     tagline: "冷玻璃 · 透明质感",
+    taglineEn: "Cold glass · translucent feel",
     layout: "side",
     themeColor: "#0c1222",
     bg: "#0c1222",
@@ -547,7 +601,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "crimson",
     name: "绯红",
+    nameEn: "Crimson",
     tagline: "剧院红黑 · 戏剧张力",
+    taglineEn: "Theatre red-black · drama",
     layout: "immersive",
     themeColor: "#140000",
     bg: "#140000",
@@ -567,7 +623,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "moss",
     name: "苔原",
+    nameEn: "Moss",
     tagline: "北欧绿灰 · 克制自然",
+    taglineEn: "Nordic green-gray · restrained nature",
     layout: "compact",
     themeColor: "#141a16",
     bg: "#141a16",
@@ -586,7 +644,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "steel",
     name: "钢青",
+    nameEn: "Steel",
     tagline: "冷金属 · 工业蓝灰",
+    taglineEn: "Cold metal · industrial blue-gray",
     layout: "side",
     themeColor: "#12151a",
     bg: "#12151a",
@@ -605,7 +665,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "cosmos",
     name: "星河",
+    nameEn: "Cosmos",
     tagline: "深紫太空 · 星尘微光",
+    taglineEn: "Deep purple space · stardust",
     layout: "immersive",
     themeColor: "#070714",
     bg: "#070714",
@@ -627,7 +689,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "magma",
     name: "岩浆",
+    nameEn: "Magma",
     tagline: "地火赤橙 · 炽热压迫",
+    taglineEn: "Earth fire · fierce heat",
     layout: "immersive",
     themeColor: "#1a0502",
     bg: "#1a0502",
@@ -649,7 +713,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "jade",
     name: "翠玉",
+    nameEn: "Jade",
     tagline: "墨绿奢石 · 金边点缀",
+    taglineEn: "Luxury green stone · gold edge",
     layout: "side",
     themeColor: "#022c22",
     bg: "#022c22",
@@ -672,7 +738,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "amethyst",
     name: "紫晶",
+    nameEn: "Amethyst",
     tagline: "宝石紫雾 · 柔光玻璃",
+    taglineEn: "Gem purple mist · soft glass",
     layout: "side",
     themeColor: "#1e1033",
     bg: "#1e1033",
@@ -694,7 +762,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "espresso",
     name: "浓缩",
+    nameEn: "Espresso",
     tagline: "咖啡深棕 · 奶油点缀",
+    taglineEn: "Deep coffee brown · cream accents",
     layout: "side",
     themeColor: "#1c1410",
     bg: "#1c1410",
@@ -715,7 +785,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "graphite",
     name: "石墨",
+    nameEn: "Graphite",
     tagline: "工业灰阶 · 冷硬线条",
+    taglineEn: "Industrial grayscale · hard lines",
     layout: "compact",
     themeColor: "#18181b",
     bg: "#18181b",
@@ -735,7 +807,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "burgundy",
     name: "勃艮第",
+    nameEn: "Burgundy",
     tagline: "酒红丝绒 · 剧院夜晚",
+    taglineEn: "Wine velvet · theatre night",
     layout: "immersive",
     themeColor: "#2a0a14",
     bg: "#2a0a14",
@@ -758,7 +832,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "cobalt",
     name: "钴蓝",
+    nameEn: "Cobalt",
     tagline: "电气蓝 · 未来面板",
+    taglineEn: "Electric blue · futuristic panel",
     layout: "side",
     themeColor: "#020617",
     bg: "#020617",
@@ -780,7 +856,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "saffron",
     name: "藏红花",
+    nameEn: "Saffron",
     tagline: "金黄香料 · 南亚暖调",
+    taglineEn: "Golden spice · South-Asian warmth",
     layout: "immersive",
     themeColor: "#431407",
     bg: "#431407",
@@ -802,7 +880,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "shadow",
     name: "暗影",
+    nameEn: "Shadow",
     tagline: "深紫黑雾 · 低调神秘",
+    taglineEn: "Deep purple fog · quiet mystery",
     layout: "compact",
     themeColor: "#0c0a12",
     bg: "#0c0a12",
@@ -821,7 +901,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "plum",
     name: "梅子",
+    nameEn: "Plum",
     tagline: "深梅紫 · 秋日果香",
+    taglineEn: "Deep plum · autumn fruit",
     layout: "immersive",
     themeColor: "#1a0b16",
     bg: "#1a0b16",
@@ -843,7 +925,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "ruby",
     name: "红宝石",
+    nameEn: "Ruby",
     tagline: "血红闪光 · 珠宝橱窗",
+    taglineEn: "Blood gem flash · jewelry case",
     layout: "immersive",
     themeColor: "#1c0508",
     bg: "#1c0508",
@@ -865,7 +949,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "twilight",
     name: "暮色",
+    nameEn: "Twilight",
     tagline: "靛紫黄昏 · 城市天际",
+    taglineEn: "Indigo dusk · city skyline",
     layout: "immersive",
     themeColor: "#0f0a1e",
     bg: "#0f0a1e",
@@ -887,7 +973,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "charcoal",
     name: "木炭",
+    nameEn: "Charcoal",
     tagline: "暖灰碳黑 · 壁炉余烬",
+    taglineEn: "Warm carbon black · hearth embers",
     layout: "side",
     themeColor: "#1c1917",
     bg: "#1c1917",
@@ -906,7 +994,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "maple",
     name: "枫叶",
+    nameEn: "Maple",
     tagline: "秋橙金黄 · 落叶长廊",
+    taglineEn: "Autumn orange-gold · leaf walk",
     layout: "immersive",
     themeColor: "#431407",
     bg: "#431407",
@@ -928,7 +1018,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "nightclub",
     name: "夜店",
+    nameEn: "Nightclub",
     tagline: "品红黑底 · 迪斯科灯",
+    taglineEn: "Magenta on black · disco lights",
     layout: "immersive",
     themeColor: "#0a0010",
     bg: "#0a0010",
@@ -951,7 +1043,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "navy-gold",
     name: "海军金",
+    nameEn: "Navy Gold",
     tagline: "深蓝金饰 · 礼服礼仪",
+    taglineEn: "Deep navy + gold trim · formal",
     layout: "immersive",
     themeColor: "#0a1628",
     bg: "#0a1628",
@@ -974,7 +1068,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "clay",
     name: "陶土",
+    nameEn: "Clay",
     tagline: "赤陶暖棕 · 手作工房",
+    taglineEn: "Terracotta warm brown · studio craft",
     layout: "side",
     themeColor: "#2c1810",
     bg: "#2c1810",
@@ -994,7 +1090,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "abyss",
     name: "深渊",
+    nameEn: "Abyss",
     tagline: "至深蓝黑 · 无底静谧",
+    taglineEn: "Deep blue-black · bottomless calm",
     layout: "immersive",
     themeColor: "#050814",
     bg: "#050814",
@@ -1016,7 +1114,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "lattice",
     name: "宫墙",
+    nameEn: "Lattice",
     tagline: "粉霓宫格 · 封面墙感",
+    taglineEn: "Palace grid · cover-wall feel",
     layout: "immersive",
     themeColor: "#18181b",
     bg: "#18181b",
@@ -1035,7 +1135,9 @@ export const THEME_CATALOG: ThemeTokens[] = [
   {
     id: "bento",
     name: "嵌合",
+    nameEn: "Bento",
     tagline: "青绿嵌合 · Bento 拼贴感",
+    taglineEn: "Teal mosaic · bento collage",
     layout: "immersive",
     themeColor: "#042f2e",
     bg: "#042f2e",

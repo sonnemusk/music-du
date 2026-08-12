@@ -551,7 +551,12 @@ export const usePlayer = create<State>((set, get) => ({
     set({ skin: s, skinOpen: false });
     if (prev !== s) {
       const meta = SKINS.find((x) => x.id === s);
-      get().showToast(i18n("skin.toast", { name: meta?.name || s }));
+      {
+        const loc = get().locale;
+        const label =
+          loc === "en" ? meta?.nameEn || meta?.id || s : meta?.name || s;
+        get().showToast(i18n("skin.toast", { name: label }));
+      }
     }
   },
   cycleSkin: () => {

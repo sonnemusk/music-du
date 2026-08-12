@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { SKINS, type SkinId } from "../lib/types";
+import {
+  SKINS,
+  themeDisplayName,
+  themeDisplayTagline,
+  type SkinId,
+} from "../lib/types";
 import { LAYOUT_META, type SkinLayout } from "../skins/layouts/layout-ids";
 import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
@@ -40,13 +45,17 @@ export function SkinSwitcher() {
     return SKINS.filter((t) => {
       if (layoutFilter !== "all" && t.layout !== layoutFilter) return false;
       if (!s) return true;
+      const name = themeDisplayName(t, locale).toLowerCase();
+      const tag = themeDisplayTagline(t, locale).toLowerCase();
       return (
-        t.name.toLowerCase().includes(s) ||
+        name.includes(s) ||
+        tag.includes(s) ||
         t.id.toLowerCase().includes(s) ||
+        t.name.toLowerCase().includes(s) ||
         t.tagline.toLowerCase().includes(s)
       );
     });
-  }, [q, layoutFilter]);
+  }, [q, layoutFilter, locale]);
 
   const layoutCount = useMemo(() => new Set(SKINS.map((t) => t.layout)).size, []);
 
@@ -182,13 +191,13 @@ export function SkinSwitcher() {
               <span className="skin-card__layout-a" />
               <span className="skin-card__layout-b" />
             </div>
-            <div className="skin-card__name">{locale === "en" ? s.id : s.name}</div>
+            <div className="skin-card__name">{themeDisplayName(s, locale)}</div>
             {!mobile ? (
               <div className="skin-card__tag">
                 {LAYOUT_META[s.layout]?.name
                   ? tr("skin.layoutPrefix", { name: tr(`layout.${s.layout}`) })
                   : ""}
-                {locale === "en" ? tr(`layout.${s.layout}`) : s.tagline}
+                {themeDisplayTagline(s, locale)}
               </div>
             ) : (
               <div className="skin-card__tag">{tr(`layout.${s.layout}`)}</div>
@@ -245,8 +254,12 @@ export function SkinSwitcher() {
         >
           <span className="skin-switcher__dot" style={{ background: meta.accent }} />
           <span className="skin-switcher__label">
-            <span className="skin-switcher__label-full">{tr("skin.theme", { name: locale === "en" ? meta.id : meta.name })}</span>
-            <span className="skin-switcher__label-short">{locale === "en" ? meta.id : meta.name}</span>
+            <span className="skin-switcher__label-full">
+              {tr("skin.theme", { name: themeDisplayName(meta, locale) })}
+            </span>
+            <span className="skin-switcher__label-short">
+              {themeDisplayName(meta, locale)}
+            </span>
           </span>
         </button>
         <button
