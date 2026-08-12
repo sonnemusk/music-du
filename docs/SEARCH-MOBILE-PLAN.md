@@ -1,8 +1,11 @@
 # 移动端搜索信息架构方案
 
-状态：**待你确认后改代码**  
+状态：**双方案设计稿已出，待你选型后改代码**  
 更新：2026-08-12  
 依据：Cursor 计划 M-2 · 用户反馈 · 执行侧评审 · 现状代码（`SearchBar` / `SkinHead` / `tab === "search"`）
+
+**可点对比原型（并排 A / B）**  
+→ [`docs/mockups/m2-search-compare.html`](./mockups/m2-search-compare.html)（浏览器直接打开即可）
 
 ---
 

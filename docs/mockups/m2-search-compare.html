@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M-2 搜索 IA · 双方案对比（仅设计稿）</title>
+  <style>
+    :root {
+      --bg: #0b0b12;
+      --fg: #f5f5f7;
+      --muted: #9ca3af;
+      --line: #ffffff18;
+      --card: #16161f;
+      --accent: #a78bfa;
+      --accent2: #fcd34d;
+      --phone-w: 320px;
+      --phone-h: 680px;
+      --safe-b: 22px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: #07070c;
+      color: var(--fg);
+      line-height: 1.45;
+    }
+    header.page {
+      padding: 28px 24px 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header.page h1 {
+      margin: 0 0 8px;
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+    }
+    header.page p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 70ch;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-top: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .legend span b { color: var(--fg); font-weight: 700; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 20px 48px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .col {
+      background: #0e0e16;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .col h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+    }
+    .tag-a { background: #1e3a5f; color: #93c5fd; }
+    .tag-b { background: #3b1f5e; color: #d8b4fe; }
+    .blurb {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .blurb strong { color: #e5e7eb; }
+    .states {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .states button {
+      border: 1px solid var(--line);
+      background: #12121a;
+      color: var(--fg);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .states button.on {
+      background: var(--accent);
+      color: #1a1030;
+      border-color: transparent;
+    }
+    .phone-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 4px;
+    }
+    .phone {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      border-radius: 28px;
+      border: 2px solid #2a2a38;
+      background: linear-gradient(165deg, #14141e 0%, #0a0a10 55%);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 20px 50px #0008, inset 0 0 0 1px #fff1;
+      display: flex;
+      flex-direction: column;
+    }
+    .notch {
+      height: 28px;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+    .head-main {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      min-height: 48px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      font-weight: 800;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .brand em {
+      font-style: normal;
+      opacity: 0.45;
+      font-weight: 600;
+      margin: 0 0.15em;
+    }
+    .search-inline {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #0c0c14;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      overflow: hidden;
+    }
+    .search-inline.squished {
+      max-width: 40px;
+      color: transparent;
+      position: relative;
+    }
+    .search-inline.squished::after {
+      content: "…";
+      color: #ef4444;
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 0.65rem;
+    }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #12121c;
+      color: var(--fg);
+      display: grid;
+      place-items: center;
+      font-size: 1.05rem;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .icon-btn.primary {
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      border: none;
+      color: #fff;
+    }
+    .tools {
+      display: flex;
+      gap: 6px;
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+    .tool-chip {
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #12121c;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      color: #e5e7eb;
+    }
+    .tabs {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 4px;
+      padding: 8px 10px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      border: 1px solid transparent;
+      cursor: pointer;
+      background: transparent;
+    }
+    .tab.on {
+      color: #1a1030;
+      background: var(--accent2);
+    }
+    .panel {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .panel-search-bar {
+      flex: 0 0 auto;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #101018;
+    }
+    .panel-search-bar input,
+    .overlay-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #fff2;
+      background: #0a0a12;
+      color: var(--fg);
+      font-size: 16px; /* iOS no-zoom */
+      padding: 0 12px;
+      outline: none;
+    }
+    .panel-search-bar button,
+    .overlay-top button {
+      height: 42px;
+      padding: 0 12px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 800;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .btn-go { background: var(--accent); color: #1a1030; }
+    .btn-cancel { background: transparent; color: var(--muted); border: 1px solid var(--line) !important; }
+    .list {
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 6px 8px 8px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 10px;
+    }
+    .row:active, .row:hover { background: #ffffff08; }
+    .cover {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #312e81, #7c3aed 50%, #f472b6);
+      flex: 0 0 auto;
+    }
+    .cover:nth-child(3n) { filter: hue-rotate(40deg); }
+    .meta { min-width: 0; flex: 1; }
+    .meta .t {
+      font-size: 0.84rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .meta .a {
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mini {
+      flex: 0 0 auto;
+      margin: 0 10px calc(8px + var(--safe-b));
+      height: 56px;
+      border-radius: 14px;
+      background: #1a1a28ee;
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      backdrop-filter: blur(8px);
+      z-index: 5;
+    }
+    .mini .dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+    }
+    .mini .txt { flex: 1; min-width: 0; font-size: 0.78rem; font-weight: 700; }
+    .mini .ctrl { color: var(--muted); font-size: 0.9rem; letter-spacing: 0.15em; }
+
+    /* Overlay scheme B */
+    .overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 72px; /* leave mini bar */
+      background: #0b0b12f2;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      border-radius: 0 0 12px 12px;
+      animation: up 0.2s ease;
+    }
+    @keyframes up {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    .overlay-top {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 12px 12px 10px;
+      border-bottom: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    .overlay-body {
+      flex: 1;
+      overflow: auto;
+      padding: 10px 12px;
+    }
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      margin: 4px 0 8px;
+      text-transform: uppercase;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #171722;
+      border: 1px solid var(--line);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: var(--accent); }
+    .skel {
+      height: 52px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #14141c 25%, #1c1c28 50%, #14141c 75%);
+      background-size: 200% 100%;
+      animation: sh 1.2s infinite;
+      margin-bottom: 8px;
+    }
+    @keyframes sh {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 28px 12px;
+    }
+    .callouts {
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 4px;
+    }
+    .callouts ul { margin: 6px 0 0; padding-left: 1.15em; }
+    .callouts li { margin: 4px 0; }
+    .callouts .good { color: #86efac; }
+    .callouts .warn { color: #fcd34d; }
+    .measure {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: #93c5fd;
+      background: #0a1525;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    footer.page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .hidden { display: none !important; }
+    .dim-note {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 0.62rem;
+      color: #f87171;
+      font-weight: 800;
+      z-index: 3;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <h1>M-2 搜索 · 双方案设计对比</h1>
+    <p>
+      仅设计稿 / 可点原型，不改业务代码。手机框约 320×680（对应 390 逻辑的紧凑示意）。
+      两套都解决「默认别占坑」；差异在<strong>搜索打开后的形态</strong>与<strong>是否保留搜索 tab</strong>。
+    </p>
+    <div class="legend">
+      <span><b>方案 A</b> 旧：搜索 tab 内顶栏输入</span>
+      <span><b>方案 B</b> 新：头部 🔍 + 全屏层（不盖迷你条）</span>
+      <span>点状态按钮或手机内控件切换</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- ========== SCHEME A ========== -->
+    <section class="col" data-scheme="a">
+      <h2><span class="tag tag-a">方案 A</span> Tab 内搜索（旧方案）</h2>
+      <p class="blurb">
+        窄屏头部<strong>去掉</strong>常驻 SearchBar；保留 tab「搜索」。
+        只有进入该 tab 时，在<strong>列表面板顶部</strong>出现满宽输入。桌面仍可常驻头搜（本稿只画手机）。
+      </p>
+      <div class="states" id="a-states">
+        <button type="button" data-state="idle" class="on">① 默认 · 热榜</button>
+        <button type="button" data-state="search">② 搜索 tab</button>
+        <button type="button" data-state="broken">对比：现状坏掉的头</button>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone" id="phone-a">
+          <div class="notch">9:41 · 方案 A</div>
+          <div class="head-main" id="a-head">
+            <div class="brand">Music</div>
+            <div class="tools">
+              <div class="tool-chip">主题</div>
+            </div>
+          </div>
+          <div class="tabs" id="a-tabs">
+            <button type="button" class="tab" data-tab="search">搜索</button>
+            <button type="button" class="tab on" data-tab="charts">热榜</button>
+            <button type="button" class="tab" data-tab="playlist">队列</button>
+            <button type="button" class="tab" data-tab="favorites">喜欢</button>
+            <button type="button" class="tab" data-tab="history">历史</button>
+            <button type="button" class="tab" data-tab="lyrics">歌词</button>
+          </div>
+          <div class="panel">
+            <div class="panel-search-bar hidden" id="a-searchbar">
+              <input type="search" placeholder="搜索歌曲 / 歌手…" value="" style="font-size:16px" />
+              <button type="button" class="btn-go">搜索</button>
+            </div>
+            <div class="list" id="a-list"></div>
+          </div>
+          <div class="mini">
+            <div class="dot"></div>
+            <div class="txt">迷你条预留 · 不进搜索</div>
+            <div class="ctrl">❚❚  ››</div>
+          </div>
+        </div>
+      </div>
+      <div class="measure" id="a-measure">测量：—</div>
+      <div class="callouts">
+        <div><strong>结构</strong></div>
+        <ul>
+          <li>Head：<code>brand | 主题</code>（无搜索框）</li>
+          <li>Tabs：仍 6 项，含「搜索」</li>
+          <li>仅 search tab：面板顶 <code>SearchBar</code> 满宽</li>
+          <li>结果：同一 tab 下方 <code>TrackList</code></li>
+        </ul>
+        <div style="margin-top:8px"><strong>利</strong></div>
+        <ul>
+          <li class="good">改动小，复用现有 tab + search() 语义</li>
+          <li class="good">与 locate → tab search 自然一致</li>
+          <li class="good">无 overlay / history / visualViewport 复杂度</li>
+        </ul>
+        <div style="margin-top:8px"><strong>弊</strong></div>
+        <ul>
+          <li class="warn">搜索仍占一个 tab 名额（6 项挤）</li>
+          <li class="warn">从热榜去搜：先点「搜索」再输入，两步</li>
+          <li class="warn">没有独立「取消回原 tab」；靠再点别的 tab</li>
+          <li class="warn">最近搜索要塞进 tab 内容区，形态弱于层</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ========== SCHEME B ========== -->
+    <section class="col" data-scheme="b">
+      <h2><span class="tag tag-b">方案 B</span> 🔍 + 全屏层（本方案）</h2>
+      <p class="blurb">
+        头部 <strong>brand | 🔍 | 主题</strong>；tab <strong>去掉「搜索」</strong>（5 项）。
+        点 🔍 打开层（盖列表、露出迷你条）；取消 / 返回键关闭并回到进入前 tab。
+      </p>
+      <div class="states" id="b-states">
+        <button type="button" data-state="idle" class="on">① 默认 · 热榜</button>
+        <button type="button" data-state="overlay-empty">② 打开层 · 最近</button>
+        <button type="button" data-state="overlay-results">③ 层内有结果</button>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone" id="phone-b">
+          <div class="notch">9:41 · 方案 B</div>
+          <div class="head-main" id="b-head">
+            <div class="brand">Music</div>
+            <button type="button" class="icon-btn primary" id="b-lens" title="搜索" aria-label="搜索">🔍</button>
+            <div class="tools">
+              <div class="tool-chip">主题</div>
+            </div>
+          </div>
+          <div class="tabs" id="b-tabs">
+            <button type="button" class="tab on" data-tab="charts">热榜</button>
+            <button type="button" class="tab" data-tab="playlist">队列</button>
+            <button type="button" class="tab" data-tab="favorites">喜欢</button>
+            <button type="button" class="tab" data-tab="history">历史</button>
+            <button type="button" class="tab" data-tab="lyrics">歌词</button>
+          </div>
+          <div class="panel" id="b-panel">
+            <div class="list" id="b-list"></div>
+            <div class="overlay hidden" id="b-overlay">
+              <div class="overlay-top">
+                <button type="button" class="btn-cancel" id="b-cancel">取消</button>
+                <input class="overlay-input" id="b-input" type="search" placeholder="搜索歌曲 / 歌手…" style="font-size:16px" />
+                <button type="button" class="btn-go" id="b-submit">搜索</button>
+              </div>
+              <div class="overlay-body" id="b-overlay-body"></div>
+            </div>
+          </div>
+          <div class="mini">
+            <div class="dot"></div>
+            <div class="txt">迷你条始终露在层外</div>
+            <div class="ctrl">❚❚  ››</div>
+          </div>
+        </div>
+      </div>
+      <div class="measure" id="b-measure">测量：—</div>
+      <div class="callouts">
+        <div><strong>结构</strong></div>
+        <ul>
+          <li>Head：<code>brand | 🔍(44) | 主题</code></li>
+          <li>Tabs：5 项，无「搜索」</li>
+          <li>层：顶栏取消+输入+提交；体为最近/骨架/结果</li>
+          <li>状态：<code>searchOpen</code> + <code>searchReturnTab</code></li>
+        </ul>
+        <div style="margin-top:8px"><strong>利</strong></div>
+        <ul>
+          <li class="good">默认头更矮、tab 更松；搜是「模式」不是「常驻页」</li>
+          <li class="good">取消明确回到来源 tab；安卓返回 / Escape 可关层</li>
+          <li class="good">最近搜索 / 空态有完整画布（F-10a 自然）</li>
+          <li class="good">更接近系统级搜索（Spotlight / App Store）</li>
+        </ul>
+        <div style="margin-top:8px"><strong>弊</strong></div>
+        <ul>
+          <li class="warn">实现重：visualViewport、pushState、手势内 focus</li>
+          <li class="warn">要小心不破坏 search() 的 tab:"search" 与 locate</li>
+          <li class="warn">一层组件 + portal，测试面更大</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <footer class="page">
+    文件：<code>docs/mockups/m2-search-compare.html</code> · 本地打开即可，无需 dev server。
+    选定后把选择写回 <code>SEARCH-MOBILE-PLAN.md</code> 再动业务代码。
+  </footer>
+
+  <script>
+    const TRACKS = [
+      ["晴天", "周杰伦"],
+      ["海阔天空", "Beyond"],
+      ["演员", "薛之谦"],
+      ["起风了", "买辣椒也用券"],
+      ["光年之外", "G.E.M.邓紫棋"],
+      ["平凡之路", "朴树"],
+      ["夜曲", "周杰伦"],
+      ["稻香", "周杰伦"],
+    ];
+    const RECENT = ["周杰伦", "邓紫棋", "纯音乐", "抖音热歌"];
+
+    function rows(n = 8) {
+      return TRACKS.slice(0, n)
+        .map(
+          ([t, a], i) =>
+            `<div class="row"><div class="cover" style="filter:hue-rotate(${i * 28}deg)"></div><div class="meta"><div class="t">${t}</div><div class="a">${a}</div></div></div>`
+        )
+        .join("");
+    }
+
+    /* —— Scheme A —— */
+    const aList = document.getElementById("a-list");
+    const aBar = document.getElementById("a-searchbar");
+    const aHead = document.getElementById("a-head");
+    const aMeasure = document.getElementById("a-measure");
+    const aTabs = document.getElementById("a-tabs");
+
+    function setA(state) {
+      document.querySelectorAll("#a-states button").forEach((b) => {
+        b.classList.toggle("on", b.dataset.state === state);
+      });
+      // reset head
+      aHead.innerHTML = "";
+      aHead.style.position = "relative";
+      const brand = document.createElement("div");
+      brand.className = "brand";
+      brand.textContent = "Music";
+      aHead.appendChild(brand);
+
+      if (state === "broken") {
+        const sq = document.createElement("div");
+        sq.className = "search-inline squished";
+        sq.textContent = "搜索…";
+        aHead.appendChild(sq);
+        const note = document.createElement("div");
+        note.className = "dim-note";
+        note.textContent = "现状 ~24px";
+        aHead.appendChild(note);
+        const tools = document.createElement("div");
+        tools.className = "tools";
+        tools.innerHTML = `<div class="tool-chip">中</div><div class="tool-chip">主题</div>`;
+        aHead.appendChild(tools);
+        aBar.classList.add("hidden");
+        aList.innerHTML = rows();
+        aTabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === "charts"));
+      } else if (state === "search") {
+        const tools = document.createElement("div");
+        tools.className = "tools";
+        tools.innerHTML = `<div class="tool-chip">主题</div>`;
+        aHead.appendChild(tools);
+        aBar.classList.remove("hidden");
+        aList.innerHTML = rows(6);
+        aTabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === "search"));
+      } else {
+        const tools = document.createElement("div");
+        tools.className = "tools";
+        tools.innerHTML = `<div class="tool-chip">主题</div>`;
+        aHead.appendChild(tools);
+        aBar.classList.add("hidden");
+        aList.innerHTML = rows();
+        aTabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === "charts"));
+      }
+      requestAnimationFrame(() => {
+        const h = aHead.getBoundingClientRect().height;
+        const input = aBar.querySelector("input");
+        const iw = input && !aBar.classList.contains("hidden") ? input.getBoundingClientRect().width : 0;
+        aMeasure.textContent = `head-main ≈ ${Math.round(h)}px` +
+          (iw ? ` · 面板搜索 input ≈ ${Math.round(iw)}px（满宽）` : " · 无头内搜索框");
+      });
+    }
+
+    document.getElementById("a-states").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-state]");
+      if (b) setA(b.dataset.state);
+    });
+    aTabs.addEventListener("click", (e) => {
+      const t = e.target.closest(".tab");
+      if (!t) return;
+      if (t.dataset.tab === "search") setA("search");
+      else setA("idle");
+    });
+
+    /* —— Scheme B —— */
+    const bList = document.getElementById("b-list");
+    const bOverlay = document.getElementById("b-overlay");
+    const bBody = document.getElementById("b-overlay-body");
+    const bInput = document.getElementById("b-input");
+    const bMeasure = document.getElementById("b-measure");
+    const bHead = document.getElementById("b-head");
+
+    function setB(state) {
+      document.querySelectorAll("#b-states button").forEach((b) => {
+        b.classList.toggle("on", b.dataset.state === state);
+      });
+      bList.innerHTML = rows();
+      if (state === "idle") {
+        bOverlay.classList.add("hidden");
+      } else if (state === "overlay-empty") {
+        bOverlay.classList.remove("hidden");
+        bInput.value = "";
+        bBody.innerHTML = `
+          <div class="section-label">最近搜索</div>
+          <div class="chips">${RECENT.map((q) => `<span class="chip">${q}</span>`).join("")}</div>
+          <div class="empty">输入关键词开始搜索<br/>或点最近记录</div>`;
+      } else {
+        bOverlay.classList.remove("hidden");
+        bInput.value = "周杰伦";
+        bBody.innerHTML = `<div class="section-label">结果</div>` + rows(5);
+      }
+      requestAnimationFrame(() => {
+        const h = bHead.getBoundingClientRect().height;
+        const open = !bOverlay.classList.contains("hidden");
+        const iw = open ? bInput.getBoundingClientRect().width : 0;
+        bMeasure.textContent = `head-main ≈ ${Math.round(h)}px` +
+          (iw ? ` · 层内 input ≈ ${Math.round(iw)}px · 层 bottom 避开迷你条` : " · 层关闭");
+      });
+    }
+
+    document.getElementById("b-states").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-state]");
+      if (b) setB(b.dataset.state);
+    });
+    document.getElementById("b-lens").addEventListener("click", () => setB("overlay-empty"));
+    document.getElementById("b-cancel").addEventListener("click", () => setB("idle"));
+    document.getElementById("b-submit").addEventListener("click", () => setB("overlay-results"));
+    bInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") setB("overlay-results");
+    });
+    bBody.addEventListener("click", (e) => {
+      if (e.target.classList.contains("chip")) {
+        bInput.value = e.target.textContent;
+        setB("overlay-results");
+      }
+    });
+
+    setA("idle");
+    setB("idle");
+  </script>
+</body>
+</html>
