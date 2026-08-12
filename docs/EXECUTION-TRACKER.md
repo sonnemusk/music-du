@@ -56,10 +56,10 @@
 | 1d | P0-1 | readonly GET 剔除 history/curIdx | [x] | `publicReadonlyLibraryData` + worker GET |
 | 1e | P0-1 | 单测 + typecheck/test | [x] | site-mode C2 用例；89 tests 全绿 |
 | 1f | P0-1 | 本地 commit（不 push） | [x] | 见 git log |
-| — | M-样稿 | M-1/M-2/M-3 简化可视预览 | [~] | subagent worktree 并发中 |
-| 2 | M-1 | immersive 移动端断点 | [ ] | |
-| 3 | M-2 | 头部搜索框 | [ ] | |
-| 4 | M-3 | 空闲播放器 / 迷你条 | [ ] | |
+| — | M-样稿 | M-1/M-2/M-3 简化可视预览 | [x] | 分支 `wip/m-mobile-mock` @ `5b9db29`；**未合 main、未 push** |
+| 2 | M-1 | immersive 移动端断点 | [x] | 样稿已含；390 imm listW=362 单列 |
+| 3 | M-2 | 头部搜索框 | [x] | 样稿已含；searchW 390≈305–309 |
+| 4 | M-3 | 空闲播放器 / 迷你条 | [x] | 样稿级；rowsVisible 390=8 / 320≥3 |
 | 5 | M-4 | 触控 44px | [ ] | |
 | 6 | M-5 | 输入框 16px | [ ] | |
 | 7 | M-6 | hover 态 | [ ] | |
