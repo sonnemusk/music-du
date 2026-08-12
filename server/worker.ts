@@ -197,8 +197,16 @@ async function loadLib(db: D1Database) {
  * Never DELETE-all before inserts — a mid-flight timeout used to wipe favorites
  * (observed drop ~578 → ~240 ≈ partial batch after wipe).
  */
-/** P1-1: history sparse writes (monotonic pos). */
-async function writeHistoryList(db: D1Database, tracks: any[], cap: number) {
+/**
+ * P1-1: history sparse writes (monotonic pos).
+ * Returns the sid order the table will report, so the PUT response can echo the
+ * stored order instead of whatever the client happened to send.
+ */
+async function writeHistoryList(
+  db: D1Database,
+  tracks: any[],
+  cap: number
+): Promise<string[]> {
   const { results } = await db
     .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=?`)
     .bind("history")
@@ -244,6 +252,7 @@ async function writeHistoryList(db: D1Database, tracks: any[], cap: number) {
   for (let i = 0; i < stmts.length; i += 80) {
     await db.batch(stmts.slice(i, i + 80));
   }
+  return plan.finalOrder;
 }
 
 async function writeList(db: D1Database, listType: string, tracks: any[], cap: number) {
@@ -299,6 +308,24 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
     .run();
 }
 
+/** Reorder client tracks to match the stored sid order (drops unknown sids). */
+function orderTracksBySids(tracks: any[], sids: string[]): any[] {
+  if (!sids.length) return tracks;
+  const bySid = new Map<string, any>();
+  for (const t of tracks || []) {
+    const id = t?.id ?? t?.sid;
+    if (id == null || id === "") continue;
+    const k = String(id);
+    if (!bySid.has(k)) bySid.set(k, t);
+  }
+  const out: any[] = [];
+  for (const sid of sids) {
+    const hit = bySid.get(sid);
+    if (hit) out.push(hit);
+  }
+  return out.length ? out : tracks;
+}
+
 async function saveLib(
   db: D1Database,
   data: any,
@@ -331,7 +358,11 @@ async function saveLib(
   }
   if (plChanged) await writeList(db, "playlist", pl, 2000);
   if (favChanged) await writeList(db, "favorites", fav, 2000);
-  if (hiChanged) await writeHistoryList(db, hi, 2000);
+  let historyOut = hi;
+  if (hiChanged) {
+    const order = await writeHistoryList(db, hi, 2000);
+    historyOut = orderTracksBySids(hi, order);
+  }
   if (curChanged) await setMeta(db, "curIdx", String(curIdx));
   const nextRev = await bumpRevision(db, serverRev);
   if (opts?.verify) {
@@ -340,7 +371,7 @@ async function saveLib(
   const out = {
     playlist: pl,
     favorites: fav,
-    history: hi,
+    history: historyOut,
     curIdx,
     revision: nextRev,
   };

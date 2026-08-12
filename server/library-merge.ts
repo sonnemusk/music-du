@@ -126,6 +126,8 @@ export function planHistoryWrites(
   upserts: { sid: string; pos: number; track: LibTrack }[];
   deleteSids: string[];
   writeOps: number;
+  /** sids in the order the table will report them (ORDER BY pos ASC). */
+  finalOrder: string[];
 } {
   const posBySid = new Map<string, number>();
   for (const row of existing || []) {
@@ -153,78 +155,48 @@ export function planHistoryWrites(
     if (!keep.has(sid)) deleteSids.push(sid);
   }
 
-  const minKept = (): number => {
-    let m = 0;
-    let any = false;
-    for (const [sid, pos] of posBySid) {
-      if (!keep.has(sid) && !client.some((c) => c.sid === sid)) continue;
-      if (keep.has(sid) || client.some((c) => c.sid === sid)) {
-        if (!any || pos < m) {
-          m = pos;
-          any = true;
-        }
-      }
-    }
-    // include already-assigned working positions
-    return any ? m : 0;
-  };
-
-  // Working map: start from existing, drop deletes
+  // Kept rows start from their stored pos; dropped rows never constrain us.
   const work = new Map<string, number>();
+  let minPos = 0;
   for (const [sid, pos] of posBySid) {
-    if (keep.has(sid)) work.set(sid, pos);
+    if (!keep.has(sid)) continue;
+    work.set(sid, pos);
+    if (pos < minPos) minPos = pos;
   }
 
   const upserts: { sid: string; pos: number; track: LibTrack }[] = [];
-  const bumpFront = (sid: string, track: LibTrack) => {
-    let m = 0;
-    let any = false;
-    for (const p of work.values()) {
-      if (!any || p < m) {
-        m = p;
-        any = true;
-      }
-    }
-    const newPos = any ? m - 1 : -1;
-    const prev = work.get(sid);
-    if (prev === newPos) return;
-    work.set(sid, newPos);
-    upserts.push({ sid, pos: newPos, track });
-  };
 
-  for (let i = 0; i < client.length; i++) {
+  /**
+   * Walk oldest → newest and require a strictly decreasing pos. An entry that is
+   * already below the one after it keeps its slot (the prepend-only case writes
+   * exactly one row); anything out of order — including several new heads in one
+   * PUT — is pushed below the running minimum, which preserves client order.
+   */
+  let prevPos = Number.POSITIVE_INFINITY;
+  for (let i = client.length - 1; i >= 0; i--) {
     const { sid, track } = client[i];
-    if (!work.has(sid)) {
-      // new sid → front-ish: always allocate below current min
-      let m = 0;
-      let any = false;
-      for (const p of work.values()) {
-        if (!any || p < m) {
-          m = p;
-          any = true;
-        }
-      }
-      const newPos = any ? m - 1 : -1 - i;
-      work.set(sid, newPos);
-      upserts.push({ sid, pos: newPos, track });
-    } else if (i === 0) {
-      // ensure head is strictly newest (lowest pos)
-      const headPos = work.get(sid)!;
-      let otherMin = Infinity;
-      for (const [s, p] of work) {
-        if (s !== sid && p < otherMin) otherMin = p;
-      }
-      if (otherMin !== Infinity && headPos >= otherMin) {
-        bumpFront(sid, track);
-      }
+    const cur = work.get(sid);
+    if (cur !== undefined && cur < prevPos) {
+      prevPos = cur;
+      continue;
     }
+    const base = Math.min(prevPos === Number.POSITIVE_INFINITY ? 0 : prevPos, minPos);
+    const nextPos = base - 1;
+    work.set(sid, nextPos);
+    upserts.push({ sid, pos: nextPos, track });
+    minPos = nextPos;
+    prevPos = nextPos;
   }
 
-  void minKept;
+  const finalOrder = [...work.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([sid]) => sid);
+
   return {
     upserts,
     deleteSids,
     writeOps: upserts.length + deleteSids.length,
+    finalOrder,
   };
 }
 

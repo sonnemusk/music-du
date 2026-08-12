@@ -199,4 +199,54 @@ describe("planHistoryWrites (P1-1)", () => {
     const cPos = plan.upserts.find((u) => u.sid === "c")!.pos;
     expect(cPos).toBeLessThan(0);
   });
+
+  /**
+   * The 20s history channel batches plays, so a single PUT routinely carries
+   * several unseen heads. They must land newest-first, not in write order.
+   */
+  it("multiple new heads in one PUT keep client order", () => {
+    const existing = [
+      { sid: "a", pos: 0 },
+      { sid: "b", pos: 1 },
+    ];
+    const incoming = [{ id: "n3" }, { id: "n2" }, { id: "n1" }, { id: "a" }, { id: "b" }];
+    const plan = planHistoryWrites(existing, incoming, 200);
+    expect(plan.finalOrder).toEqual(["n3", "n2", "n1", "a", "b"]);
+    const posOf = (sid: string) => plan.upserts.find((u) => u.sid === sid)!.pos;
+    expect(posOf("n3")).toBeLessThan(posOf("n2"));
+    expect(posOf("n2")).toBeLessThan(posOf("n1"));
+    expect(plan.writeOps).toBe(3);
+  });
+
+  it("prepend-only stays at one write and reports stored order", () => {
+    const existing = Array.from({ length: 50 }, (_, i) => ({ sid: `s${i}`, pos: i }));
+    const incoming = [{ id: "fresh" }, ...existing.map((e) => ({ id: e.sid }))];
+    const plan = planHistoryWrites(existing, incoming, 200);
+    expect(plan.writeOps).toBe(1);
+    expect(plan.finalOrder[0]).toBe("fresh");
+    expect(plan.finalOrder).toHaveLength(51);
+  });
+
+  it("mid-list reorder is repaired, not silently kept", () => {
+    const existing = [
+      { sid: "a", pos: 0 },
+      { sid: "b", pos: 1 },
+      { sid: "c", pos: 2 },
+    ];
+    // client moved b above a
+    const plan = planHistoryWrites(existing, [{ id: "b" }, { id: "a" }, { id: "c" }], 200);
+    expect(plan.finalOrder).toEqual(["b", "a", "c"]);
+    expect(plan.writeOps).toBe(1);
+  });
+
+  it("dropped sids are deleted and excluded from the reported order", () => {
+    const existing = [
+      { sid: "a", pos: 0 },
+      { sid: "gone", pos: 1 },
+      { sid: "c", pos: 2 },
+    ];
+    const plan = planHistoryWrites(existing, [{ id: "a" }, { id: "c" }], 200);
+    expect(plan.deleteSids).toEqual(["gone"]);
+    expect(plan.finalOrder).toEqual(["a", "c"]);
+  });
 });
