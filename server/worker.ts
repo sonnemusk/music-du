@@ -49,7 +49,7 @@ import {
   pruneResolveCache,
   putResolveCache,
 } from "./resolve-cache.js";
-import { isLibraryReadonly } from "./site-mode.js";
+import { isLibraryReadonly, publicReadonlyLibraryData } from "./site-mode.js";
 
 export type Env = {
   CHKSZ_APIKEY?: string;
@@ -850,10 +850,14 @@ app.get("/api/library", async (c) => {
       503
     );
   }
+  const lib = await loadLib(c.env.MUSIC_DU_DB);
+  const readOnly = envReadonly(c.env);
+  // C2: demo / readonly public GET never exposes history or curIdx
+  const data = readOnly ? publicReadonlyLibraryData(lib) : lib;
   return c.json({
     ok: true,
-    data: await loadLib(c.env.MUSIC_DU_DB),
-    readOnly: envReadonly(c.env),
+    data,
+    readOnly,
   });
 });
 

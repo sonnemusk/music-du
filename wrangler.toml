@@ -42,7 +42,8 @@ migrations_dir = "migrations"
 # ── Optional public demo (read-only library) ────────────────────────────────
 # Deploy: npm run deploy:cf:demo
 # Bind a separate hostname; do NOT put it behind private Access.
-# Secrets: gateway keys only (no MUSIC_ACCESS_TOKEN). Same or separate D1.
+# Secrets: gateway keys only (no MUSIC_ACCESS_TOKEN).
+# Demo uses a separate D1 (seeded once from prod); LIBRARY_READONLY blocks all writes.
 [env.demo]
 name = "music-du-demo"
 workers_dev = true
@@ -64,6 +65,6 @@ run_worker_first = true
 
 [[env.demo.d1_databases]]
 binding = "MUSIC_DU_DB"
-database_name = "music-du-library"
-database_id = "7db3d45b-e944-4405-8e6f-ab7ffe25929f"
+database_name = "music-du-demo"
+database_id = "b737232e-4c66-46f1-9d01-67a584bb131f"
 migrations_dir = "migrations"
