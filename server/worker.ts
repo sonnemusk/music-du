@@ -40,6 +40,7 @@ import {
   libraryTokenOk,
   mergeTrackList,
   nextLibraryRevision,
+  planHistoryWrites,
   trackListSameIds,
 } from "./library-merge.js";
 import {
@@ -95,18 +96,30 @@ function injectEnv(env: Env) {
 }
 
 // Minimal D1 library ops (inline to avoid node:sqlite)
+// P1-3: per-D1 schema init once per isolate (WeakMap so multi-db tests stay correct)
+const schemaReady = new WeakMap<D1Database, Promise<void>>();
+
 async function ensureSchema(db: D1Database) {
-  await ensureResolveCacheSchema(db);
-  await db.batch([
-    db.prepare(`CREATE TABLE IF NOT EXISTS library_tracks (
+  let p = schemaReady.get(db);
+  if (p) return p;
+  p = (async () => {
+    await ensureResolveCacheSchema(db);
+    await db.batch([
+      db.prepare(`CREATE TABLE IF NOT EXISTS library_tracks (
       list_type TEXT NOT NULL, sid TEXT NOT NULL, pos INTEGER NOT NULL,
       name TEXT DEFAULT '', artist TEXT DEFAULT '', album TEXT DEFAULT '',
       cover TEXT DEFAULT '', duration INTEGER DEFAULT 0, level TEXT DEFAULT '',
       br INTEGER DEFAULT 0, size INTEGER DEFAULT 0, cached INTEGER DEFAULT 0,
       updated_at REAL DEFAULT 0, PRIMARY KEY (list_type, sid))`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS library_meta (
+      db.prepare(`CREATE TABLE IF NOT EXISTS library_meta (
       key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
-  ]);
+    ]);
+  })().catch((e) => {
+    schemaReady.delete(db);
+    throw e;
+  });
+  schemaReady.set(db, p);
+  return p;
 }
 
 function sanitize(t: any) {
@@ -184,6 +197,55 @@ async function loadLib(db: D1Database) {
  * Never DELETE-all before inserts — a mid-flight timeout used to wipe favorites
  * (observed drop ~578 → ~240 ≈ partial batch after wipe).
  */
+/** P1-1: history sparse writes (monotonic pos). */
+async function writeHistoryList(db: D1Database, tracks: any[], cap: number) {
+  const { results } = await db
+    .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=?`)
+    .bind("history")
+    .all();
+  const existing = (results || []).map((r: any) => ({
+    sid: String(r.sid),
+    pos: Number(r.pos),
+  }));
+  const plan = planHistoryWrites(existing, tracks, cap);
+  const now = Date.now() / 1000;
+  const stmts: D1PreparedStatement[] = [];
+  for (const u of plan.upserts) {
+    const t = u.track;
+    stmts.push(
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO library_tracks
+           (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        )
+        .bind(
+          "history",
+          u.sid,
+          u.pos,
+          t.name || "",
+          t.artist || "",
+          t.album || "",
+          t.cover || "",
+          t.duration || 0,
+          t.level || "",
+          t.br || 0,
+          t.size || 0,
+          0,
+          now
+        )
+    );
+  }
+  for (const sid of plan.deleteSids) {
+    stmts.push(
+      db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`).bind("history", sid)
+    );
+  }
+  for (let i = 0; i < stmts.length; i += 80) {
+    await db.batch(stmts.slice(i, i + 80));
+  }
+}
+
 async function writeList(db: D1Database, listType: string, tracks: any[], cap: number) {
   const seen = new Set<string>();
   let pos = 0;
@@ -237,7 +299,11 @@ async function writeList(db: D1Database, listType: string, tracks: any[], cap: n
     .run();
 }
 
-async function saveLib(db: D1Database, data: any, opts?: { expectedRevision?: number | null }) {
+async function saveLib(
+  db: D1Database,
+  data: any,
+  opts?: { expectedRevision?: number | null; existing?: any; verify?: boolean }
+) {
   await ensureSchema(db);
   const serverRev = await loadRevision(db);
   const clientRev =
@@ -247,29 +313,38 @@ async function saveLib(db: D1Database, data: any, opts?: { expectedRevision?: nu
         ? Number(data.revision)
         : null;
   if (!libraryRevisionOk(serverRev, clientRev)) {
-    const current = await loadLib(db);
+    const current = opts?.existing || (await loadLib(db));
     return { conflict: true as const, data: current };
   }
-  // Skip rewriting unchanged lists — playTrack used to re-PUT full favorites
-  // (~500+) every skip, causing slow saves and same-tab revision races.
-  const existing = await loadLib(db);
-  const pl = data.playlist || [];
-  const fav = data.favorites || [];
-  const hi = data.history || [];
-  const curIdx = data.curIdx ?? -1;
-  const plChanged = !trackListSameIds(pl, existing.playlist);
-  const favChanged = !trackListSameIds(fav, existing.favorites);
-  const hiChanged = !trackListSameIds(hi, existing.history);
+  // P1-2: reuse caller's snapshot when provided (PUT already loaded once)
+  const existing = opts?.existing || (await loadLib(db));
+  const pl = data.playlist !== undefined ? data.playlist || [] : existing.playlist;
+  const fav = data.favorites !== undefined ? data.favorites || [] : existing.favorites;
+  const hi = data.history !== undefined ? data.history || [] : existing.history;
+  const curIdx = data.curIdx !== undefined ? data.curIdx : existing.curIdx ?? -1;
+  const plChanged = data.playlist !== undefined && !trackListSameIds(pl, existing.playlist);
+  const favChanged = data.favorites !== undefined && !trackListSameIds(fav, existing.favorites);
+  const hiChanged = data.history !== undefined && !trackListSameIds(hi, existing.history);
   const curChanged = String(curIdx) !== String(existing.curIdx ?? -1);
   if (!plChanged && !favChanged && !hiChanged && !curChanged) {
     return { conflict: false as const, data: existing };
   }
   if (plChanged) await writeList(db, "playlist", pl, 2000);
   if (favChanged) await writeList(db, "favorites", fav, 2000);
-  if (hiChanged) await writeList(db, "history", hi, 2000);
+  if (hiChanged) await writeHistoryList(db, hi, 2000);
   if (curChanged) await setMeta(db, "curIdx", String(curIdx));
-  await bumpRevision(db, serverRev);
-  return { conflict: false as const, data: await loadLib(db) };
+  const nextRev = await bumpRevision(db, serverRev);
+  if (opts?.verify) {
+    return { conflict: false as const, data: await loadLib(db) };
+  }
+  const out = {
+    playlist: pl,
+    favorites: fav,
+    history: hi,
+    curIdx,
+    revision: nextRev,
+  };
+  return { conflict: false as const, data: out };
 }
 
 async function deleteSid(
@@ -342,7 +417,7 @@ function libraryUnauthorized(c: {
         .map((h) => h.trim().toLowerCase())
         .filter(Boolean);
       const hit = required.some(
-        (h) => host === h || host.endsWith(`.${h}`) || host.endsWith(h)
+        (h) => host === h || host.endsWith("." + h)
       );
       if (hit) {
         return new Response(
@@ -386,6 +461,10 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.get("/api/health", (c) => {
   const readOnly = envReadonly(c.env);
+  // P1-5c: never leak upstream bases on public health (token holders get them)
+  const tok = (c.req.header("X-Music-Token") || c.req.header("x-music-token") || "").trim();
+  const showBases =
+    Boolean(tok) && libraryTokenOk(c.env.MUSIC_ACCESS_TOKEN, tok);
   return c.json({
     ok: true,
     service: "music",
@@ -395,8 +474,12 @@ app.get("/api/health", (c) => {
     has_apikey: Boolean(c.env.CHKSZ_APIKEY || c.env.CHKSZ_FALLBACK_APIKEYS),
     has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS || c.env.CHKSZ_APIKEY),
     primary_needs_key: false,
-    api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
-    fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
+    ...(showBases
+      ? {
+          api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
+          fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
+        }
+      : {}),
     has_d1: Boolean(c.env.MUSIC_DU_DB),
     // Demo: no library token; private: token when configured
     library_auth: readOnly ? false : Boolean(c.env.MUSIC_ACCESS_TOKEN),
@@ -432,7 +515,8 @@ app.get("/api/search", async (c) => {
     return c.json({ ok: true, data: songs });
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
-    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    console.error(e);
+    return c.json({ ok: false, error: "upstream error" }, status as any);
   }
 });
 
@@ -481,7 +565,8 @@ app.get("/api/charts/:platform", async (c) => {
     return res;
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 502;
-    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    console.error(e);
+    return c.json({ ok: false, error: "upstream error" }, status as any);
   }
 });
 
@@ -575,7 +660,8 @@ app.get("/api/song/:sid/qualities", async (c) => {
     return res;
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
-    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    console.error(e);
+    return c.json({ ok: false, error: "upstream error" }, status as any);
   }
 });
 
@@ -694,7 +780,8 @@ app.get("/api/song/:sid", async (c) => {
     return res;
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
-    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    console.error(e);
+    return c.json({ ok: false, error: "upstream error" }, status as any);
   }
 });
 
@@ -731,7 +818,8 @@ app.get("/api/lyric/:sid", async (c) => {
     return res;
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
-    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    console.error(e);
+    return c.json({ ok: false, error: "upstream error" }, status as any);
   }
 });
 
@@ -799,7 +887,8 @@ app.get("/api/stream/:sid", async (c) => {
     });
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 502;
-    return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+    console.error(e);
+    return c.json({ ok: false, error: "upstream error" }, status as any);
   }
 });
 
@@ -1241,6 +1330,9 @@ app.put("/api/library", async (c) => {
       if (hi.length >= 2000) break;
     }
   }
+  const verify =
+    new URL(c.req.url).searchParams.get("verify") === "1" ||
+    new URL(c.req.url).searchParams.get("verify") === "true";
   const result = await saveLib(
     c.env.MUSIC_DU_DB,
     {
@@ -1250,7 +1342,7 @@ app.put("/api/library", async (c) => {
       curIdx: body.curIdx ?? existing.curIdx,
       revision: clientRev,
     },
-    { expectedRevision: clientRev }
+    { expectedRevision: clientRev, existing, verify }
   );
   if (result.conflict) {
     return c.json(

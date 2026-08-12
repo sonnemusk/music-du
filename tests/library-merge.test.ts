@@ -5,6 +5,7 @@ import {
   mergeTrackList,
   nextLibraryRevision,
   planListUpserts,
+  planHistoryWrites,
   sanitizeLibTrack,
   trackIdSetsEqual,
   trackListSameIds,
@@ -168,5 +169,34 @@ describe("mock D1 revision flow", () => {
     expect(put(1, [{ id: 9, name: "Z" }]).status).toBe(409);
     expect(put(2, [{ id: 9, name: "Z" }]).status).toBe(200);
     expect(rev).toBe(3);
+  });
+});
+
+describe("planHistoryWrites (P1-1)", () => {
+  it("200 existing + 1 new → ≤3 write ops", () => {
+    const existing = Array.from({ length: 200 }, (_, i) => ({
+      sid: `old-${i}`,
+      pos: i,
+    }));
+    const incoming = [
+      { id: "brand-new", name: "N" },
+      ...existing.map((e) => ({ id: e.sid, name: e.sid })),
+    ].slice(0, 200);
+    const plan = planHistoryWrites(existing, incoming, 200);
+    expect(plan.writeOps).toBeLessThanOrEqual(3);
+    expect(plan.upserts.some((u) => u.sid === "brand-new")).toBe(true);
+  });
+
+  it("re-listen existing moves head with 1 upsert", () => {
+    const existing = [
+      { sid: "a", pos: 0 },
+      { sid: "b", pos: 1 },
+      { sid: "c", pos: 2 },
+    ];
+    const plan = planHistoryWrites(existing, [{ id: "c" }, { id: "a" }, { id: "b" }], 200);
+    expect(plan.upserts.length).toBeLessThanOrEqual(2);
+    expect(plan.upserts.some((u) => u.sid === "c")).toBe(true);
+    const cPos = plan.upserts.find((u) => u.sid === "c")!.pos;
+    expect(cPos).toBeLessThan(0);
   });
 });

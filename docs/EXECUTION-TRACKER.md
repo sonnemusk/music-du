@@ -74,11 +74,11 @@
 | 11 | M-10 | tab 标签 | [x] | 移动端强制全称 ≥2 字 |
 | 12 | M-11 | 滑动手势 | [x] | 迷你条区域 + 阈值 + data-no-swipe |
 | 13 | M-12 | 删 all-themes.css | [x] | 已删死文件 |
-| 14 | P1-1 | history 单调 pos | [ ] | |
-| 15 | P1-2 | PUT 一次 loadLib | [ ] | |
-| 16 | P1-3 | DDL 记忆化 | [ ] | |
-| 17 | P1-4 | history 分级节流 | [ ] | |
-| 18a–f | P1-5 | 六个小口子 | [ ] | 分 6 轮 |
+| 14 | P1-1 | history 单调 pos | [x] | planHistoryWrites + writeHistoryList |
+| 15 | P1-2 | PUT 一次 loadLib | [x] | saveLib existing 入参，组装返回 |
+| 16 | P1-3 | DDL 记忆化 | [x] | WeakMap schemaReady |
+| 17 | P1-4 | history 分级节流 | [x] | 20s 慢通道 + pagehide flush + 即时 local |
+| 18a–f | P1-5 | 六个小口子 | [x] | host 边界、health 藏 base、timing token、通用错误 |
 | 19 | F-1 | tick 重渲染 | [ ] | |
 | 20 | F-2 | 列表 memo/虚拟化 | [ ] | |
 | 21 | F-3 | 封面预热 | [ ] | |

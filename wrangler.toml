@@ -10,7 +10,7 @@
 
 name = "music-du"
 main = "server/worker.ts"
-compatibility_date = "2025-01-01"
+compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 # Prefer custom hostnames behind Access; enable workers_dev for quick tests
 workers_dev = false

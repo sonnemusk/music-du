@@ -2434,15 +2434,66 @@ function trackIdSetEqual(
   return true;
 }
 
+/** P1-4: localStorage mirror immediately on library mutation (before slow D1). */
+function mirrorLibraryLocal(get: () => State) {
+  if (get().libraryReadOnly) return;
+  try {
+    const s = get();
+    localStorage.setItem(
+      LS_KEY,
+      JSON.stringify({
+        playlist: s.playlist,
+        favorites: s.favorites,
+        history: s.history,
+        curIdx: s.curIdx,
+        revision: s.libraryRevision,
+      })
+    );
+  } catch {
+    /* */
+  }
+}
+
+let saveSlowOnly = false;
+let saveFlushBound = false;
+
 function persistSoon(get: () => State, force: Record<string, boolean> = {}) {
   // Demo never touches D1 (or library localStorage merge path)
   if (get().libraryReadOnly) return;
+  mirrorLibraryLocal(get);
   saveDirty = true;
   saveForce = { ...saveForce, ...force };
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    void flushLibrarySave(get);
-  }, 500);
+  // Explicit list clears / structural edits: fast path 500ms
+  const fast =
+    force.forceClearPlaylist ||
+    force.forceClearFavorites ||
+    force.forceClearHistory ||
+    Object.keys(force).length > 0;
+  if (fast) {
+    saveSlowOnly = false;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      void flushLibrarySave(get);
+    }, 500);
+  } else {
+    // history/curIdx churn: slow channel 20s (P1-4)
+    saveSlowOnly = true;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      void flushLibrarySave(get);
+    }, 20_000);
+  }
+  if (!saveFlushBound && typeof window !== "undefined") {
+    saveFlushBound = true;
+    const flush = () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      void flushLibrarySave(get);
+    };
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flush();
+    });
+    window.addEventListener("pagehide", flush);
+  }
 }
 
 async function flushLibrarySave(get: () => State) {
@@ -2465,11 +2516,7 @@ async function flushLibrarySave(get: () => State) {
     revision: s.libraryRevision,
     ...force,
   };
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(payload));
-  } catch {
-    /* */
-  }
+  mirrorLibraryLocal(get);
   try {
     const lib = await api.saveLibrary(payload);
     const rev = Number(lib.revision ?? 0) || 0;

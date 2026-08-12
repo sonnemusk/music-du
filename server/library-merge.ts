@@ -109,11 +109,140 @@ export function planListUpserts(
   return out;
 }
 
+/**
+ * P1-1: history uses monotonic pos (ORDER BY pos ASC = oldest→? wait ASC low first).
+ * Client list is newest-first; lowest pos = newest.
+ * - Keep existing pos when possible
+ * - Head (newest) gets min(pos)-1 if not already strictly first
+ * - Brand-new sids get min-1
+ * - Drop sids not in capped client list
+ * Write ops stay O(1) per play (typically 1–2 upserts + ≤1 delete).
+ */
+export function planHistoryWrites(
+  existing: Array<{ sid: string; pos: number }>,
+  incoming: any[] | undefined,
+  cap: number
+): {
+  upserts: { sid: string; pos: number; track: LibTrack }[];
+  deleteSids: string[];
+  writeOps: number;
+} {
+  const posBySid = new Map<string, number>();
+  for (const row of existing || []) {
+    const sid = String(row.sid);
+    const pos = Number(row.pos);
+    if (!sid || Number.isNaN(pos)) continue;
+    posBySid.set(sid, pos);
+  }
+
+  const client: { sid: string; track: LibTrack }[] = [];
+  const seen = new Set<string>();
+  for (const raw of incoming || []) {
+    const t = sanitizeLibTrack(raw);
+    if (!t) continue;
+    const sid = String(t.id);
+    if (seen.has(sid)) continue;
+    seen.add(sid);
+    if (client.length >= cap) break;
+    client.push({ sid, track: t });
+  }
+
+  const keep = new Set(client.map((c) => c.sid));
+  const deleteSids: string[] = [];
+  for (const sid of posBySid.keys()) {
+    if (!keep.has(sid)) deleteSids.push(sid);
+  }
+
+  const minKept = (): number => {
+    let m = 0;
+    let any = false;
+    for (const [sid, pos] of posBySid) {
+      if (!keep.has(sid) && !client.some((c) => c.sid === sid)) continue;
+      if (keep.has(sid) || client.some((c) => c.sid === sid)) {
+        if (!any || pos < m) {
+          m = pos;
+          any = true;
+        }
+      }
+    }
+    // include already-assigned working positions
+    return any ? m : 0;
+  };
+
+  // Working map: start from existing, drop deletes
+  const work = new Map<string, number>();
+  for (const [sid, pos] of posBySid) {
+    if (keep.has(sid)) work.set(sid, pos);
+  }
+
+  const upserts: { sid: string; pos: number; track: LibTrack }[] = [];
+  const bumpFront = (sid: string, track: LibTrack) => {
+    let m = 0;
+    let any = false;
+    for (const p of work.values()) {
+      if (!any || p < m) {
+        m = p;
+        any = true;
+      }
+    }
+    const newPos = any ? m - 1 : -1;
+    const prev = work.get(sid);
+    if (prev === newPos) return;
+    work.set(sid, newPos);
+    upserts.push({ sid, pos: newPos, track });
+  };
+
+  for (let i = 0; i < client.length; i++) {
+    const { sid, track } = client[i];
+    if (!work.has(sid)) {
+      // new sid → front-ish: always allocate below current min
+      let m = 0;
+      let any = false;
+      for (const p of work.values()) {
+        if (!any || p < m) {
+          m = p;
+          any = true;
+        }
+      }
+      const newPos = any ? m - 1 : -1 - i;
+      work.set(sid, newPos);
+      upserts.push({ sid, pos: newPos, track });
+    } else if (i === 0) {
+      // ensure head is strictly newest (lowest pos)
+      const headPos = work.get(sid)!;
+      let otherMin = Infinity;
+      for (const [s, p] of work) {
+        if (s !== sid && p < otherMin) otherMin = p;
+      }
+      if (otherMin !== Infinity && headPos >= otherMin) {
+        bumpFront(sid, track);
+      }
+    }
+  }
+
+  void minKept;
+  return {
+    upserts,
+    deleteSids,
+    writeOps: upserts.length + deleteSids.length,
+  };
+}
+
+/** Constant-time equality for equal-length strings (timing-safe token check). */
+export function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let x = 0;
+  for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return x === 0;
+}
+
 /** Library token check (pure). Empty expected → allow (local/dev). */
 export function libraryTokenOk(expected: string | undefined, got: string | undefined): boolean {
   const exp = (expected || "").trim();
   if (!exp) return true;
-  return Boolean(got && got.trim() === exp);
+  const g = (got || "").trim();
+  if (!g) return false;
+  return timingSafeEqualStr(exp, g);
 }
 
 /**
