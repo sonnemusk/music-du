@@ -106,24 +106,29 @@ tab 被压成竖排单字，40 行歌曲变成一列噪点。49 个主题里 21 
 把这四个数字的实测值贴出来。
 ```
 
-### M-2 头部把搜索框挤到 24px
+### M-2 窄屏搜索按需出现（修订：勿再做「两行常驻搜索」）
+
+> 终态方案：`docs/SEARCH-MOBILE-PLAN.md`。原「两行 head 撑常驻框」已废弃为终态。
 
 ```
-项目 music-du。先读 docs/OPTIMIZATION-PLAN.md 与 docs/GROK-RUNBOOK.md 的「通用约束」，严格遵守。
-本轮只做 M-2，其他条目一律不动。
+项目 music-du。先读 docs/OPTIMIZATION-PLAN.md、docs/SEARCH-MOBILE-PLAN.md 与
+docs/GROK-RUNBOOK.md 的「通用约束」，严格遵守。
+本轮只做 M-2（搜索 IA），其他条目一律不动。
 
-layouts.css:30-37 的 .skin-head__main 是 flex-wrap:nowrap，.skin-brand（:39-52）和
-.skin-head__tools（:110-117）都是 flex:0 0 auto 不收缩，唯一可伸缩的 .skin-search（:67-76）
-承担全部挤压，实测宽度只剩 24–47px，输入框只能显示半个占位字。
+背景：头部全局 SearchBar + 「搜索」tab 双入口；窄屏常驻框被压到 24–47px，且浏览
+热榜/库/词时不需要搜索行。不要再做「两行 head 整宽常驻 search」作为终态。
 
-按计划文档 M-2 的三步改：≤720px 时头部改两行（第一行 brand+tools，第二行整宽 search）、
-手机上收起 .skin-brand__theme、工具区在手机上只留「主题」一个入口
-（顺手给 LocaleSwitcher 独立类名，它现在复用了 .skin-switcher__btn，见 components/LocaleSwitcher.tsx:12）。
-注意：SkinHead 的 DOM 契约在 layouts/shared.tsx，用 CSS order + flex-basis 实现，不要改结构。
+按 SEARCH-MOBILE-PLAN 方案 A：
+- ≤720px：头部不展示整行 SearchBar；仅 tab===search 时在面板顶部满宽 SearchBar；
+  可选头部 🔍 → setTab("search")+focus。
+- >720px：保留头部常驻 SearchBar。
+- 仍做：收起 .skin-brand__theme；工具区简化；LocaleSwitcher 独立类名。
 
-验收（附录 A 脚本，两个视口）：
-- .skin-search input 宽度 ≥ 0.6 × 视口宽（现状 390 下 24–47）
-- 头部 .skin-head 总高 ≤ 112px
+验收（390/320 + 桌面）：
+- 非 search tab：.skin-head 内无可见搜索 input
+- search tab：input 宽 ≥ innerWidth-32
+- 热榜 rowsVisible 不因搜索行变差
+- 桌面 1440 头搜仍可用
 贴实测值。
 ```
 

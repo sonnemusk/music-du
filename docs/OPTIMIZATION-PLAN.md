@@ -117,18 +117,28 @@ node /tmp/audit.mjs    # 见 §附录 A
 
 **验收**：390 与 320 两个视口下 `.imm-sheet` 宽度 ≥ 视口宽度 − 32px；首行 `.track-row` 的 y < 视口高度；前 8 行歌名截断数 = 0。
 
-### M-2 头部单行三段式把搜索框压到 24px（影响全部 49 主题）
+### M-2 头部搜索：从「撑开常驻框」改为「窄屏按需出现」（影响全部 49 主题）
 
-**现状**：`layouts.css:30-37` 的 `.skin-head__main` 是 `flex-wrap: nowrap`，`.skin-brand`（`:39-52`，`flex: 0 0 auto` + `overflow: visible`）和 `.skin-head__tools`（`:110-117`，`flex: 0 0 auto`）都不收缩，唯一可伸缩的 `.skin-search`（`:67-76`，`flex: 1 1 0; min-width: 0`）承担全部挤压 → 实测 24–47px，输入框只能显示半个占位字。工具区在手机上还并排放着 3 个按钮（语言、主题名、切换）。
+> **方案修订（2026-08-12）**：终态见 `docs/SEARCH-MOBILE-PLAN.md`。  
+> 原「两行 head + 常驻 searchW≥60%」仅作中间态/样稿；**不再作为终态验收**。
 
-**目标**：手机上搜索框可用宽度 ≥ 视口 60%。
+**现状**：`layouts.css:30-37` 的 `.skin-head__main` 是 `flex-wrap: nowrap`，`.skin-brand` 与 `.skin-head__tools` 不收缩，`.skin-search` 被压到 24–47px。更关键的是：已有「搜索」tab，头部仍全局挂 `SearchBar`（`layouts/shared.tsx`），窄屏浏览热榜/库/词时搜索框常驻占位，与 M-3 抢垂直空间。
 
-**改法**
-1. `max-width: 720px` 时把头部改成两行：第一行 `brand + tools`，第二行整宽 `search`。`SkinHead` 的 DOM 契约在 `layouts/shared.tsx`，用 CSS `order` + `flex-basis: 100%` 实现，不动结构。
-2. 手机上收起 `.skin-brand__theme`（`layouts.css:60-65`，主题名对移动端没信息价值，主题名已在工具区按钮里出现一次）。
-3. 工具区在手机上合并：语言切换收进主题面板，头部只留「主题」一个入口（`LocaleSwitcher` 复用了 `.skin-switcher__btn` 类名，见 `components/LocaleSwitcher.tsx:12`，顺手给它独立类名，避免选择器互相牵连）。
+**目标**
+- **≤720px**：默认头部 **无** 整行搜索框；仅在 `tab === "search"` 时于面板顶展示满宽输入（可选头部 🔍 一切入搜索并 focus）。
+- **>720px**：可保留头部常驻 `SearchBar`（桌面效率）。
 
-**验收**：390 和 320 两个视口下 `.skin-search input` 宽度 ≥ `0.6 × innerWidth`；头部总高 ≤ 112px。
+**改法**（摘要，细节以 SEARCH-MOBILE-PLAN 为准）
+1. 窄屏：头内不展示 `SearchBar`；搜索 tab 面板顶部挂满宽 `SearchBar`。
+2. 可选：头内 🔍 → `setTab("search")` + focus。
+3. 仍做：手机收起 `.skin-brand__theme`；工具区合并（语言进主题面板）；`LocaleSwitcher` 独立类名。
+4. **不要**把「第二行整宽常驻 search」当作终态。
+
+**验收**（390 / 320）
+1. 非搜索 tab：`.skin-head` 内无可见搜索 input。
+2. 搜索 tab：input 宽 ≥ `innerWidth - 32`。
+3. 热榜 tab 列表可见行数不因搜索行变差（配合 M-3，≥3）。
+4. 桌面 1440：头部搜索仍可用。
 
 ### M-3 空闲状态下播放器吃掉半屏到全屏，列表在首屏之外
 
