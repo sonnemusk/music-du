@@ -95,10 +95,8 @@ assert len(fav) >= 1, 'favorites empty on demo — check D1 binding'
   exit 0
 fi
 
-echo "==> library (token when configured)"
-if [[ -n "${MUSIC_ACCESS_TOKEN:-}" ]]; then
-  curl -fsS "${AUTH_HEADERS[@]}" -H "X-Music-Token: ${MUSIC_ACCESS_TOKEN}" \
-    "$BASE/api/library" | python3 -c "
+echo "==> library (Cloudflare Access / service token only)"
+curl -fsS "${AUTH_HEADERS[@]}" "$BASE/api/library" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 assert d.get('ok') is True, d
@@ -107,16 +105,9 @@ fav = data.get('favorites') or []
 print('library ok fav=', len(fav), 'revision=', data.get('revision'))
 assert len(fav) >= 1, 'favorites empty — check D1 restore'
 "
-else
-  echo "skip library (no MUSIC_ACCESS_TOKEN in env)"
-fi
 
 echo "==> favs export (Access login or service token → 200 JSON)"
-FAVS_HEADERS=("${AUTH_HEADERS[@]}")
-if [[ -n "${MUSIC_ACCESS_TOKEN:-}" ]]; then
-  FAVS_HEADERS+=(-H "X-Music-Token: ${MUSIC_ACCESS_TOKEN}")
-fi
-code=$(curl -sS "${FAVS_HEADERS[@]}" -o /tmp/smoke-favs.body -w '%{http_code}' "$BASE/favs" || true)
+code=$(curl -sS "${AUTH_HEADERS[@]}" -o /tmp/smoke-favs.body -w '%{http_code}' "$BASE/favs" || true)
 echo "favs HTTP $code"
 case "$code" in
   200)

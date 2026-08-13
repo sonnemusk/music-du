@@ -27,7 +27,7 @@ function tmpLib() {
 
 describe("Hono app API", () => {
   it("health", async () => {
-    const app = createApp({ library: tmpLib(), apikey: "", accessToken: "", readonly: false });
+    const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
     const r = await app.request("/api/health");
     const j = await r.json();
     expect(j.ok).toBe(true);
@@ -36,7 +36,7 @@ describe("Hono app API", () => {
   });
 
   it("charts platforms list", async () => {
-    const app = createApp({ library: tmpLib(), apikey: "x", accessToken: "", readonly: false });
+    const app = createApp({ library: tmpLib(), apikey: "x", readonly: false });
     const r = await app.request("/api/charts");
     expect(r.status).toBe(200);
     const j = await r.json();
@@ -45,7 +45,7 @@ describe("Hono app API", () => {
   });
 
   it("charts unknown platform 400", async () => {
-    const app = createApp({ library: tmpLib(), apikey: "x", accessToken: "", readonly: false });
+    const app = createApp({ library: tmpLib(), apikey: "x", readonly: false });
     const r = await app.request("/api/charts/not-a-platform");
     expect(r.status).toBe(400);
     const j = await r.json();
@@ -54,7 +54,7 @@ describe("Hono app API", () => {
 
   it("search without key is allowed (free .top primary)", async () => {
     // free primary needs no apikey; without transport, real upstream may 200 or soft-fail
-    const app = createApp({ library: tmpLib(), apikey: "", accessToken: "", readonly: false });
+    const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
     // inject transport so test is offline-stable
     const chksz = await import("../server/chksz.js");
     chksz.setHttpTransport(async () => ({
@@ -76,7 +76,7 @@ describe("Hono app API", () => {
   });
 
   it("library history DELETE sticks", async () => {
-    const app = createApp({ library: tmpLib(), apikey: "x", accessToken: "", readonly: false });
+    const app = createApp({ library: tmpLib(), apikey: "x", readonly: false });
     const put = await app.request("/api/library", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -110,7 +110,7 @@ describe("Hono app API", () => {
         data: [{ id: 9, name: "T", ar: [{ name: "A" }], al: { name: "Al", picUrl: "http://x" } }],
       }),
     }));
-    const app = createApp({ library: tmpLib(), apikey: "chksz_test_fixture_key", accessToken: "", readonly: false });
+    const app = createApp({ library: tmpLib(), apikey: "chksz_test_fixture_key", readonly: false });
     const r = await app.request("/api/search?q=hello");
     const j = await r.json();
     expect(j.ok).toBe(true);

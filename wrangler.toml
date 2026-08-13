@@ -3,7 +3,7 @@
 # Fork checklist:
 #   1. Change `name` / D1 `database_name`
 #   2. Run `npm run setup:d1` and paste your database_id below
-#   3. `npx wrangler secret put` for gateway keys + MUSIC_ACCESS_TOKEN
+#   3. `npx wrangler secret put` for gateway keys
 #   4. Bind custom domains in the Cloudflare dashboard
 #
 # Free tier: no R2 / paid KV. Audio is never stored on Cloudflare (302 to CDN).
@@ -23,10 +23,6 @@ head_sampling_rate = 0.05
 [vars]
 CHKSZ_API_BASE = "https://api.chksz.top"
 CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
-# Fail closed if MUSIC_ACCESS_TOKEN secret missing on these hosts (comma-separated).
-# Forks: set your own domain or leave empty.
-LIBRARY_TOKEN_REQUIRED_HOSTS = "music.dubin.cc,music.dubin.one,music.dubin.vip,dubin.cc,dubin.one,dubin.vip"
-
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
@@ -42,7 +38,7 @@ migrations_dir = "migrations"
 # ── Optional public demo (read-only library) ────────────────────────────────
 # Deploy: npm run deploy:cf:demo
 # Bind a separate hostname; do NOT put it behind private Access.
-# Secrets: gateway keys only (no MUSIC_ACCESS_TOKEN).
+# Secrets: gateway keys only.
 # Demo uses a separate D1 (seeded once from prod); LIBRARY_READONLY blocks all writes.
 [env.demo]
 name = "music-du-demo"

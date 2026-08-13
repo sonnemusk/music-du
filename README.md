@@ -91,7 +91,6 @@ Self-host the **writable** app. You do **not** need the demo Worker.
 ```bash
 # Cloudflare (most common)
 npm run setup:d1
-npx wrangler secret put MUSIC_ACCESS_TOKEN       # if you want a private library
 npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if backup gateway needs keys
 npm run deploy:cf
 ```
@@ -105,7 +104,6 @@ npm run deploy:cf
 | Variable | Role |
 |----------|------|
 | `CHKSZ_API_BASE` / `CHKSZ_FALLBACK_*` | Music gateway (server only) |
-| `MUSIC_ACCESS_TOKEN` | Protects library API |
 | `LIBRARY_READONLY` | Demo only — leave unset for your site |
 | `HOST` / `PORT` / `MUSIC_DATA_DIR` | Node |
 

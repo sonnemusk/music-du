@@ -1,6 +1,6 @@
 # Fly.io example — https://fly.io/docs/
 #   fly launch --no-deploy
-#   fly secrets set CHKSZ_APIKEY=... MUSIC_ACCESS_TOKEN=...
+#   fly secrets set CHKSZ_FALLBACK_APIKEYS=...
 #   fly volumes create music_data --size 1
 #   fly deploy
 

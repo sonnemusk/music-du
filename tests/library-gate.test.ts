@@ -16,26 +16,8 @@ describe("libraryGate Q-2", () => {
     expect(libraryGate({ method: "GET", readonly: true }).ok).toBe(true);
   });
 
-  it("requires matching token when configured", () => {
-    const g = libraryGate({
-      method: "GET",
-      expectedToken: "secret",
-      tokenHeader: "wrong",
-    });
-    expect(g.ok).toBe(false);
-    if (!g.ok) expect(g.status).toBe(401);
-    expect(
-      libraryGate({ method: "GET", expectedToken: "secret", tokenHeader: "secret" }).ok
-    ).toBe(true);
-  });
-
-  it("accepts Bearer Authorization", () => {
-    expect(
-      libraryGate({
-        method: "PUT",
-        expectedToken: "tok",
-        authHeader: "Bearer tok",
-      }).ok
-    ).toBe(true);
+  it("allows writes without an app token", () => {
+    expect(libraryGate({ method: "PUT" }).ok).toBe(true);
+    expect(libraryGate({ method: "DELETE" }).ok).toBe(true);
   });
 });

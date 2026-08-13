@@ -91,7 +91,6 @@ npm ci && npm run dev   # http://127.0.0.1:8787
 ```bash
 # Cloudflare（最常用）
 npm run setup:d1
-npx wrangler secret put MUSIC_ACCESS_TOKEN       # 私人曲库建议配置
 npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # 备用网关需要时
 npm run deploy:cf
 ```
@@ -105,7 +104,6 @@ npm run deploy:cf
 | 变量 | 作用 |
 |------|------|
 | `CHKSZ_API_BASE` / `CHKSZ_FALLBACK_*` | 音乐网关（仅服务端） |
-| `MUSIC_ACCESS_TOKEN` | 保护曲库 API |
 | `LIBRARY_READONLY` | 仅 Demo — 自建不要设 |
 | `HOST` / `PORT` / `MUSIC_DATA_DIR` | Node |
 

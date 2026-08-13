@@ -39,7 +39,6 @@ import {
 import type { Track } from "./types.js";
 import {
   libraryRevisionOk,
-  libraryTokenOk,
   mergeTrackList,
   nextLibraryRevision,
   planHistoryWrites,
@@ -62,21 +61,11 @@ export type Env = {
   /** Comma-separated keys for fallback host (round-robin) */
   CHKSZ_FALLBACK_APIKEYS?: string;
   /**
-   * Shared secret for /api/library only (SPA X-Music-Token).
-   * /favs + /export are gated by Cloudflare Access (not this token).
-   * Demo (LIBRARY_READONLY): token not required for GET library.
-   */
-  MUSIC_ACCESS_TOKEN?: string;
-  /**
-   * Demo / public share: library is read-only; no import/export; no token on GET.
+   * Demo / public share: library is read-only; no import/export.
    * Set "true" on demo Worker only — never on a writable production Worker.
+   * Private site auth is Cloudflare Access at the edge, not an app token.
    */
   LIBRARY_READONLY?: string;
-  /**
-   * Comma-separated hostnames that must have MUSIC_ACCESS_TOKEN configured
-   * (fail closed with 503 if token secret missing). Example: app.example.com
-   */
-  LIBRARY_TOKEN_REQUIRED_HOSTS?: string;
   ASSETS: Fetcher;
   /** Free D1 library binding MUSIC_DU_DB. */
   MUSIC_DU_DB?: D1Database;
@@ -470,61 +459,6 @@ function readOnlyForbidden(message = "read-only demo"): Response {
   );
 }
 
-/**
- * Library gate for private site: MUSIC_ACCESS_TOKEN when configured.
- * Demo (LIBRARY_READONLY): public GET library — no token.
- */
-function libraryUnauthorized(c: {
-  env: Env;
-  req: { header: (n: string) => string | undefined; url: string };
-}): Response | null {
-  // Public demo: library is open read (writes blocked elsewhere)
-  if (envReadonly(c.env)) return null;
-
-  const expected = (c.env.MUSIC_ACCESS_TOKEN || "").trim();
-  if (!expected) {
-    // Fail closed on hosts listed in LIBRARY_TOKEN_REQUIRED_HOSTS (comma-separated)
-    try {
-      const host = new URL(c.req.url).hostname.toLowerCase();
-      const required = String(c.env.LIBRARY_TOKEN_REQUIRED_HOSTS || "")
-        .split(/[,;\s]+/)
-        .map((h) => h.trim().toLowerCase())
-        .filter(Boolean);
-      const hit = required.some(
-        (h) => host === h || host.endsWith("." + h)
-      );
-      if (hit) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: "MUSIC_ACCESS_TOKEN not configured on worker",
-          }),
-          { status: 503, headers: { "Content-Type": "application/json;charset=utf-8" } }
-        );
-      }
-    } catch {
-      /* */
-    }
-    return null;
-  }
-  const header = (c.req.header("X-Music-Token") || c.req.header("x-music-token") || "").trim();
-  let cookieTok = "";
-  try {
-    const cookie = c.req.header("Cookie") || "";
-    const m = cookie.match(/(?:^|;\s*)music_tok=([^;]+)/);
-    if (m) cookieTok = decodeURIComponent(m[1]);
-  } catch {
-    /* */
-  }
-  // Query ?token= is rejected (logs / Referer leak). Header or cookie only.
-  const got = header || cookieTok.trim();
-  if (libraryTokenOk(expected, got)) return null;
-  return new Response(
-    JSON.stringify({ ok: false, error: "unauthorized — set X-Music-Token" }),
-    { status: 401, headers: { "Content-Type": "application/json;charset=utf-8" } }
-  );
-}
-
 function withKey(env: Env) {
   // Patch process-less env for chksz via opts
   return env.CHKSZ_APIKEY || "";
@@ -534,10 +468,6 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.get("/api/health", (c) => {
   const readOnly = envReadonly(c.env);
-  // P1-5c: never leak upstream bases on public health (token holders get them)
-  const tok = (c.req.header("X-Music-Token") || c.req.header("x-music-token") || "").trim();
-  const showBases =
-    Boolean(tok) && libraryTokenOk(c.env.MUSIC_ACCESS_TOKEN, tok);
   return c.json({
     ok: true,
     service: "music",
@@ -547,15 +477,9 @@ app.get("/api/health", (c) => {
     has_apikey: Boolean(c.env.CHKSZ_APIKEY || c.env.CHKSZ_FALLBACK_APIKEYS),
     has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS || c.env.CHKSZ_APIKEY),
     primary_needs_key: false,
-    ...(showBases
-      ? {
-          api_base: c.env.CHKSZ_API_BASE || "https://api.chksz.top",
-          fallback_base: c.env.CHKSZ_FALLBACK_BASE || "https://api.chksz.com",
-        }
-      : {}),
     has_d1: Boolean(c.env.MUSIC_DU_DB),
-    // Demo: no library token; private: token when configured
-    library_auth: readOnly ? false : Boolean(c.env.MUSIC_ACCESS_TOKEN),
+    // Private site: Cloudflare Access. Demo: open read, writes 403.
+    library_auth: false,
     readOnly,
     project: readOnly ? "music-du-demo" : "music-du",
     /** Free-tier contract for operators */
@@ -1030,8 +954,6 @@ app.get("/api/cover-proxy", async (c) => {
 });
 
 app.get("/api/library", async (c) => {
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   // No D1 → 503 so client falls back to localStorage (free, no paid store)
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
@@ -1067,8 +989,6 @@ async function favoritesExportResponse(c: {
   if (envReadonly(c.env)) {
     return readOnlyForbidden("export disabled on demo");
   }
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return new Response(
       JSON.stringify({
@@ -1209,8 +1129,6 @@ app.get("/import", (c) => {
       403
     );
   }
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   return c.html(favoritesImportHtml());
 });
 
@@ -1224,8 +1142,6 @@ app.post("/import", async (c) => {
       403
     );
   }
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return c.html(favoritesImportHtml("D1 未配置，无法导入"), 503);
   }
@@ -1397,8 +1313,6 @@ app.post("/import", async (c) => {
 
 app.put("/api/library", async (c) => {
   if (envReadonly(c.env)) return readOnlyForbidden();
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
       { ok: false, error: "D1 not configured — browser localStorage only (free)", localOnly: true },
@@ -1471,8 +1385,6 @@ app.put("/api/library", async (c) => {
 
 app.delete("/api/library/:listType/:sid", async (c) => {
   if (envReadonly(c.env)) return readOnlyForbidden();
-  const denied = libraryUnauthorized(c);
-  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return c.json(
       { ok: false, error: "D1 not configured — browser localStorage only (free)", localOnly: true },

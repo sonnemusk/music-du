@@ -8,34 +8,8 @@ import type {
   Track,
 } from "./types";
 
-const TOKEN_LS = "music.accessToken";
-
-/** Library access token — localStorage, or Vite build env. */
-export function getAccessToken(): string {
-  try {
-    const ls = localStorage.getItem(TOKEN_LS);
-    if (ls?.trim()) return ls.trim();
-  } catch {
-    /* */
-  }
-  const envTok = (import.meta as any).env?.VITE_MUSIC_ACCESS_TOKEN;
-  return typeof envTok === "string" ? envTok.trim() : "";
-}
-
-export function setAccessToken(token: string) {
-  try {
-    if (token.trim()) localStorage.setItem(TOKEN_LS, token.trim());
-    else localStorage.removeItem(TOKEN_LS);
-  } catch {
-    /* */
-  }
-}
-
 function withAuthHeaders(init?: RequestInit): RequestInit {
-  const headers = new Headers(init?.headers || {});
-  const tok = getAccessToken();
-  if (tok) headers.set("X-Music-Token", tok);
-  return { credentials: "same-origin", ...init, headers };
+  return { credentials: "same-origin", ...init };
 }
 
 function accessLoginHint(): string {

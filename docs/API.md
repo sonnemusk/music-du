@@ -18,11 +18,10 @@ Status codes: `200` success · `4xx` client · `5xx` upstream/server.
 | Mechanism | Applies to | Header / cookie |
 |-----------|------------|-----------------|
 | **None** | Search, song, lyric, charts, health, stream, cover (typical) | — |
-| **`MUSIC_ACCESS_TOKEN`** | `/api/library*`, `/favs`, `/export`, `/import` when secret is set | `X-Music-Token: <token>` (or cookie `music_tok`; `?token=` is rejected) |
-| **Cloudflare Access** (optional edge) | Whole site or `/favs` `/import` | Access JWT / service token headers |
+| **Cloudflare Access** (private installs) | Whole site, including library / `/favs` / `/import` | Access JWT / service token headers |
 | **`LIBRARY_READONLY=true`** | Worker demo mode | All library **writes** + import/export → `403` |
 
-SPA stores the token in `localStorage` key `music.accessToken`. Do **not** bake `VITE_MUSIC_ACCESS_TOKEN` into production builds.
+Private sites do not use an app-level library token. Access at the edge is enough.
 
 ---
 
@@ -42,7 +41,7 @@ Liveness + feature flags.
 | `provider` | string | Upstream adapter id (`chksz`) |
 | `has_apikey` | boolean | Fallback keys configured |
 | `has_d1` | boolean | D1 bound (Worker) |
-| `library_auth` | boolean | Library token expected |
+| `library_auth` | boolean | Always false — library uses edge Access, not an app token |
 | `readOnly` | boolean | Demo read-only mode |
 | `project` | string | `music-du` / `music-du-demo` |
 | `policy` | object | Free-tier / library policy hints |
@@ -178,7 +177,7 @@ Library stores **metadata only** (ids, names, covers) — not audio files.
 
 ### `GET /api/library`
 
-Requires token when `MUSIC_ACCESS_TOKEN` is set (except Worker `LIBRARY_READONLY` demo).
+Private installs: same Cloudflare Access session as the rest of the site. Demo: public GET, writes 403.
 
 **Response:**
 
@@ -204,7 +203,7 @@ Requires token when `MUSIC_ACCESS_TOKEN` is set (except Worker `LIBRARY_READONLY
 
 Merge client lists into server store.
 
-**Headers:** `Content-Type: application/json` · `X-Music-Token` if configured  
+**Headers:** `Content-Type: application/json`
 
 **Body:**
 
@@ -303,7 +302,6 @@ Stored in **browser `localStorage`** (not D1):
 
 | Status | Meaning |
 |--------|---------|
-| 401 | Missing/wrong `X-Music-Token` |
 | 403 | Read-only demo / export disabled |
 | 404 | Song resolve miss |
 | 409 | Library revision conflict |

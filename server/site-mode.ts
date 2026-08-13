@@ -44,44 +44,17 @@ export function envLibraryReadonly(): boolean {
 }
 
 /**
- * Q-2: library gate for Node (and tests).
- * - readonly → GET ok, write forbidden
- * - MUSIC_ACCESS_TOKEN set → require matching X-Music-Token (or Authorization Bearer)
- * - token unset → allow (local dev) unless requireToken=true
+ * Library mutations: demo readonly is the only app-layer gate.
+ * Private installs rely on Cloudflare Access at the edge.
  */
 export function libraryGate(opts: {
   method: string;
-  tokenHeader?: string | null;
-  authHeader?: string | null;
-  expectedToken?: string | null;
   readonly?: boolean;
-  requireToken?: boolean;
 }): { ok: true } | { ok: false; status: number; error: string; readOnly?: boolean } {
   const readonly = opts.readonly ?? false;
   const method = (opts.method || "GET").toUpperCase();
   if (readonly && method !== "GET" && method !== "HEAD") {
     return { ok: false, status: 403, error: "read-only demo", readOnly: true };
-  }
-  const expected = (opts.expectedToken || "").trim();
-  if (!expected) {
-    if (opts.requireToken) {
-      return { ok: false, status: 503, error: "MUSIC_ACCESS_TOKEN not configured" };
-    }
-    return { ok: true };
-  }
-  let got = (opts.tokenHeader || "").trim();
-  if (!got && opts.authHeader) {
-    const m = /^Bearer\s+(.+)$/i.exec(opts.authHeader.trim());
-    if (m) got = m[1].trim();
-  }
-  // reuse timing-safe from library-merge via dynamic simple check length first
-  if (!got || got.length !== expected.length) {
-    return { ok: false, status: 401, error: "unauthorized — set X-Music-Token" };
-  }
-  let x = 0;
-  for (let i = 0; i < expected.length; i++) x |= expected.charCodeAt(i) ^ got.charCodeAt(i);
-  if (x !== 0) {
-    return { ok: false, status: 401, error: "unauthorized — set X-Music-Token" };
   }
   return { ok: true };
 }

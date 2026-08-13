@@ -45,8 +45,6 @@ Fill `.env` (names only — see [`.env.example`](../.env.example)):
 |----------|----------|--------|
 | `CHKSZ_API_BASE` | No | Default free primary gateway |
 | `CHKSZ_FALLBACK_BASE` / `CHKSZ_FALLBACK_APIKEYS` | If using paid fallback | Server-only |
-| `MUSIC_ACCESS_TOKEN` | Recommended for private | Protects library API |
-| `VITE_MUSIC_ACCESS_TOKEN` | Do not set in production | Bakes the library write token into the SPA JS |
 | `HOST` / `PORT` | Node | Default `127.0.0.1:8787` |
 | `MUSIC_DATA_DIR` | Node | Default `./data` |
 | `LIBRARY_READONLY` | **Demo only — leave unset for your site** | `true` = no library writes / no export |
@@ -75,18 +73,14 @@ npx wrangler d1 migrations apply music-du-library --remote
 3. Secrets:
 
 ```bash
-npx wrangler secret put MUSIC_ACCESS_TOKEN
 npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if needed
 # optional: CHKSZ_APIKEY
 ```
 
-4. Optional vars in `wrangler.toml` `[vars]` for **your** Worker:
-
-- `LIBRARY_TOKEN_REQUIRED_HOSTS = "your.domain.com"` — fail closed if token secret missing  
-- **Do not** set `LIBRARY_READONLY` on the main Worker  
+4. **Do not** set `LIBRARY_READONLY` on the main Worker.
 
 5. Custom domain: Workers → your Worker → **Domains & Routes** → add hostname.  
-6. Optional: [Cloudflare Access](./ACCESS.md) on private hostnames.
+6. Put [Cloudflare Access](./ACCESS.md) on private hostnames — that session is library permission.
 
 ### 1.2 Deploy (your site — default)
 
@@ -127,7 +121,7 @@ LIBRARY_READONLY = "true"
 
 ```bash
 cp .env.example .env
-# edit .env — set MUSIC_ACCESS_TOKEN, gateway keys, HOST=0.0.0.0, PORT=8787
+# edit .env — set gateway keys, HOST=0.0.0.0, PORT=8787
 npm ci
 npm run build
 NODE_ENV=production node dist/server/node.js
@@ -172,7 +166,6 @@ docker build -t music-du .
 docker run -d --name music-du \
   -p 8787:8787 \
   -v music-data:/data \
-  -e MUSIC_ACCESS_TOKEN=… \
   -e CHKSZ_FALLBACK_APIKEYS=… \
   -e HOST=0.0.0.0 \
   music-du
@@ -188,7 +181,7 @@ Files: [`Dockerfile`](../Dockerfile), [`fly.toml`](../fly.toml)
 # install flyctl, login
 fly launch --no-deploy   # or edit fly.toml app name
 fly volumes create music_data --size 1 --region nrt
-fly secrets set MUSIC_ACCESS_TOKEN="…" CHKSZ_FALLBACK_APIKEYS="…"
+fly secrets set CHKSZ_FALLBACK_APIKEYS="…"
 fly deploy
 fly status
 fly open
@@ -251,7 +244,7 @@ Would need a rewrite to serverless handlers + external Postgres/Turso for librar
 ```bash
 curl -sS "$BASE/api/health" | jq .
 curl -sS "$BASE/api/search?q=test&limit=1" | jq .
-curl -sS -H "X-Music-Token: $MUSIC_ACCESS_TOKEN" "$BASE/api/library" | jq .
+curl -sS "$BASE/api/library" | jq .
 # demo only:
 curl -sS -o /dev/null -w "%{http_code}\n" -X PUT "$BASE/api/library"  # expect 403
 ```
@@ -263,10 +256,9 @@ Or: `SMOKE_BASE=https://your.host bash scripts/smoke-prod.sh`
 ## 7. Hardening private installs
 
 1. Cloudflare Access or reverse-proxy auth on the whole site  
-2. Strong `MUSIC_ACCESS_TOKEN`; do not bake into public demo builds  
-3. Rate-limit search/song at the edge if the site is public  
-4. Separate **demo** Worker with `LIBRARY_READONLY=true`  
-5. Read [MUSIC-PROVIDERS.md](./MUSIC-PROVIDERS.md) for API legality  
+2. Rate-limit search/song at the edge if the site is public  
+3. Separate **demo** Worker with `LIBRARY_READONLY=true`  
+4. Read [MUSIC-PROVIDERS.md](./MUSIC-PROVIDERS.md) for API legality  
 
 ---
 

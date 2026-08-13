@@ -12,7 +12,7 @@ Never commit:
 |----------------|-----|
 | `.env`, `.dev.vars` | Real tokens and gateway keys |
 | `data/*` (except `.gitkeep`) | Personal library / import dumps |
-| Baked `VITE_MUSIC_ACCESS_TOKEN` in public builds | Exposes library write token |
+| Worker / gateway secrets in source | Anyone with the repo can call your music API |
 
 Production secrets belong in:
 
@@ -23,7 +23,7 @@ Production secrets belong in:
 ## Trust model
 
 - The browser never needs the music **gateway** API key; only the server/Worker does.
-- `MUSIC_ACCESS_TOKEN` protects **library write/read APIs** when configured; put the SPA behind SSO/Access for private installs.
+- Private installs put the SPA behind **Cloudflare Access**; that session is the library permission.
 - `LIBRARY_READONLY=true` disables library mutations and import/export (public demo mode).
 
 ## Content & copyright

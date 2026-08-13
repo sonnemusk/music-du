@@ -185,16 +185,7 @@ describe("worker library routes", () => {
     expect(put.status).toBe(403);
   });
 
-  it("private: no token → 401 when MUSIC_ACCESS_TOKEN set", async () => {
-    const e = env({
-      MUSIC_DU_DB: createMockD1(),
-      MUSIC_ACCESS_TOKEN: "s3cret",
-    });
-    const r = await req("/api/library", { method: "GET", env: e });
-    expect(r.status).toBe(401);
-  });
-
-  it("private: with token → GET ok; history present", async () => {
+  it("private: GET library needs no app token (Access is at the edge)", async () => {
     const db = createMockD1();
     await db
       .prepare(
@@ -209,11 +200,10 @@ describe("worker library routes", () => {
       .bind("revision", "0")
       .run();
 
-    const e = env({ MUSIC_DU_DB: db, MUSIC_ACCESS_TOKEN: "s3cret" });
+    const e = env({ MUSIC_DU_DB: db });
     const r = await req("/api/library", {
       method: "GET",
       env: e,
-      headers: { "X-Music-Token": "s3cret" },
     });
     expect(r.status).toBe(200);
     const j = await r.json();
@@ -223,23 +213,14 @@ describe("worker library routes", () => {
   });
 
   it("missing D1 → 503 localOnly", async () => {
-    const e = env({ MUSIC_DU_DB: undefined as any, MUSIC_ACCESS_TOKEN: "" });
+    const e = env({ MUSIC_DU_DB: undefined as any });
     const r = await req("/api/library", { method: "GET", env: e });
     expect(r.status).toBe(503);
     const j = await r.json();
     expect(j.localOnly).toBe(true);
   });
 
-  it("private: /favs without token → 401", async () => {
-    const e = env({
-      MUSIC_DU_DB: createMockD1(),
-      MUSIC_ACCESS_TOKEN: "s3cret",
-    });
-    const r = await req("/favs", { method: "GET", env: e });
-    expect(r.status).toBe(401);
-  });
-
-  it("private: /favs with token → 200", async () => {
+  it("private: /favs needs no app token", async () => {
     const db = createMockD1();
     await db
       .prepare(
@@ -249,23 +230,14 @@ describe("worker library routes", () => {
       )
       .bind("favorites", "1", 0, "A", "Art", "", "", 0, "", 0, 0, 0, 1)
       .run();
-    const e = env({ MUSIC_DU_DB: db, MUSIC_ACCESS_TOKEN: "s3cret" });
+    const e = env({ MUSIC_DU_DB: db });
     const r = await req("/favs", {
       method: "GET",
       env: e,
-      headers: { "X-Music-Token": "s3cret" },
     });
     expect(r.status).toBe(200);
     const j = await r.json();
     expect(j.count).toBe(1);
   });
 
-  it("query token is not accepted", async () => {
-    const e = env({
-      MUSIC_DU_DB: createMockD1(),
-      MUSIC_ACCESS_TOKEN: "s3cret",
-    });
-    const r = await req("/api/library?token=s3cret", { method: "GET", env: e });
-    expect(r.status).toBe(401);
-  });
 });

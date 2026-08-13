@@ -22,26 +22,17 @@ import {
 export function createApp(opts?: {
   library?: ReturnType<typeof getLibrary>;
   apikey?: string;
-  /** Override env for tests */
-  accessToken?: string | null;
   readonly?: boolean;
 }) {
   const app = new Hono();
   const lib = opts?.library || getLibrary();
   const keyOf = () => opts?.apikey ?? CHKSZ_APIKEY;
-  const tokenOf = () =>
-    opts?.accessToken !== undefined
-      ? opts.accessToken
-      : process.env.MUSIC_ACCESS_TOKEN || "";
   const readonlyOf = () =>
     opts?.readonly !== undefined ? opts.readonly : envLibraryReadonly();
 
-  const checkLib = (c: { req: { method: string; header: (n: string) => string | undefined } }) =>
+  const checkLib = (c: { req: { method: string } }) =>
     libraryGate({
       method: c.req.method,
-      tokenHeader: c.req.header("X-Music-Token") || c.req.header("x-music-token"),
-      authHeader: c.req.header("Authorization"),
-      expectedToken: tokenOf(),
       readonly: readonlyOf(),
     });
 
@@ -49,7 +40,7 @@ export function createApp(opts?: {
     "/api/*",
     cors({
       origin: (origin) => origin || "*",
-      allowHeaders: ["Content-Type", "X-Music-Token", "Authorization"],
+      allowHeaders: ["Content-Type", "Authorization"],
     })
   );
 

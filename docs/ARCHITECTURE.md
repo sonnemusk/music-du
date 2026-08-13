@@ -20,9 +20,7 @@ SPA ──same-origin /api/*──► BFF
 ## Auth
 
 - Optional **Cloudflare Access** on private hostnames — [ACCESS.md](./ACCESS.md)  
-- Optional **`MUSIC_ACCESS_TOKEN`** for `/api/library*`  
 - Optional **`LIBRARY_READONLY`** (demo/showcase only — default installs leave unset)  
-- Optional **`LIBRARY_TOKEN_REQUIRED_HOSTS`** fail-closed list  
 
 ## Library multi-device
 
