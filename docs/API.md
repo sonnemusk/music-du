@@ -17,11 +17,11 @@ Status codes: `200` success · `4xx` client · `5xx` upstream/server.
 
 | Mechanism | Applies to | Header / cookie |
 |-----------|------------|-----------------|
-| **None** | Search, song, lyric, charts, health, stream, cover (typical) | — |
-| **Cloudflare Access** (private installs) | Whole site, including library / `/favs` / `/import` | Access JWT / service token headers |
-| **`LIBRARY_READONLY=true`** | Worker demo mode | All library **writes** + import/export → `403` |
+| **None (demo)** | Public demo: search, play, charts, `GET /api/library` | — |
+| **Cloudflare Access (private only)** | Private hostname: whole site including library writes | Access JWT / CI service token |
+| **`LIBRARY_READONLY=true` (demo only)** | Demo writes, `/favs`, `/import` | Always **403** |
 
-Private sites do not use an app-level library token. Access at the edge is enough.
+Demo must not sit behind Access. Private site uses Access only — no `X-Music-Token`.
 
 ---
 
@@ -41,8 +41,8 @@ Liveness + feature flags.
 | `provider` | string | Upstream adapter id (`chksz`) |
 | `has_apikey` | boolean | Fallback keys configured |
 | `has_d1` | boolean | D1 bound (Worker) |
-| `library_auth` | boolean | Always false — library uses edge Access, not an app token |
-| `readOnly` | boolean | Demo read-only mode |
+| `library_auth` | boolean | Always false (no app token) |
+| `readOnly` | boolean | Demo public read-only Worker |
 | `project` | string | `music-du` / `music-du-demo` |
 | `policy` | object | Free-tier / library policy hints |
 | `version` | number | API version |

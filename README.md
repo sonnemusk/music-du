@@ -130,7 +130,7 @@ GET  /favs    GET|POST /import
 
 ## Optional demo Worker
 
-Public listen-only instance (same idea as https://music.du.dev):
+Public listen-only instance (https://music.du.dev) — **no Cloudflare Access**, writes disabled:
 
 ```bash
 npm run deploy:cf:demo   # LIBRARY_READONLY=true — not for normal self-host

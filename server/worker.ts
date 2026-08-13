@@ -478,7 +478,8 @@ app.get("/api/health", (c) => {
     has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS || c.env.CHKSZ_APIKEY),
     primary_needs_key: false,
     has_d1: Boolean(c.env.MUSIC_DU_DB),
-    // Private site: Cloudflare Access. Demo: open read, writes 403.
+    // Private Worker: Access is at the hostname (not in this process).
+    // Demo Worker: no Access, public read, writes 403 via LIBRARY_READONLY.
     library_auth: false,
     readOnly,
     project: readOnly ? "music-du-demo" : "music-du",
@@ -498,6 +499,7 @@ app.get("/api/health", (c) => {
       d1_name: readOnly ? "music-du-demo" : "music-du-library",
       library_readonly: readOnly,
       export_import: readOnly ? false : true,
+      access: readOnly ? "none-public-demo" : "cloudflare-access",
     },
     version: 2,
   });
@@ -979,8 +981,8 @@ app.get("/api/library", async (c) => {
 
 /**
  * Short URL: open /favs or /export to download favorites JSON.
- * Private: Cloudflare Access at the edge (see docs/ACCESS.md).
- * Demo (LIBRARY_READONLY): permanently disabled.
+ * Private hostname: Cloudflare Access at the edge (not this handler).
+ * Demo (LIBRARY_READONLY, no Access): permanently disabled.
  */
 async function favoritesExportResponse(c: {
   env: Env;
@@ -1043,7 +1045,7 @@ function escHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Import page — Access-gated; supports /favs JSON + name lists. */
+/** Import page — private site (Access on the hostname); 403 on demo. */
 function favoritesImportHtml(
   msg?: string,
   opts?: { ok?: boolean; failed?: string[]; homeQs?: string }

@@ -1,16 +1,17 @@
 # Optional edge auth (Cloudflare Access)
 
-Private installs put the **whole site** behind free Cloudflare Zero Trust **Access**. Anyone who can open the site can use the library. There is no second app token.
+Two hostnames, two rules:
 
-## Suggested layout
+| Site | Hostname example | Cloudflare Access | Library |
+|------|------------------|-------------------|---------|
+| **Private** | `music.dubin.cc` | **Required** (email OTP / IdP) | Read + write. Access login **is** permission. |
+| **Demo** | `music.du.dev` | **None** — must stay public | Read favorites only. Writes / `/favs` / `/import` → **403**. |
 
-| Resource | Protection |
-|----------|------------|
-| Private music hostname | Access app (email OTP / IdP allow-list) |
-| Library, `/favs`, `/import` | Same Access session (no extra header) |
-| Public demo hostname | **No** Access · `LIBRARY_READONLY=true` |
+There is no app-level library token. Do **not** add the demo hostname to the private Access application.
 
-**Never** put the public demo hostname in the same Access application as your private site.
+## Suggested Access app
+
+Only private hostnames. Demo stays off Access.
 
 ## Application examples
 
@@ -32,7 +33,7 @@ export SMOKE_BASE=https://your-private-host
 bash scripts/smoke-prod.sh
 ```
 
-Unauthenticated browser hits get **302** to `*.cloudflareaccess.com` — expected.
+On the **private** host, unauthenticated hits get **302** to `*.cloudflareaccess.com`. The demo host must stay a normal 200 with no Access login.
 
 ## Library multi-device (app layer)
 

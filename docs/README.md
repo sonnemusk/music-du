@@ -9,7 +9,7 @@ Technical docs are in **English** (commands and paths are language-neutral). Sta
 | [DEPLOY.md](./DEPLOY.md) | Humans & agents | Cloudflare · Node VPS · Fly · Docker · Vercel |
 | [API.md](./API.md) | Integrators | Full HTTP API reference |
 | [MUSIC-PROVIDERS.md](./MUSIC-PROVIDERS.md) | Operators | Lawful APIs, copyright, plug-in guide |
-| [ACCESS.md](./ACCESS.md) | Private installs | Cloudflare Access + library token |
+| [ACCESS.md](./ACCESS.md) | Operators | Private site = Access; demo = public read-only |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Runtime design |
 | [FEATURES.md](./FEATURES.md) | Product | Feature checklist |
 | [../SECURITY.md](../SECURITY.md) | Everyone | Secrets & reporting |
