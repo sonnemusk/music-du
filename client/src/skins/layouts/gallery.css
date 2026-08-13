@@ -258,20 +258,49 @@
   backdrop-filter: blur(8px);
 }
 
-/* Touch has no hover reveal, so the pill sits on the artwork permanently —
-   keep the primary action only (M-4 hit area is preserved). */
+/* Touch has no hover reveal, so the action sits on the artwork permanently.
+   Keep the primary action only, and shrink what is *drawn* to a 34px disc while
+   the tap target stays 44px (M-4) — a full-size pill covered too much cover art. */
 @media (pointer: coarse) {
   .layout-gallery .track-acts .icon-btn--secondary {
     display: none;
   }
   .layout-gallery .track-acts {
-    background: color-mix(in srgb, var(--bg) 55%, transparent);
+    top: 2px;
+    right: 2px;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+  }
+  /* background-clip keeps the fill inside the padding box, so the disc is 34px
+     while the button stays 44px. A pseudo-element would paint over the glyph. */
+  .layout-gallery .track-acts .icon-btn {
+    padding: 5px;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    background-clip: content-box;
+    box-shadow: none;
   }
 }
 
-.layout-gallery .track-row.playing .cov {
+/**
+ * Playing card. The shared row treatment (filled row + 3px left stripe, or a
+ * drop shadow under surface-raised) is built for a horizontal list and reads as
+ * a stray panel behind a card, so it is dropped here. The ring goes *inside* the
+ * artwork — an outward offset bled 5px into the gutter, which on the first
+ * column of a phone grid ran into the screen edge.
+ * Specificity has to beat `.skin-host.surface-raised .track-row.playing`.
+ */
+.skin-host .layout-gallery .track-list .track-row.playing {
+  background: transparent;
+  box-shadow: none;
+}
+
+.skin-host .layout-gallery .track-list .track-row.playing .cov {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: -2px;
+  border-color: var(--accent);
 }
 
 .layout-gallery .track-row.playing .track-name {
@@ -516,10 +545,34 @@
     );
   }
   .gal-main__head {
-    padding-top: 2px;
+    padding: 0 2px;
   }
   .gal-main__title {
     font-size: 21px;
+  }
+  /* Charts brings its own heading ("抖音 · 飙升"), so the page title is a
+     duplicate that costs a third of the visible grid on a phone. */
+  .skin-host[data-tab="charts"] .gal-main__head {
+    display: none;
+  }
+  .gal-body {
+    padding: 0 2px 4px;
+  }
+
+  /* Chip scrollers: hide the bar and fade the trailing edge so a half-cut chip
+     reads as "there is more" instead of "this is clipped". */
+  .layout-gallery .charts-chips {
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 0,
+      #000 calc(100% - 24px),
+      transparent 100%
+    );
+  }
+  .layout-gallery .charts-chips::-webkit-scrollbar {
+    display: none;
   }
 
   /* rail → bottom tab bar */
