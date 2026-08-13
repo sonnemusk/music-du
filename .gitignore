@@ -44,3 +44,4 @@ coverage/
 
 # Wrangler local secrets
 .dev.vars
+.playwright-mcp/

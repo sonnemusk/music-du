@@ -17,7 +17,7 @@ describe("theme catalog", () => {
     expect(ids.has("studio")).toBe(false);
     expect(ids.has("layout-mosaic")).toBe(false);
     expect(ids.has("bento")).toBe(true); // former layout-mosaic palette
-    expect(DEFAULT_SKIN).toBe("aurora");
+    expect(DEFAULT_SKIN).toBe("dock-dim");
   });
 
   it("exposes active layouts and every theme uses one", () => {

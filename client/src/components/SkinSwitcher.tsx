@@ -154,20 +154,18 @@ export function SkinSwitcher() {
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       />
-      {mobile ? (
-        <div className="skin-panel__layout-chips" data-no-swipe>
-          {layouts.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`skin-panel__layout-chip ${layoutFilter === id ? "on" : ""}`}
-              onClick={() => setLayoutFilter(id)}
-            >
-              {id === "all" ? tr("skin.filterAll") : tr(`layout.${id}`)}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <div className="skin-panel__layout-chips" data-no-swipe>
+        {layouts.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={`skin-panel__layout-chip ${layoutFilter === id ? "on" : ""}`}
+            onClick={() => setLayoutFilter(id)}
+          >
+            {id === "all" ? tr("skin.filterAll") : tr(`layout.${id}`)}
+          </button>
+        ))}
+      </div>
       <div className={`skin-panel__grid ${mobile ? "skin-panel__grid--compact" : ""}`}>
         {filtered.map((s) => (
           <button
@@ -230,7 +228,7 @@ export function SkinSwitcher() {
                       right: Math.max(8, window.innerWidth - anchor.right),
                       left: "auto",
                       zIndex: 2000,
-                      maxHeight: "min(70vh, 520px)",
+                      maxHeight: "min(78vh, 640px)",
                       overflow: "auto",
                     }
                   : undefined
@@ -264,7 +262,7 @@ export function SkinSwitcher() {
         </button>
         <button
           type="button"
-          className="skin-switcher__btn"
+          className="skin-switcher__btn skin-switcher__cycle"
           title={tr("skin.cycleTitle")}
           aria-label={tr("skin.cycleTitle")}
           onClick={cycleSkin}

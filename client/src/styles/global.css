@@ -188,13 +188,18 @@ img {
 }
 @media (max-width: 640px) {
   .skin-switcher__label {
-    max-width: 4.5em;
+    max-width: 5.5em;
   }
   .skin-switcher__btn {
     padding: 0 8px;
     min-height: 34px;
     height: 34px;
     font-size: 11px;
+  }
+}
+@media (max-width: 720px) {
+  .skin-switcher__cycle {
+    display: none;
   }
 }
 .skin-panel__hint {
@@ -444,20 +449,24 @@ img {
 }
 .skin-panel__layout-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   overflow-x: auto;
   margin-bottom: 10px;
   padding-bottom: 2px;
   -webkit-overflow-scrolling: touch;
 }
+.skin-panel--drawer .skin-panel__layout-chips {
+  flex-wrap: nowrap;
+}
 .skin-panel__layout-chip {
   flex: 0 0 auto;
   min-height: 36px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid color-mix(in srgb, var(--fg, #fff) 16%, transparent);
   background: transparent;
-  color: #fff;
+  color: var(--fg, #fff);
   font-size: 12px;
   font-weight: 700;
   opacity: 0.7;
@@ -535,4 +544,35 @@ img {
   content: "";
   border-radius: 2px;
   background: color-mix(in srgb, var(--skin-accent, #a78bfa) 55%, #fff2);
+}
+.skin-card__layout-thumb[data-layout="dock"],
+.skin-card__layout-thumb[data-layout="desk"] {
+  grid-template-rows: 1fr 5px;
+  grid-template-columns: 1fr;
+}
+.skin-card__layout-thumb[data-layout="desk"] {
+  grid-template-columns: 4px 1fr;
+  grid-template-rows: 1fr 5px;
+}
+.skin-card__layout-thumb[data-layout="feed"],
+.skin-card__layout-thumb[data-layout="stage"] {
+  grid-template-columns: 1fr;
+}
+.skin-card__layout-thumb[data-layout="feed"] .skin-card__layout-b,
+.skin-card__layout-thumb[data-layout="stage"] .skin-card__layout-b {
+  display: none;
+}
+.skin-card__layout-thumb[data-layout="verse"] {
+  grid-template-rows: 1fr 6px;
+  grid-template-columns: 1fr;
+}
+.skin-card__layout-thumb[data-layout="likes"],
+.skin-card__layout-thumb[data-layout="recent"],
+.skin-card__layout-thumb[data-layout="find"],
+.skin-card__layout-thumb[data-layout="boards"] {
+  grid-template-rows: 5px 1fr 5px;
+  grid-template-columns: 1fr;
+}
+.skin-card__layout-thumb[data-layout="split"] {
+  grid-template-columns: 1fr 1fr;
 }

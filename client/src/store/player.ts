@@ -782,8 +782,10 @@ export const usePlayer = create<State>((set, get) => ({
       }
     }
 
-    // Home: open 收藏 + queue follows favorites — unless the user already picked
-    // a tab while the library was still loading.
+    // Home: 收藏 if any, otherwise 热榜 so first paint is not an empty page.
+    // Honor a tab the user already picked while the library was still loading.
+    const homeTab: PanelTab = favorites.length ? "favorites" : "charts";
+    const homeQueue: QueueSource = favorites.length ? "favorites" : "charts";
     set({
       playlist,
       favorites,
@@ -791,8 +793,8 @@ export const usePlayer = create<State>((set, get) => ({
       curIdx,
       libraryRevision,
       libraryReadOnly,
-      ...(tabTouched ? {} : { tab: "favorites" as PanelTab }),
-      queueSource: "favorites",
+      ...(tabTouched ? {} : { tab: homeTab }),
+      queueSource: homeQueue,
     });
 
     // Pick a random favorite + pre-warm — do NOT autoplay.

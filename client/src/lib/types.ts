@@ -103,7 +103,7 @@ export const SKINS = THEME_CATALOG.map((t) => ({
   layout: t.layout,
 }));
 
-export const DEFAULT_SKIN: SkinId = "aurora";
+export const DEFAULT_SKIN: SkinId = "dock-dim";
 
 /** Localized theme name / tagline for UI */
 export function themeDisplayName(
