@@ -57,6 +57,9 @@ button {
   border: none;
   background: none;
   color: inherit;
+  /* Default is a translucent blue block on tap — very visible on light skins,
+     and every control already has its own :active feedback. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 img {
