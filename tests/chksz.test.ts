@@ -25,6 +25,29 @@ describe("chksz adapter", () => {
     expect(n.album).toBe("AL");
   });
 
+  it("interprets HTML 403 served as HTTP 200 as retryable 403", () => {
+    const html = "<html><head><title>403 Forbidden</title></head></html>";
+    const got = chksz.interpretUpstreamHttp(200, html, "text/html");
+    expect(got.status).toBe(403);
+    expect(got.body.error).toBe("forbidden");
+  });
+
+  it("treats HTML 404 as retryable 502 so fallback can run", () => {
+    const html = "<html><head><title>404 Not Found</title></head></html>";
+    const got = chksz.interpretUpstreamHttp(404, html, "text/html");
+    expect(got.status).toBe(502);
+  });
+
+  it("keeps real JSON 200", () => {
+    const got = chksz.interpretUpstreamHttp(
+      200,
+      JSON.stringify({ code: 200, data: [] }),
+      "application/json"
+    );
+    expect(got.status).toBe(200);
+    expect(got.body.code).toBe(200);
+  });
+
   it("search on free primary works without apikey", async () => {
     let seenParams: any = null;
     let seenUrl = "";

@@ -137,6 +137,34 @@ function isRetryableStatus(status: number): boolean {
   return status === 401 || status === 402 || status === 403 || status === 429 || status >= 500;
 }
 
+/** Some edges answer HTTP 200 with an HTML 403/challenge page. Treat that as retryable. */
+export function interpretUpstreamHttp(
+  status: number,
+  text: string,
+  contentType = ""
+): { status: number; body: any } {
+  const trimmed = String(text || "").trim();
+  const looksJson =
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[") ||
+    contentType.toLowerCase().includes("json");
+  if (looksJson && trimmed) {
+    try {
+      return { status, body: JSON.parse(trimmed) };
+    } catch {
+      /* fall through */
+    }
+  }
+  const blocked = /403 Forbidden|just a moment|cf-browser-verification|attention required/i.test(
+    text || ""
+  );
+  // HTML 404/403 from the free edge is not a real "song missing" — retry fallback.
+  return {
+    status: blocked ? 403 : 502,
+    body: { error: blocked ? "forbidden" : "upstream non-json" },
+  };
+}
+
 async function rawGet(
   base: string,
   path: string,
@@ -165,13 +193,8 @@ async function rawGet(
       },
       signal: ac.signal,
     });
-    let body: any = {};
-    try {
-      body = await r.json();
-    } catch {
-      body = {};
-    }
-    return { status: r.status, body };
+    const text = await r.text();
+    return interpretUpstreamHttp(r.status, text, r.headers.get("content-type") || "");
   } finally {
     clearTimeout(t);
   }
