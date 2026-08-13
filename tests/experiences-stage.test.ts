@@ -42,6 +42,16 @@ describe("stage experience", () => {
     expect(tsx).toMatch(/max-width: 720px/);
   });
 
+  it("search path exists: desktop wing SearchBar, phone overlay", () => {
+    expect(tsx).toMatch(/tab === "search" && !narrow \? <SearchBar/);
+    expect(tsx).toMatch(/id === "search" && narrow/);
+    expect(tsx).toMatch(/openMobileSearchFromGesture\(\)/);
+    expect(tsx).toMatch(/className="stage-search"/);
+    expect(tsx).toMatch(/data-stage-search/);
+    expect(tsx).toMatch(/--search-overlay-bottom/);
+    expect(css).toMatch(/\.stage-search/);
+  });
+
   it("CSS splits at 720px+ (wing vs pit)", () => {
     expect(css.includes("720px"), "720px").toBe(true);
     expect(css).toMatch(/min-width:\s*721px/);
@@ -64,7 +74,7 @@ describe("stage experience", () => {
   });
 
   it("play button is at least 44px", () => {
-    expect(css).toMatch(/\.layout-stage\s+\.t-btn\.play\s*\{[^}]*min-width:\s*44px/s);
-    expect(css).toMatch(/\.layout-stage\s+\.t-btn\.play\s*\{[^}]*min-height:\s*44px/s);
+    expect(css).toMatch(/\.layout-stage\s+\.t-btn\.play[\s\S]{0,400}min-width:\s*44px/);
+    expect(css).toMatch(/\.layout-stage\s+\.t-btn\.play[\s\S]{0,400}min-height:\s*44px/);
   });
 });

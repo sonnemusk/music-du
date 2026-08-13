@@ -19,6 +19,7 @@ const zh = {
   prevTrack: "上一首",
   nextTrack: "下一首",
   playPause: "播放/暂停",
+  navAria: "切歌",
 };
 
 const en: typeof zh = {
@@ -40,6 +41,7 @@ const en: typeof zh = {
   prevTrack: "Previous",
   nextTrack: "Next",
   playPause: "Play / pause",
+  navAria: "Track controls",
 };
 
 const DICTS: Record<FeedLocale, typeof zh> = { zh, en };

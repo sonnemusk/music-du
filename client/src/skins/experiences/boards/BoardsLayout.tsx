@@ -239,22 +239,24 @@ export function BoardsLayout({ brand }: { brand: string }) {
           </div>
         </div>
         <p className="boards-mast__status">{status}</p>
-        {narrow ? (
-          <button
-            type="button"
-            className="boards-search-launch"
-            aria-label={bt("searchLaunch")}
-            title={bt("searchLaunch")}
-            onClick={() => openMobileSearchFromGesture()}
-          >
-            <span aria-hidden>🔍</span>
-          </button>
-        ) : (
-          <SearchBar className="boards-search" />
-        )}
-        <div className="boards-mast__tools">
-          <LocaleSwitcher />
-          <SkinSwitcher />
+        <div className="boards-mast__end">
+          {narrow ? (
+            <button
+              type="button"
+              className="boards-search-launch"
+              aria-label={bt("searchLaunch")}
+              title={bt("searchLaunch")}
+              onClick={() => openMobileSearchFromGesture()}
+            >
+              <span aria-hidden>🔍</span>
+            </button>
+          ) : (
+            <SearchBar className="boards-search" />
+          )}
+          <div className="boards-mast__tools">
+            <LocaleSwitcher />
+            <SkinSwitcher />
+          </div>
         </div>
       </header>
       <BoardsDest />

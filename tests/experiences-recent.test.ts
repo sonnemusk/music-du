@@ -99,6 +99,20 @@ describe("recent.css", () => {
     expect(css).toMatch(/\.rec-body--history\s+\.track-row:first-child/);
     expect(css).toMatch(/overflow:\s*hidden/);
     expect(css).toMatch(/--search-overlay-bottom/);
+    expect(css).toMatch(/--rec-spine/);
+    expect(css).toMatch(/pointer-events:\s*none/);
+  });
+
+  it("keeps mini prev/play/next equal 44px and does not enlarge play on phone", () => {
+    const phone = css.split(/@media \(max-width:\s*720px\)/)[1] || "";
+    expect(phone).toMatch(/\.t-btn:not\(\.ghost\)/);
+    expect(phone).toMatch(/\.t-btn\.play/);
+    expect(phone).toMatch(/min-width:\s*44px/);
+    expect(phone).toMatch(/min-height:\s*44px/);
+    expect(phone).not.toMatch(/\.t-btn\.play\s*\{[^}]*width:\s*48px/);
+    expect(phone).toMatch(/search-overlay__(input|go|cancel)[\s\S]*?min-height:\s*44px/);
+    expect(phone).toMatch(/safe-area-inset-bottom/);
+    expect(phone).toMatch(/grid-template-columns:\s*auto minmax\(0,\s*1fr\) auto/);
   });
 });
 

@@ -42,14 +42,17 @@ describe("desk experience", () => {
     expect(tsx).toMatch(/CoverImg/);
   });
 
-  it("CSS has 720px and 1024px breakpoints and 44px play controls", () => {
+  it("CSS has 720px and 1024px breakpoints and 44px play / prev / next", () => {
     const css = read("desk.css");
     expect(css.includes("720px")).toBe(true);
     expect(css.includes("1024px")).toBe(true);
-    expect(css).toMatch(/44px/);
-    expect(css).toMatch(/\.desk-play[\s\S]{0,180}min-width:\s*44px|min-width:\s*44px[\s\S]{0,180}\.desk-play/);
-    expect(css).toMatch(/\.desk-prev/);
-    expect(css).toMatch(/\.desk-next/);
+    expect(css).toMatch(/@media \(max-width:\s*720px\)/);
+    expect(css).toMatch(/@media \(max-width:\s*1024px\)/);
+    expect(css).toMatch(/@media \(min-width:\s*1025px\)/);
+    expect(css).toMatch(/\.desk-play[\s\S]{0,220}min-width:\s*44px/);
+    expect(css).toMatch(/\.desk-prev[\s\S]{0,220}min-width:\s*44px/);
+    expect(css).toMatch(/\.desk-next[\s\S]{0,220}min-width:\s*44px/);
+    expect(css).toMatch(/min-height:\s*44px/);
     expect(css).toMatch(/100dvh/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/font-size:\s*16px/);

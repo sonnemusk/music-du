@@ -101,6 +101,19 @@ describe("verse experience", () => {
     expect(css).toMatch(/verse-deep/);
   });
 
+  it("keeps lyrics filling leftover height and unifies dock controls", () => {
+    const css = read("verse.css");
+    const tsx = read("VerseLayout.tsx");
+    expect(tsx).toMatch(/LyricsView/);
+    expect(tsx).not.toMatch(/SkinHead/);
+    expect(css).toMatch(/\.verse-lyrics[\s\S]*min-height:\s*0/);
+    expect(css).toMatch(/overflow-y:\s*auto/);
+    expect(css).toMatch(/\.verse-ctrl,\s*\n\s*\.verse-ctrl--play/);
+    expect(css).not.toMatch(/verse-ctrl--play[^{]*\{[^}]*52px/);
+    expect(css).toMatch(/grid-template-areas:[\s\S]*"art meta ctrls"/);
+    expect(css).toMatch(/safe-area-inset-bottom/);
+  });
+
   it("i18n has matching zh and en chrome strings", () => {
     expect(Object.keys(verseI18n.zh).sort()).toEqual(Object.keys(verseI18n.en).sort());
     expect(verseT("zh", "closeSheet")).toBeTruthy();

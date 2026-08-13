@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ChartsPanel } from "../../../components/ChartsPanel";
 import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
@@ -23,6 +23,15 @@ import {
 } from "./theme";
 
 const WINGS: PanelTab[] = ["favorites", "history", "search", "charts", "lyrics", "playlist"];
+
+const WING_I18N: Record<PanelTab, { full: string; short: string }> = {
+  favorites: { full: "tabs.favorites", short: "tabs.favoritesShort" },
+  history: { full: "tabs.history", short: "tabs.historyShort" },
+  search: { full: "tabs.search", short: "tabs.searchShort" },
+  charts: { full: "tabs.charts", short: "tabs.chartsShort" },
+  lyrics: { full: "tabs.lyrics", short: "tabs.lyricsShort" },
+  playlist: { full: "tabs.playlist", short: "tabs.playlistShort" },
+};
 
 function readStageTheme(): StageThemeId {
   try {
@@ -104,6 +113,10 @@ export function StageLayout({ brand }: { brand: string }) {
   const [themeId, setThemeId] = useState<StageThemeId>(readStageTheme);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  const hostRef = useRef<HTMLDivElement>(null);
+  const floorRef = useRef<HTMLElement>(null);
+  const footsRef = useRef<HTMLDivElement>(null);
+
   const theme = getStageTheme(themeId);
   const vars = useMemo(() => stageThemeToCssVars(theme) as CSSProperties, [theme]);
   const bg = curTrack?.cover ? cover(curTrack.cover, "full") : "";
@@ -119,8 +132,43 @@ export function StageLayout({ brand }: { brand: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen, closeSheet]);
 
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const host = hostRef.current;
+    const floor = floorRef.current;
+    const foots = footsRef.current;
+    if (!host || !floor || !foots) return;
+
+    const apply = () => {
+      const phone = window.matchMedia("(max-width: 720px)").matches;
+      if (!phone) {
+        host.style.removeProperty("--stage-reserve");
+        root.style.removeProperty("--search-overlay-bottom");
+        return;
+      }
+      const reserve = Math.max(120, Math.ceil(floor.getBoundingClientRect().bottom - foots.getBoundingClientRect().top));
+      host.style.setProperty("--stage-reserve", `${reserve}px`);
+      root.style.setProperty(
+        "--search-overlay-bottom",
+        `calc(${reserve}px + env(safe-area-inset-bottom, 0px))`,
+      );
+    };
+
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(floor);
+    ro.observe(foots);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+      root.style.removeProperty("--search-overlay-bottom");
+    };
+  }, [narrow, sheetOpen]);
+
   const openWing = (id: PanelTab) => {
     if (id === "search" && narrow) {
+      setSheetOpen(false);
       openMobileSearchFromGesture();
       return;
     }
@@ -138,25 +186,16 @@ export function StageLayout({ brand }: { brand: string }) {
     persistStageTheme(next);
   };
 
-  const sheetTitle =
-    tab === "search"
-      ? tr("tabs.search")
-      : tab === "charts"
-        ? tr("tabs.charts")
-        : tab === "playlist"
-          ? tr("tabs.playlist")
-          : tab === "favorites"
-            ? tr("tabs.favorites")
-            : tab === "history"
-              ? tr("tabs.history")
-              : tr("tabs.lyrics");
+  const sheetTitle = tr(WING_I18N[tab].full);
 
   return (
     <div
+      ref={hostRef}
       className="layout-stage"
       data-layout="stage"
       data-theme={themeId}
       data-sheet={sheetOpen ? tab : undefined}
+      data-narrow={narrow ? "1" : undefined}
       style={{
         ...vars,
         background: "var(--wallpaper)",
@@ -216,7 +255,7 @@ export function StageLayout({ brand }: { brand: string }) {
         </div>
       </header>
 
-      <main className="stage-floor">
+      <main ref={floorRef} className="stage-floor">
         <div className={`now-playing stage-now ${loadingPlay ? "loading" : ""}`}>
           <div className="stage-proscenium">
             <div className={`stage-art ${curTrack?.cover ? "has" : ""}`}>
@@ -239,31 +278,24 @@ export function StageLayout({ brand }: { brand: string }) {
           <p className="stage-artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
         </div>
 
-        <div className="stage-foots">
+        <div ref={footsRef} className="stage-foots">
           <Transport />
         </div>
 
         <nav className="stage-wings" aria-label={stageText(locale, "wingsAria")} data-no-swipe>
           {WINGS.map((id) => {
             const on = sheetOpen && tab === id;
-            const label =
-              id === "search"
-                ? tr("tabs.search")
-                : id === "charts"
-                  ? tr("tabs.charts")
-                  : id === "playlist"
-                    ? tr("tabs.playlist")
-                    : id === "favorites"
-                      ? tr("tabs.favorites")
-                      : id === "history"
-                        ? tr("tabs.history")
-                        : tr("tabs.lyrics");
+            const full = tr(WING_I18N[id].full);
+            const label = narrow ? tr(WING_I18N[id].short) : full;
             return (
               <button
                 key={id}
                 type="button"
                 className={`stage-cue ${on ? "on" : ""}`}
-                aria-expanded={on}
+                data-cue={id}
+                data-stage-search={id === "search" ? "1" : undefined}
+                aria-label={full}
+                aria-expanded={id === "search" && narrow ? undefined : on}
                 aria-controls={id === "search" && narrow ? undefined : "stage-sheet"}
                 onClick={() => openWing(id)}
               >

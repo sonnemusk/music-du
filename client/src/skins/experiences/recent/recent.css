@@ -6,17 +6,24 @@
   --rec-mini: 92px;
   --rec-nav: 58px;
   --rec-gutter: 20px;
+  --rec-btn: 44px;
+  --rec-spine: 40px;
   position: relative;
+  box-sizing: border-box;
   height: 100%;
   min-height: 0;
   max-height: 100%;
   max-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--wallpaper, var(--bg));
   color: var(--fg);
   font-family: var(--font);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 .layout-recent::before {
@@ -160,6 +167,17 @@
   min-width: 0;
 }
 
+.rec-top,
+.rec-stage,
+.rec-main,
+.rec-body,
+.rec-hero,
+.rec-mini,
+.rec-rail {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .layout-recent .skin-switcher__btn,
 .layout-recent .locale-switch {
   min-height: 44px;
@@ -182,6 +200,7 @@
 .rec-rail {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 4px;
   min-width: 0;
   min-height: 0;
@@ -198,8 +217,10 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
   width: 100%;
+  height: var(--rec-btn);
   min-height: 44px;
   min-width: 44px;
   padding: 0 12px;
@@ -209,6 +230,7 @@
   font-weight: 650;
   color: color-mix(in srgb, var(--fg) 58%, transparent);
   text-align: left;
+  box-sizing: border-box;
 }
 
 .rec-rail__icon {
@@ -246,11 +268,12 @@
   position: absolute;
   left: 0;
   top: 50%;
-  translate: -3px -50%;
+  translate: 0 -50%;
   width: 3px;
   height: 16px;
   border-radius: 999px;
   background: var(--accent);
+  pointer-events: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -344,19 +367,28 @@
   max-height: none;
 }
 
-/* ── History = recency tape (shared TrackList, restyled) ──────────────── */
-.rec-body--history .track-list {
+/* ── History = recency tape (shared TrackList, restyled) ────────────────
+   Spine/dots live in --rec-spine only. Cover, title, and .track-acts stay
+   in the flex flow so hit targets are not covered or clipped. */
+.rec-body--history {
+  --rec-spine: 40px;
+}
+
+.rec-body--history .track-list,
+.rec-body--history .rec-tape {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
   padding: 6px 2px 16px 0;
+  isolation: isolate;
 }
 
-.rec-body--history .track-list::before {
+.rec-body--history .track-list::before,
+.rec-body--history .rec-tape::before {
   content: "";
   position: absolute;
-  left: 27px;
+  left: calc(var(--rec-spine) / 2);
   top: 36px;
   bottom: 28px;
   width: 1px;
@@ -367,26 +399,35 @@
     transparent 100%
   );
   pointer-events: none;
+  z-index: 0;
 }
 
-.rec-body--history .track-list:has(.empty)::before {
+.rec-body--history .track-list:has(.empty)::before,
+.rec-body--history .rec-tape:has(.empty)::before {
   display: none;
 }
 
 .rec-body--history .track-row {
   position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0 0 8px;
-  padding: 12px 12px 12px 58px;
+  padding: 10px 10px 10px calc(10px + var(--rec-spine));
   min-height: 68px;
   border-radius: 14px;
   background: color-mix(in srgb, var(--card) 68%, transparent);
   border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+  box-shadow: none;
 }
 
 .rec-body--history .track-row::before {
   content: "";
   position: absolute;
-  left: 22px;
+  left: calc((var(--rec-spine) - 10px) / 2);
   top: 50%;
   width: 10px;
   height: 10px;
@@ -394,12 +435,19 @@
   background: var(--bg);
   border: 2px solid color-mix(in srgb, var(--muted) 70%, transparent);
   transform: translateY(-50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.rec-body--history .track-row .cov,
+.rec-body--history .track-row .track-meta {
+  position: relative;
   z-index: 1;
 }
 
 .rec-body--history .track-row:first-child {
   padding-top: 28px;
-  padding-bottom: 16px;
+  padding-bottom: 14px;
   min-height: 88px;
   background: color-mix(in srgb, var(--accent) 12%, var(--card));
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
@@ -408,27 +456,38 @@
 .rec-body--history .track-row:first-child::before {
   width: 14px;
   height: 14px;
-  left: 20px;
+  left: calc((var(--rec-spine) - 14px) / 2);
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+  pointer-events: none;
 }
 
 .rec-body--history .track-row:first-child::after {
   content: var(--rec-now-label);
   position: absolute;
-  left: 58px;
+  left: calc(10px + var(--rec-spine));
+  right: 10px;
   top: 8px;
+  max-width: calc(100% - 20px - var(--rec-spine));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .rec-body--history .track-row:first-child .cov {
   width: 64px;
   height: 64px;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
   border-radius: 10px;
 }
 
@@ -439,13 +498,19 @@
 .rec-body--history .track-row:nth-child(2)::after {
   content: var(--rec-earlier-label);
   position: absolute;
-  left: 58px;
+  left: calc(10px + var(--rec-spine));
+  right: 10px;
   top: -16px;
+  max-width: calc(100% - 20px - var(--rec-spine));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
+  pointer-events: none;
 }
 
 .rec-body--history .track-row:nth-child(n + 4) {
@@ -456,14 +521,17 @@
   opacity: 0.76;
 }
 
-.rec-body--history .track-row.playing {
+.rec-body--history .track-row.playing,
+.skin-host .layout-recent .rec-body--history .track-row.playing {
   border-color: var(--accent);
   opacity: 1;
+  box-shadow: none;
 }
 
 .rec-body--history .track-row.playing::before {
   background: var(--accent);
   border-color: var(--accent);
+  pointer-events: none;
 }
 
 .rec-body--history .empty {
@@ -472,24 +540,47 @@
   color: var(--muted);
 }
 
-.layout-recent .track-acts .icon-btn {
+.layout-recent .rec-body--history .track-acts,
+.skin-host .layout-recent .rec-body--history .track-acts {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  align-self: center;
+  pointer-events: auto;
+}
+
+.layout-recent .track-acts .icon-btn,
+.skin-host .layout-recent .track-acts .icon-btn {
   width: 44px;
   height: 44px;
   min-width: 44px;
   min-height: 44px;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-/* ── Persistent mini bar ──────────────────────────────────────────────── */
-.rec-mini {
+/* ── Persistent mini bar ────────────────────────────────────────────────
+   Beat shared .player-bar (2-col / phone 1-col + width:100%) so art/meta
+   / prev·play·next stay one aligned row. Play matches prev/next at 44px. */
+.layout-recent .rec-mini,
+.layout-recent .rec-mini.player-bar,
+.skin-host .layout-recent .rec-mini.player-bar {
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) minmax(200px, 1.2fr);
+  grid-template-rows: auto;
   align-items: center;
   gap: 12px 16px;
   min-width: 0;
-  padding: 10px var(--rec-gutter) max(10px, env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px max(var(--rec-gutter), env(safe-area-inset-right, 0px))
+    max(10px, env(safe-area-inset-bottom, 0px))
+    max(var(--rec-gutter), env(safe-area-inset-left, 0px));
   background: color-mix(in srgb, var(--bg) 78%, var(--card));
   border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 0;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -509,6 +600,7 @@
   overflow: hidden;
   display: grid;
   place-items: center;
+  align-self: center;
   background: color-mix(in srgb, var(--fg) 8%, transparent);
 }
 
@@ -525,6 +617,7 @@
 
 .rec-mini__meta {
   min-width: 0;
+  align-self: center;
 }
 
 .rec-mini__kicker {
@@ -556,34 +649,44 @@
   color: var(--muted);
 }
 
-.rec-mini__transport {
+.rec-mini__transport,
+.layout-recent .rec-mini .player-bar__controls {
   min-width: 0;
+  align-self: center;
 }
 
-.layout-recent .rec-mini .transport {
+.layout-recent .rec-mini .transport,
+.layout-recent .rec-mini.player-bar .player-bar__controls .transport {
   width: 100%;
   max-width: none;
   margin: 0;
 }
 
-.layout-recent .rec-mini .transport-row {
+.layout-recent .rec-mini .transport-row,
+.layout-recent .rec-mini.player-bar .player-bar__controls .transport-row {
+  display: flex;
   flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.layout-recent .rec-mini .t-btn:not(.ghost) {
+.layout-recent .rec-mini .t-btn:not(.ghost),
+.layout-recent .rec-mini .t-btn.play,
+.layout-recent .rec-mini.player-bar .player-bar__controls .t-btn:not(.ghost),
+.layout-recent .rec-mini.player-bar .player-bar__controls .t-btn.play,
+.skin-host .layout-recent .rec-mini .t-btn:not(.ghost),
+.skin-host .layout-recent .rec-mini .t-btn.play,
+.skin-host[data-idle="1"] .layout-recent .rec-mini .t-btn:not(.ghost),
+.skin-host[data-idle="1"] .layout-recent .rec-mini .t-btn.play,
+.skin-host[data-idle="1"] .layout-recent .rec-mini .t-btn:not(.ghost):not(.play) {
   width: 44px;
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-}
-
-.layout-recent .rec-mini .t-btn.play {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
+  flex-shrink: 0;
+  align-self: center;
+  box-sizing: border-box;
 }
 
 .layout-recent .rec-mini .vol-row,
@@ -633,7 +736,9 @@
     display: none;
   }
 
-  .rec-mini {
+  .layout-recent .rec-mini,
+  .layout-recent .rec-mini.player-bar,
+  .skin-host .layout-recent .rec-mini.player-bar {
     grid-template-columns: auto minmax(0, 1fr) minmax(180px, 0.9fr);
     gap: 10px 12px;
   }
@@ -647,13 +752,30 @@
 /* ── Phone ≤720: tape + fixed mini + destination bar ──────────────────── */
 @media (max-width: 720px) {
   :root:has(.layout-recent) {
-    --search-overlay-bottom: calc(164px + env(safe-area-inset-bottom, 0px));
+    --search-overlay-bottom: calc(
+      var(--rec-mini, 88px) + var(--rec-nav, 58px) + 16px +
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  :root:has(.layout-recent) .search-overlay__input,
+  :root:has(.layout-recent) .search-overlay__cancel,
+  :root:has(.layout-recent) .search-overlay__go,
+  :root:has(.layout-recent) .search-overlay__chip {
+    min-height: 44px;
+    height: 44px;
+    box-sizing: border-box;
   }
 
   .layout-recent {
     --rec-gutter: 12px;
     --rec-mini: 88px;
     --rec-nav: 58px;
+    --rec-spine: 32px;
+  }
+
+  .rec-body--history {
+    --rec-spine: 32px;
   }
 
   .rec-top {
@@ -694,25 +816,9 @@
     display: none;
   }
 
-  .rec-body--history .track-row {
-    padding-left: 48px;
-  }
-
-  .rec-body--history .track-list::before {
-    left: 21px;
-  }
-
-  .rec-body--history .track-row::before {
-    left: 16px;
-  }
-
-  .rec-body--history .track-row:first-child::before {
-    left: 14px;
-  }
-
-  .rec-body--history .track-row:first-child::after,
-  .rec-body--history .track-row:nth-child(2)::after {
-    left: 48px;
+  .rec-body--history .track-row:first-child .cov {
+    width: 48px;
+    height: 48px;
   }
 
   .rec-rail {
@@ -722,32 +828,40 @@
     bottom: 0;
     z-index: 45;
     flex-direction: row;
+    align-items: stretch;
     gap: 0;
-    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    padding: 4px max(4px, env(safe-area-inset-right, 0px))
+      calc(4px + env(safe-area-inset-bottom, 0px))
+      max(4px, env(safe-area-inset-left, 0px));
     border: 0;
     border-top: 1px solid color-mix(in srgb, var(--line) 90%, transparent);
     border-radius: 0;
     background: color-mix(in srgb, var(--bg) 94%, var(--card));
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: hidden;
   }
 
   .rec-rail__item {
     flex: 1 1 0;
     flex-direction: column;
     gap: 2px;
+    width: auto;
+    height: auto;
     min-width: 0;
-    min-height: 50px;
+    min-height: 44px;
     padding: 4px 0;
     font-size: 10px;
     font-weight: 700;
     background: transparent;
     justify-content: center;
+    align-items: center;
   }
 
   .rec-rail__label {
     display: block;
+    max-width: 100%;
     font-size: 10px;
   }
 
@@ -762,15 +876,21 @@
     translate: -50% 0;
     width: 16px;
     height: 3px;
+    pointer-events: none;
   }
 
-  .rec-mini {
+  .layout-recent .rec-mini,
+  .layout-recent .rec-mini.player-bar,
+  .skin-host .layout-recent .rec-mini.player-bar {
     position: fixed;
-    left: 8px;
-    right: 8px;
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
     bottom: calc(var(--rec-nav) + env(safe-area-inset-bottom, 0px));
     z-index: 40;
+    width: auto;
+    max-width: none;
     grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
     gap: 10px;
     padding: 8px 10px;
     border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
@@ -799,12 +919,15 @@
 
   .layout-recent .rec-mini .transport .vol-row,
   .layout-recent .rec-mini .transport .quality-wrap,
-  .layout-recent .rec-mini .transport .t-btn.ghost {
+  .layout-recent .rec-mini .transport .t-btn.ghost,
+  .layout-recent .rec-mini.player-bar .player-bar__controls .t-btn.ghost {
     display: none;
   }
 
-  .layout-recent .rec-mini .transport-row {
+  .layout-recent .rec-mini .transport-row,
+  .layout-recent .rec-mini.player-bar .player-bar__controls .transport-row {
     justify-content: flex-end;
+    align-items: center;
     gap: 4px;
   }
 
@@ -812,18 +935,19 @@
     display: none;
   }
 
-  .layout-recent .rec-mini .t-btn:not(.ghost) {
+  .layout-recent .rec-mini .t-btn:not(.ghost),
+  .layout-recent .rec-mini .t-btn.play,
+  .layout-recent .rec-mini.player-bar .player-bar__controls .t-btn:not(.ghost),
+  .layout-recent .rec-mini.player-bar .player-bar__controls .t-btn.play,
+  .skin-host .layout-recent .rec-mini .t-btn:not(.ghost),
+  .skin-host .layout-recent .rec-mini .t-btn.play,
+  .skin-host[data-idle="1"] .layout-recent .rec-mini .t-btn:not(.ghost),
+  .skin-host[data-idle="1"] .layout-recent .rec-mini .t-btn.play,
+  .skin-host[data-idle="1"] .layout-recent .rec-mini .t-btn:not(.ghost):not(.play) {
     width: 44px;
     height: 44px;
     min-width: 44px;
     min-height: 44px;
-  }
-
-  .layout-recent .rec-mini .t-btn.play {
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    min-height: 48px;
   }
 
   .layout-recent .charts-chips {

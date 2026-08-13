@@ -1,12 +1,19 @@
 .layout-find {
   --find-overlay-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  --find-search-h: 48px;
+  --find-ctrl: 44px;
+  --find-chip-h: 36px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
+  min-width: 0;
   min-height: 0;
   max-height: 100dvh;
   overflow: hidden;
+  overflow-x: hidden;
   color: var(--fg);
   background: var(--wallpaper, var(--bg));
   font-family: var(--font);
@@ -27,6 +34,7 @@
 .find-mini {
   flex: 0 0 auto;
   min-width: 0;
+  max-width: 100%;
 }
 
 .find-top {
@@ -117,6 +125,10 @@
   margin: 0;
   position: relative;
   z-index: 1;
+  min-height: 1.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--mono-font);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
@@ -128,18 +140,28 @@
   position: relative;
   z-index: 1;
   display: flex;
+  flex-direction: row;
   align-items: stretch;
   gap: 8px;
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
+  height: var(--find-search-h);
+  min-height: var(--find-search-h);
 }
 
-.layout-find .find-search {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 48px;
-  min-height: 44px;
+/* Search-first: hero SearchBar stays on phone and desktop. */
+.layout-find .find-search,
+.layout-find .find-hero .find-search {
   display: flex;
+  flex: 1 1 auto;
+  flex-direction: row;
   align-items: stretch;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  height: var(--find-search-h);
+  min-height: var(--find-search-h);
   overflow: hidden;
   background: color-mix(in srgb, var(--card) 88%, transparent);
   border: 1px solid var(--line);
@@ -155,25 +177,33 @@
   background: transparent;
   color: var(--fg);
   font-size: 16px;
-  line-height: 48px;
+  line-height: 1.25;
   height: 100%;
+  min-height: 100%;
   padding: 0 16px;
+  box-sizing: border-box;
 }
 
 .layout-find .find-search button {
   flex: 0 0 auto;
+  align-self: stretch;
   min-width: 64px;
   min-height: 44px;
   height: 100%;
   padding: 0 16px;
   font-weight: 800;
   font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .find-overlay-btn {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  flex: 0 0 var(--find-search-h);
+  width: var(--find-search-h);
+  height: var(--find-search-h);
   min-width: 44px;
   min-height: 44px;
   display: grid;
@@ -182,6 +212,7 @@
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--card) 80%, transparent);
   color: var(--fg);
+  box-sizing: border-box;
 }
 
 .find-overlay-btn svg {
@@ -199,13 +230,16 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
+  width: 100%;
   max-width: 100%;
+  height: 44px;
+  min-height: 44px;
   padding: 0 2px;
   text-align: left;
   color: var(--muted);
   background: transparent;
   border: none;
+  box-sizing: border-box;
 }
 
 .find-status:disabled {
@@ -233,21 +267,17 @@
 
 .find-drawers {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  overflow-x: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
+  min-height: 36px;
+  max-width: 100%;
+  overflow: visible;
   padding: 4px 0 8px;
 }
 
-.find-drawers::-webkit-scrollbar {
-  display: none;
-}
-
 .find-drawers-label {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   font-family: var(--mono-font);
   font-size: 0.68rem;
   letter-spacing: 0.08em;
@@ -257,7 +287,8 @@
 
 .find-chip {
   flex: 0 0 auto;
-  min-height: 44px;
+  min-height: 36px;
+  height: 36px;
   min-width: 44px;
   padding: 0 14px;
   border-radius: 999px;
@@ -266,6 +297,12 @@
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .find-chip.on {
@@ -277,10 +314,19 @@
 .find-stage {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   overflow: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 4px 0 8px;
+}
+
+.layout-find .find-stage .track-row,
+.layout-find .find-stage .track-list {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .layout-find[data-tab="search"] .find-stage .track-list {
@@ -309,6 +355,9 @@
     "transport transport";
   gap: 8px 12px;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 82%, transparent);
@@ -362,10 +411,12 @@
 .find-mini-transport {
   grid-area: transport;
   min-width: 0;
+  max-width: 100%;
 }
 
 .layout-find .find-mini .transport {
   max-width: none;
+  min-width: 0;
 }
 
 .layout-find .find-mini .vol-row {
@@ -375,22 +426,29 @@
 .layout-find .find-mini .transport-row {
   flex-wrap: nowrap;
   justify-content: center;
+  align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
-.layout-find .find-mini .t-btn:not(.ghost) {
+.layout-find .find-mini .seek-row {
+  min-width: 0;
+}
+
+.layout-find .find-mini .t-btn:not(.ghost),
+.layout-find .find-mini .t-btn.play {
+  width: 44px;
+  height: 44px;
   min-width: 44px;
   min-height: 44px;
-}
-
-.layout-find .find-mini .t-btn.play {
-  min-width: 48px;
-  min-height: 48px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 @media (max-width: 720px) {
   .layout-find {
     --find-overlay-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+    --find-search-h: 48px;
     padding: max(8px, env(safe-area-inset-top, 0px)) 12px 0;
   }
 
@@ -413,20 +471,48 @@
   }
 
   .layout-find .find-search,
+  .layout-find .find-hero .find-search {
+    display: flex;
+    height: var(--find-search-h);
+    min-height: var(--find-search-h);
+  }
+
   .layout-find .find-search input,
+  .layout-find .find-search button {
+    height: 100%;
+    min-height: 44px;
+  }
+
   .find-overlay-btn {
-    height: 48px;
+    height: var(--find-search-h);
     min-height: 44px;
   }
 
   .layout-find .find-search input {
     font-size: 16px;
-    line-height: 48px;
+    line-height: 1.25;
+  }
+
+  .find-drawers-label {
+    flex: 1 0 100%;
+  }
+
+  .find-chip {
+    min-height: 36px;
+    height: 36px;
   }
 
   .layout-find .find-mini .t-btn.ghost.mode,
   .layout-find .find-mini .quality-wrap {
     display: none;
+  }
+
+  .layout-find .find-mini .t-btn:not(.ghost),
+  .layout-find .find-mini .t-btn.play {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .find-mini {
@@ -435,13 +521,17 @@
 }
 
 @media (min-width: 721px) {
-  .find-hero {
+  .layout-find {
+    --find-search-h: 52px;
+  }
+
+  .find-hero,
+  .find-drawers {
     max-width: 720px;
     width: 100%;
     align-self: center;
   }
 
-  .find-drawers,
   .find-stage {
     max-width: 860px;
     width: 100%;
@@ -462,16 +552,22 @@
   }
 
   .layout-find .find-search {
-    height: 52px;
+    height: var(--find-search-h);
   }
 
   .layout-find .find-search input {
     font-size: 17px;
-    line-height: 52px;
+  }
+
+  .layout-find .find-search input,
+  .layout-find .find-search button {
+    height: 100%;
+    min-height: 44px;
   }
 
   .find-overlay-btn {
-    width: 52px;
-    height: 52px;
+    width: var(--find-search-h);
+    height: var(--find-search-h);
+    min-height: var(--find-search-h);
   }
 }

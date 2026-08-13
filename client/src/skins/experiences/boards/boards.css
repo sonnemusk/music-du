@@ -1,10 +1,13 @@
 .layout-boards {
   --boards-mast-h: 76px;
   --boards-dest-h: 56px;
-  --boards-mini-h: 92px;
+  --boards-mini-h: 104px;
   position: relative;
   height: 100%;
   max-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -39,12 +42,15 @@
 .boards-stage {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .boards-mast {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(160px, 1.4fr) auto;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, 1.8fr);
   align-items: center;
   gap: 12px 16px;
   min-width: 0;
@@ -89,6 +95,10 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18em;
 }
 
 .boards-brand__word {
@@ -98,6 +108,9 @@
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .boards-brand__sub {
@@ -134,11 +147,22 @@
   white-space: nowrap;
 }
 
+.boards-mast__end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
 .boards-search {
   display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   height: 44px;
+  min-height: 44px;
   align-items: stretch;
+  align-self: center;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius, 12px);
@@ -176,9 +200,12 @@
   height: 44px;
   min-width: 44px;
   min-height: 44px;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
+  box-sizing: border-box;
   border-radius: var(--radius-sm, 8px);
   border: 1px solid var(--line);
   background: var(--card);
@@ -190,18 +217,23 @@
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
-  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  align-self: center;
 }
 
-.layout-boards .skin-switcher__btn {
+.layout-boards .skin-switcher__btn,
+.layout-boards .locale-switch {
   min-height: 44px;
   height: 44px;
+  box-sizing: border-box;
 }
 
 .boards-dest {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   min-width: 0;
   padding: 8px 16px;
@@ -211,16 +243,25 @@
 .boards-dest__plate {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-height: 44px;
   min-width: 44px;
+  height: 44px;
   padding: 0 14px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--card) 70%, transparent);
   color: var(--fg);
   font-weight: 700;
   font-size: 13px;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+}
+
+.boards-dest__label {
   white-space: nowrap;
 }
 
@@ -245,7 +286,9 @@
 .boards-stage {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 12px 16px 16px;
 }
@@ -266,35 +309,59 @@
 
 .layout-boards .charts-panel {
   gap: 12px;
+  min-width: 0;
+}
+
+.layout-boards .charts-title-row {
+  min-width: 0;
+  align-items: center;
 }
 
 .layout-boards .charts-title {
   font-family: var(--display-font, var(--font));
   font-size: 18px;
   letter-spacing: 0.03em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .layout-boards .charts-refresh {
   min-height: 44px;
   min-width: 44px;
+  flex: 0 0 auto;
   padding: 0 14px;
 }
 
 .layout-boards .charts-chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   padding: 2px 0 6px;
+  min-width: 0;
 }
 
 .layout-boards .charts-chip,
 .layout-boards .charts-chip--board {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  flex-shrink: 0;
   min-height: 44px;
   min-width: 44px;
+  width: auto;
+  max-width: none;
   padding: 10px 16px;
+  box-sizing: border-box;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+  word-break: keep-all;
 }
 
 .layout-boards .charts-chip.on {
@@ -303,17 +370,47 @@
 }
 
 .layout-boards .track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
   min-height: 56px;
   border-radius: var(--radius-sm, 8px);
   padding: 8px 10px;
+  box-sizing: border-box;
 }
 
 .layout-boards .track-rank {
+  flex: 0 0 36px;
   width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  align-self: center;
+  text-align: center;
+  line-height: 1;
   font-family: var(--display-font, var(--mono-font, var(--font)));
   font-size: 18px;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
+}
+
+.layout-boards .track-row .cov {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  align-self: center;
+}
+
+.layout-boards .track-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.layout-boards .track-acts {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .layout-boards .track-rank.top1 {
@@ -335,16 +432,23 @@
   width: 44px;
   height: 44px;
   min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
+.layout-boards .boards-mini.player-bar,
 .boards-mini {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 1.35fr);
+  grid-template-columns: 52px minmax(0, 1fr) minmax(220px, 1.35fr);
+  grid-template-rows: auto;
   align-items: center;
-  gap: 10px 12px;
+  column-gap: 12px;
+  row-gap: 8px;
   min-width: 0;
+  width: 100%;
   padding: 8px 14px max(10px, env(safe-area-inset-bottom, 0px));
+  border-radius: 0;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 88%, var(--card));
 }
@@ -395,13 +499,32 @@
   min-width: 0;
 }
 
-.layout-boards .boards-mini .t-btn {
+.layout-boards .boards-mini .transport {
+  max-width: none;
+  width: 100%;
+}
+
+.layout-boards .boards-mini .transport-row {
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Beat layouts.css idle 36×36 on prev/next — never shrink the ticker. */
+.skin-host .layout-boards .boards-mini .t-btn:not(.ghost),
+.skin-host[data-idle="1"] .layout-boards .boards-mini .t-btn:not(.ghost),
+.layout-boards .boards-mini .t-btn:not(.ghost) {
   width: 44px;
   height: 44px;
   min-width: 44px;
   min-height: 44px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
+.skin-host .layout-boards .boards-mini .t-btn.play,
+.skin-host[data-idle="1"] .layout-boards .boards-mini .t-btn.play,
 .layout-boards .boards-mini .t-btn.play {
   width: 52px;
   height: 52px;
@@ -412,6 +535,10 @@
 .layout-boards .boards-mini .t-btn.ghost {
   min-height: 44px;
   height: 44px;
+}
+
+.layout-boards .boards-mini .vol-row {
+  display: none;
 }
 
 .skin-host[data-skin="boards-dim"] .layout-boards .boards-brand__glyph {
@@ -428,39 +555,82 @@
   box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
-@media (min-width: 720px) {
+/* Portaled overlay lives on <body> — size + inset from :root. */
+:root:has(.layout-boards) .search-overlay__input,
+:root:has(.layout-boards) .search-overlay__cancel,
+:root:has(.layout-boards) .search-overlay__go {
+  min-height: 44px;
+  height: 44px;
+  box-sizing: border-box;
+}
+
+:root:has(.layout-boards) .search-overlay__chip {
+  min-height: 44px;
+}
+
+@media (pointer: coarse) {
+  .layout-boards .charts-chip,
+  .layout-boards .charts-chip--board,
+  .layout-boards .charts-refresh,
+  .boards-dest__plate,
+  .boards-search-launch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Desktop only — do not overlap the 720px phone query. */
+@media (min-width: 721px) {
   .layout-boards {
     --boards-mini-h: 104px;
   }
 
   .boards-mast {
-    grid-template-columns: auto minmax(120px, 0.8fr) minmax(220px, 1.6fr) auto;
+    grid-template-columns: minmax(0, auto) minmax(0, 0.8fr) minmax(0, 1.8fr);
+  }
+
+  .layout-boards .boards-mini.player-bar {
+    grid-template-columns: 52px minmax(0, 1fr) minmax(280px, 1.4fr);
+    grid-template-rows: auto;
+  }
+
+  .layout-boards .boards-mini__transport {
+    grid-column: auto;
   }
 
   .layout-boards .charts-chips {
     flex-wrap: wrap;
   }
 
-  .layout-boards .charts-chip {
+  .layout-boards .charts-chip,
+  .layout-boards .charts-chip--board {
     min-width: 52px;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 }
 
 @media (max-width: 720px) {
   :root:has(.layout-boards) {
-    --search-overlay-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+    --boards-mini-h: 160px;
+    --search-overlay-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
   }
 
   .layout-boards {
     --boards-mast-h: 64px;
     --boards-dest-h: 52px;
-    --boards-mini-h: 108px;
+    --boards-mini-h: 160px;
   }
 
   .boards-mast {
-    grid-template-columns: minmax(0, 1fr) 44px auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px 10px;
     padding: max(8px, env(safe-area-inset-top, 0px)) 12px 8px;
+  }
+
+  .boards-mast__end {
+    flex: 0 0 auto;
+    gap: 8px;
   }
 
   .layout-boards .skin-switcher__bar .skin-switcher__btn:not(.primary) {
@@ -485,8 +655,10 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     gap: 8px;
     padding: 8px 12px;
+    scrollbar-width: thin;
   }
 
   .boards-dest__plate {
@@ -506,15 +678,22 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     gap: 8px;
     padding-bottom: 4px;
+    scrollbar-width: thin;
   }
 
-  .layout-boards .charts-chip {
+  .layout-boards .charts-chip,
+  .layout-boards .charts-chip--board {
+    flex: 0 0 auto;
     flex-shrink: 0;
     padding: 10px 16px;
+    min-height: 44px;
+    white-space: nowrap;
   }
 
+  .layout-boards .boards-mini.player-bar,
   .boards-mini {
     grid-template-columns: 48px minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -525,7 +704,6 @@
     grid-column: 1 / -1;
   }
 
-  .layout-boards .boards-mini .vol-row,
   .layout-boards .boards-mini .t-btn.ghost:not(.fav),
   .layout-boards .boards-mini .quality-wrap {
     display: none;
@@ -533,6 +711,7 @@
 
   .layout-boards .boards-mini .transport-row {
     justify-content: center;
+    flex-wrap: nowrap;
     gap: 12px;
   }
 
@@ -542,6 +721,15 @@
 }
 
 @media (max-width: 400px) {
+  :root:has(.layout-boards),
+  .layout-boards {
+    --boards-mini-h: 136px;
+  }
+
+  :root:has(.layout-boards) {
+    --search-overlay-bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+  }
+
   .boards-brand__glyph {
     width: 44px;
     height: 44px;

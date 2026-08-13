@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ChartsPanel } from "../../../components/ChartsPanel";
 import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
@@ -113,6 +113,7 @@ export function VerseLayout({ brand }: { brand: string }) {
   const narrow = useNarrow();
   const verseTheme = getVerseTheme(skin);
   const leafOpen = tab !== "lyrics";
+  const dockRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const current = usePlayer.getState().tab;
@@ -124,13 +125,22 @@ export function VerseLayout({ brand }: { brand: string }) {
     ensureDisplayFont(verseTheme?.font);
   }, [verseTheme]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty(
-      "--search-overlay-bottom",
-      "calc(156px + env(safe-area-inset-bottom, 0px))"
-    );
+    const dock = dockRef.current;
+    const apply = () => {
+      const h = dock?.getBoundingClientRect().height ?? 0;
+      const px = Math.ceil(Math.max(h, 96));
+      root.style.setProperty("--search-overlay-bottom", `${px}px`);
+    };
+    apply();
+    const ro =
+      dock && typeof ResizeObserver !== "undefined" ? new ResizeObserver(apply) : null;
+    if (dock && ro) ro.observe(dock);
+    window.addEventListener("resize", apply);
     return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", apply);
       root.style.removeProperty("--search-overlay-bottom");
     };
   }, []);
@@ -183,7 +193,8 @@ export function VerseLayout({ brand }: { brand: string }) {
               <button
                 key={id}
                 type="button"
-                className={`verse-key${on ? " on" : ""}`}
+                data-key={id}
+                className={`verse-key${id === "search" ? " verse-key--search" : ""}${on ? " on" : ""}`}
                 aria-current={on ? "page" : undefined}
                 aria-label={id === "search" && narrow ? verseT(locale, "searchLaunch") : label}
                 title={label}
@@ -219,7 +230,11 @@ export function VerseLayout({ brand }: { brand: string }) {
         ) : null}
       </div>
 
-      <footer className="verse-dock player-bar" aria-label={verseT(locale, "dockAria")}>
+      <footer
+        ref={dockRef}
+        className="verse-dock player-bar"
+        aria-label={verseT(locale, "dockAria")}
+      >
         <button
           type="button"
           className={`verse-dock__art${curTrack?.cover ? " has" : ""}`}

@@ -98,15 +98,17 @@ describe("split.css breakpoints and hits", () => {
     expect(css).toMatch(/two-pane/);
     expect(css).toMatch(/stacked/);
     expect(css).toMatch(/grid-template-columns/);
+    expect(css).toMatch(/@media \(min-width: 721px\)/);
     expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*flex-direction:\s*column/);
   });
 
   it("keeps controls at least 44px", () => {
     expect(css).toMatch(/44px/);
-    expect(css).toMatch(/\.t-btn[\s\S]*min-width:\s*44px/);
-    expect(css).toMatch(/\.t-btn[\s\S]*min-height:\s*44px/);
-    expect(css).toMatch(/split-search-launch[\s\S]*min-width:\s*44px/);
-    expect(css).toMatch(/split-spine__btn[\s\S]*min-height:\s*44px/);
+    expect(css).toMatch(/--split-hit:\s*44px/);
+    expect(css).toMatch(/\.t-btn[\s\S]*min-width:\s*44px|\.t-btn[\s\S]*min-width:\s*var\(--split-hit\)/);
+    expect(css).toMatch(/\.t-btn[\s\S]*min-height:\s*44px|\.t-btn[\s\S]*min-height:\s*var\(--split-hit\)/);
+    expect(css).toMatch(/split-search-launch[\s\S]*min-width:\s*(44px|var\(--split-hit\))/);
+    expect(css).toMatch(/split-spine__btn[\s\S]*min-height:\s*(44px|var\(--split-hit\))/);
   });
 
   it("uses dvh and safe-area insets", () => {

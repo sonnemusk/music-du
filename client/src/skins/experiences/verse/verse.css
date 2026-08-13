@@ -1,15 +1,22 @@
-/* 词页 — lyrics fill the viewport; dock + index stay put. */
+/* 词页 — lyrics fill leftover viewport; dock + index stay put. */
+
+.verse,
+.verse * {
+  box-sizing: border-box;
+}
 
 .verse {
   --verse-mast: 52px;
-  --verse-dock: 132px;
+  --verse-dock: 118px;
   --verse-rail: 76px;
+  --verse-ctrl: 44px;
   --verse-ink: color-mix(in srgb, var(--fg) 88%, var(--accent));
   box-sizing: border-box;
   height: 100%;
   height: 100dvh;
   min-height: 0;
   max-height: 100dvh;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -23,10 +30,12 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-height: var(--verse-mast);
-  padding: 8px 14px 4px;
+  max-width: 100%;
+  padding: 4px 12px 4px 14px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .verse-brand {
@@ -44,6 +53,8 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .verse-brand__theme {
@@ -61,7 +72,30 @@
   flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(68%, 22rem);
+  overflow: hidden;
+}
+
+.verse .skin-switcher,
+.verse .skin-switcher__bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.verse .skin-switcher__label-full {
+  display: none;
+}
+
+.verse .skin-switcher__label-short {
+  display: inline;
+}
+
+.verse .skin-switcher__label {
+  max-width: 5.5em;
 }
 
 .verse .skin-switcher__btn,
@@ -69,6 +103,8 @@
   min-width: 44px;
   min-height: 44px;
   height: 44px;
+  max-width: 9rem;
+  overflow: hidden;
 }
 
 .verse-body {
@@ -79,6 +115,7 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   position: relative;
+  overflow: hidden;
 }
 
 .verse-stage {
@@ -99,14 +136,20 @@
   overflow: hidden;
 }
 
+/* Beat global lyrics-scroller min-height: 60vh / 160px so the line stays above the dock. */
 .verse-lyrics > .lyrics-scroller,
-.verse-lyrics:has(> .lyrics-scroller) {
+.verse-lyrics:has(> .lyrics-scroller),
+.verse .lyrics-panel.lyrics-scroller,
+.verse .lyrics-scroller {
   flex: 1 1 auto;
-  min-height: 0;
-  height: auto;
-  max-height: none;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
   overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: 12px;
 }
 
 .verse-lyrics > .empty {
@@ -125,6 +168,7 @@
   min-height: 44px;
   opacity: 0.34;
   color: var(--muted);
+  scroll-margin-block: 16px;
 }
 
 .verse .lyrics-panel .ly.on {
@@ -145,22 +189,24 @@
 .verse-keys {
   grid-column: 1;
   grid-row: 2;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: stretch;
+  justify-items: stretch;
   gap: 2px;
   padding: 4px 6px 0;
   min-width: 0;
+  max-width: 100%;
 }
 
-.verse-key {
-  flex: 1 1 0;
+.verse-key,
+.verse-key--search {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
+  width: 100%;
   min-width: 44px;
   min-height: 44px;
   padding: 4px 2px;
@@ -191,11 +237,15 @@
 
 .verse-leaf {
   position: absolute;
-  inset: 8px 8px 4px;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
   z-index: 5;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  max-height: calc(100% - 16px);
   overflow: hidden;
   background: color-mix(in srgb, var(--card) 94%, var(--bg));
   border: 1px solid var(--line);
@@ -208,14 +258,23 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px 6px 16px;
+  min-height: 44px;
+  padding: 4px 6px 4px 16px;
+  overflow: visible;
+  position: sticky;
+  top: 0;
+  z-index: 1;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--card) 94%, var(--bg));
 }
 
 .verse-leaf__title {
   margin: 0;
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--display-font, var(--font));
   font-size: 1.15rem;
   font-weight: 600;
@@ -276,17 +335,24 @@
   font-weight: 700;
 }
 
-.verse-dock {
+/* Beat .player-bar grid (minmax(160px, 280px) …) so art + title + ctrls share one row. */
+.verse .verse-dock.player-bar {
   flex: 0 0 auto;
+  position: relative;
+  z-index: 6;
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   grid-template-areas:
-    "art meta"
-    "ctrls ctrls"
-    "seek seek";
-  gap: 8px 12px;
+    "art meta ctrls"
+    "seek seek seek";
+  gap: 8px 10px;
   align-items: center;
-  padding: 8px 14px max(10px, env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0;
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   background: color-mix(in srgb, var(--bg) 72%, transparent);
   backdrop-filter: blur(14px);
@@ -302,6 +368,7 @@
   overflow: hidden;
   display: grid;
   place-items: center;
+  align-self: center;
   background: var(--card);
   border: 1px solid var(--line);
   color: var(--muted);
@@ -317,6 +384,10 @@
 .verse-dock__meta {
   grid-area: meta;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: center;
 }
 
 .verse-dock__title,
@@ -341,14 +412,18 @@
 .verse-ctrls {
   grid-area: ctrls;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
-  gap: 10px;
+  align-self: center;
+  gap: 6px;
+  height: var(--verse-ctrl);
+  flex-shrink: 0;
 }
 
-.verse-ctrl {
-  width: 44px;
-  height: 44px;
+.verse-ctrl,
+.verse-ctrl--play {
+  width: var(--verse-ctrl);
+  height: var(--verse-ctrl);
   min-width: 44px;
   min-height: 44px;
   display: grid;
@@ -357,16 +432,12 @@
   background: color-mix(in srgb, var(--fg) 8%, transparent);
   font-size: 1rem;
   line-height: 1;
+  flex: 0 0 auto;
 }
 
 .verse-ctrl--play {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  min-height: 52px;
   background: linear-gradient(160deg, var(--accent), var(--accent2, var(--accent)));
   color: var(--accent-fg);
-  font-size: 1.15rem;
 }
 
 .verse-dock__seek {
@@ -396,20 +467,48 @@
 /* Phone: stacked verse + index row. 720px is the shared mobile cut. */
 @media (max-width: 720px) {
   .verse {
-    --verse-dock: 148px;
+    --verse-dock: 118px;
+  }
+
+  .verse-brand__theme {
+    display: none;
   }
 
   .verse-key__label {
     display: none;
   }
 
+  .verse-key,
+  .verse-key--search {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .verse-leaf {
-    inset: 6px 6px 2px;
+    top: 6px;
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+    max-height: calc(100% - 12px);
+  }
+
+  .verse .verse-dock.player-bar {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .verse-dock__art {
+    width: 44px;
+    height: 44px;
   }
 }
 
 /* 720px+: lyrics column + index rail. */
 @media (min-width: 720px) {
+  .verse {
+    --verse-dock: 124px;
+  }
+
   .verse-body {
     grid-template-columns: minmax(0, 1fr) var(--verse-rail);
     grid-template-rows: minmax(0, 1fr);
@@ -424,14 +523,14 @@
   .verse-keys {
     grid-column: 2;
     grid-row: 1;
-    flex-direction: column;
-    justify-content: center;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    justify-items: stretch;
     gap: 6px;
     padding: 12px 4px;
   }
 
   .verse-key {
-    flex: 0 0 auto;
     width: 100%;
     min-height: 44px;
   }
@@ -442,20 +541,16 @@
   }
 
   .verse-leaf {
-    position: absolute;
     top: 8px;
     right: calc(var(--verse-rail) + 8px);
     bottom: 8px;
     left: auto;
     width: min(420px, 46vw);
-    inset: unset;
+    max-height: calc(100% - 16px);
   }
 
-  .verse-dock {
+  .verse .verse-dock.player-bar {
     grid-template-columns: 56px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "art meta ctrls"
-      "seek seek seek";
     padding: 10px 22px max(12px, env(safe-area-inset-bottom, 0px));
   }
 
@@ -487,6 +582,10 @@
 
   .verse-ctrl:hover {
     background: color-mix(in srgb, var(--fg) 14%, transparent);
+  }
+
+  .verse-ctrl--play:hover {
+    background: linear-gradient(160deg, var(--accent), var(--accent2, var(--accent)));
   }
 
   .verse-close:hover {

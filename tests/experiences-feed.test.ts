@@ -58,9 +58,15 @@ describe("feed experience", () => {
     expect(tsx).toMatch(/onPointerDown/);
     expect(tsx).toMatch(/onPointerUp/);
     expect(tsx).toMatch(/onPointerMove/);
+    expect(tsx).toMatch(/onPointerCancel/);
+    expect(tsx).toMatch(/onWheel/);
     expect(tsx).toMatch(/next\(\s*-1\s*\)/);
     expect(tsx).toMatch(/next\(\s*1\s*\)/);
     expect(tsx).toMatch(/next\(\s*dy\s*<\s*0\s*\?\s*1\s*:\s*-1\s*\)/);
+    expect(tsx).toMatch(/ignoreSwipeTarget/);
+    expect(tsx).toMatch(/\[data-no-swipe\]/);
+    expect(tsx).toMatch(/className="feed-skips"/);
+    expect(tsx).toMatch(/feed-skip--play/);
   });
 
   it("switches queue among favorites / history / playlist / charts only", () => {

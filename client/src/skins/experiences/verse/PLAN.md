@@ -50,8 +50,8 @@ Do **not** add comments, social, video, VIP.
 - `theme.ts` — `verse-dim` / `verse-deep`
 - `i18n.ts` — verse chrome strings (zh + en); shared copy still uses `useT`
 
-## Tests (`tests/experiences-verse.test.ts`)
-Static + token imports. Assert: no SkinHead/TabNav; `LyricsView` panel; `720px` + `44px` + `dvh` + safe-area; both theme ids; layout `"verse"`.
+## Tests (`tests/experiences-verse.test.ts`, `tests/experiences-verse-layout.test.ts`)
+Static + token imports. Assert: no SkinHead/TabNav; `LyricsView` panel; `720px` + `44px` + `dvh` + safe-area; both theme ids; layout `"verse"`; lyrics min-height 0; dock prev/play/next same 44px height on the title row; index keys + phone search launch 44px; leaf stays above the dock.
 
 ## Out of scope
 Do not edit SkinHost, theme-catalog, layout-ids, App, global i18n, existing layouts, or package.json. Host wiring of `layout: "verse"` is a later catalog change.

@@ -70,7 +70,8 @@ Own chrome: spine, desk, compact now-playing. **Not** `SkinHead` / `TabNav` / ex
 - `theme.ts` — `split-dim`, `split-deep`
 - `i18n.ts` — experience copy (zh / en); tab labels stay in global `useT`
 - `tests/experiences-split.test.ts`
+- `tests/experiences-split-layout.test.ts` — two-pane vs stacked, 44px hits, 720/1024
 
 ## Tests
 
-Static + token imports: no SkinHead; CSS includes `720px` and `1024px`; both theme ids; two-pane vs stacked rules; `44px`; `vitest` and `tsc -p tsconfig.client.json`.
+Static + token imports: no SkinHead; CSS includes `720px` and `1024px`; both theme ids; two-pane vs stacked rules; `44px`; phone prev/play/next same height; spine wraps without overflow-x on 390; `vitest` and `tsc -p tsconfig.client.json`.

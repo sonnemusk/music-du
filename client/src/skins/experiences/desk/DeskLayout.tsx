@@ -10,7 +10,6 @@ import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
 import { useT } from "../../../i18n";
-import { isMobileSearchUi } from "../../../lib/mobile-ui";
 import { loadRecentSearches } from "../../../lib/recent-searches";
 import { qualityShortLabel } from "../../../lib/quality";
 import type { PanelTab } from "../../../lib/types";
@@ -23,16 +22,30 @@ import "./desk.css";
 const NAV: PanelTab[] = ["search", "charts", "favorites", "playlist", "history", "lyrics"];
 const FOOT: PanelTab[] = ["charts", "favorites", "playlist", "history", "lyrics"];
 
-function useDeskMobile() {
-  const [mobile, setMobile] = useState(() => isMobileSearchUi());
+function readDeskViewport() {
+  if (typeof window === "undefined") return { mobile: false, compact: false };
+  return {
+    mobile: window.matchMedia("(max-width: 720px)").matches,
+    compact: window.matchMedia("(max-width: 1024px)").matches,
+  };
+}
+
+function useDeskViewport() {
+  const [vp, setVp] = useState(readDeskViewport);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 720px)");
-    const apply = () => setMobile(mq.matches);
+    const phone = window.matchMedia("(max-width: 720px)");
+    const tab = window.matchMedia("(max-width: 1024px)");
+    const apply = () =>
+      setVp({ mobile: phone.matches, compact: tab.matches });
     apply();
-    mq.addEventListener?.("change", apply);
-    return () => mq.removeEventListener?.("change", apply);
+    phone.addEventListener?.("change", apply);
+    tab.addEventListener?.("change", apply);
+    return () => {
+      phone.removeEventListener?.("change", apply);
+      tab.removeEventListener?.("change", apply);
+    };
   }, []);
-  return mobile;
+  return vp;
 }
 
 function tabLabel(tr: (k: string) => string, id: PanelTab, short: boolean) {
@@ -338,7 +351,8 @@ function DeskMiniExtras() {
 }
 
 export function DeskLayout({ brand }: { brand: string }) {
-  const mobile = useDeskMobile();
+  const { mobile, compact } = useDeskViewport();
+  const toolsInTop = compact;
   const tab = usePlayer((s) => s.tab);
   const setTab = usePlayer((s) => s.setTab);
   const skin = usePlayer((s) => s.skin);
@@ -365,7 +379,7 @@ export function DeskLayout({ brand }: { brand: string }) {
       if (phone) {
         root.style.setProperty(
           "--search-overlay-bottom",
-          "calc(var(--desk-mini-h, 148px) + var(--desk-foot-h, 56px) + env(safe-area-inset-bottom, 0px))"
+          "calc(var(--desk-mini-h, 168px) + var(--desk-foot-h, 56px) + env(safe-area-inset-bottom, 0px))"
         );
       } else {
         root.style.removeProperty("--search-overlay-bottom");
@@ -393,6 +407,7 @@ export function DeskLayout({ brand }: { brand: string }) {
       data-theme={theme.id}
       data-tab={tab}
       data-mobile={mobile ? "1" : undefined}
+      data-vp={mobile ? "phone" : compact ? "tablet" : "desktop"}
       style={
         {
           ...vars,
@@ -422,7 +437,7 @@ export function DeskLayout({ brand }: { brand: string }) {
             </button>
           ))}
         </nav>
-        <DeskTools />
+        {toolsInTop ? null : <DeskTools />}
       </aside>
 
       <header className="desk-top">
@@ -440,11 +455,11 @@ export function DeskLayout({ brand }: { brand: string }) {
             >
               <DeskNavIcon id="search" />
             </button>
-            <DeskTools />
           </>
         ) : (
           <SearchBar className="desk-search" />
         )}
+        {toolsInTop ? <DeskTools /> : null}
       </header>
 
       <main className="desk-stage" id="desk-stage">

@@ -180,6 +180,7 @@ function LikesDest({
             key={id}
             type="button"
             className={`likes-dest__item ${on ? "on" : ""}`}
+            data-dest={id}
             aria-current={on ? "page" : undefined}
             aria-label={likesT(locale, `dest.${id}`)}
             title={likesT(locale, `dest.${id}`)}
@@ -235,7 +236,7 @@ function LikesMini({ onOpen }: { onOpen: () => void }) {
   const tr = useT(locale);
 
   return (
-    <div className="likes-mini now-playing" aria-label={likesT(locale, "miniAria")}>
+    <div className="likes-mini" data-likes-mini aria-label={likesT(locale, "miniAria")}>
       <button
         type="button"
         className="likes-mini__art"
@@ -256,6 +257,7 @@ function LikesMini({ onOpen }: { onOpen: () => void }) {
         <button
           type="button"
           className="likes-mini__btn"
+          data-likes-ctrl="prev"
           onClick={() => next(-1)}
           aria-label={tr("transport.prev")}
         >
@@ -266,6 +268,7 @@ function LikesMini({ onOpen }: { onOpen: () => void }) {
         <button
           type="button"
           className="likes-mini__btn play"
+          data-likes-ctrl="play"
           onClick={togglePlay}
           aria-label={tr("transport.playPause")}
         >
@@ -282,6 +285,7 @@ function LikesMini({ onOpen }: { onOpen: () => void }) {
         <button
           type="button"
           className="likes-mini__btn"
+          data-likes-ctrl="next"
           onClick={() => next(1)}
           aria-label={tr("transport.next")}
         >
@@ -353,7 +357,7 @@ export function LikesLayout({ brand }: { brand: string }) {
       root.style.setProperty(
         "--search-overlay-bottom",
         mobile
-          ? "calc(132px + env(safe-area-inset-bottom, 0px))"
+          ? "calc(128px + env(safe-area-inset-bottom, 0px))"
           : "calc(76px + env(safe-area-inset-bottom, 0px))"
       );
     };

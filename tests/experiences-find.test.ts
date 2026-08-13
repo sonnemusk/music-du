@@ -31,9 +31,11 @@ describe("find experience", () => {
 
   it("is search-first: SearchBar + setTab search on mount", () => {
     expect(tsx).toMatch(/<SearchBar\b/);
+    expect(tsx).toMatch(/className="find-search/);
     expect(tsx).toMatch(/setTab\("search"\)/);
     expect(tsx).toMatch(/mode="search"/);
     expect(tsx).toMatch(/usePlayer/);
+    expect(tsx).not.toMatch(/SkinHead/);
   });
 
   it("reuses player, search, library, charts, lyrics, locale, theme", () => {
@@ -80,6 +82,8 @@ describe("find experience", () => {
     expect(tsx).toMatch(/className="find-search/);
     expect(css).toMatch(/\.layout-find \.find-search input/);
     expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*font-size:\s*16px/);
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*\.find-search[\s\S]*display:\s*flex/);
+    expect(css).not.toMatch(/@media \(max-width: 720px\)[\s\S]*\.find-search[^{]*\{[^}]*display:\s*none/);
   });
 
   it("local i18n covers zh and en without touching app dicts", () => {

@@ -16,7 +16,7 @@ Unwired on purpose: SkinHost / theme-catalog / layout-ids stay untouched. This f
 
 Cinema reel, not a player chrome clone and not a tabbed list.
 
-- Cover is the product. Film-edge notches, grain, vignette. Title sits in a bottom gradient in the display face.
+- Cover is the product. Film-edge notches, grain, vignette. Title sits in a bottom gradient in the display face. Prev / play / next sit in a 44×44 dock row under the caption so they never overlap.
 - Queue sources are a short glass chip row — four site lists, not a six-tab nav.
 - Right edge: a thin **index rail** (position in the active queue).
 - Current lyric line can sit on the cover as a caption; full lyrics open in the dock.
@@ -72,7 +72,7 @@ If search play sets `queueSource: "search"`, a layout effect remaps to the first
 | `theme.ts` | `LAYOUT_ID`, `THEMES`, `LAYOUT_META`, CSS var helper |
 | `i18n.ts` | feed-only zh / en (shared keys still come from `useT`) |
 | `FeedLayout.tsx` | `export function FeedLayout({ brand }: { brand: string })` |
-| `feed.css` | reel, chips, dock, 720 + 1024 (+ 380) |
+| `feed.css` | reel, chips, dock, 720 + 1024 (+ 390) |
 | `PLAN.md` | this note |
 
 Reuse only: `usePlayer.next`, `TrackList`, `ChartsPanel`, `LyricsView`, `Transport`, `SearchBar`, `SkinSwitcher`, `LocaleSwitcher`, `CoverImg`, `openMobileSearchFromGesture`, `ThemeTokens`.

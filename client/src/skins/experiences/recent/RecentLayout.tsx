@@ -179,6 +179,7 @@ function RecentBody() {
       mode="history"
       empty={rt(locale, "emptyHistory")}
       coverSize="thumb"
+      className="track-list rec-tape"
     />
   );
 }

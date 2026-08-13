@@ -53,8 +53,9 @@ describe("boards experience", () => {
 
   it("CSS covers desktop 720px+ and 44px targets", () => {
     expect(css).toMatch(/720px/);
-    expect(css).toMatch(/@media \(min-width:\s*720px\)/);
+    expect(css).toMatch(/@media \(min-width:\s*721px\)/);
     expect(css).toMatch(/@media \(max-width:\s*720px\)/);
+    expect(css).not.toMatch(/@media \(min-width:\s*720px\)/);
     expect(css).toMatch(/100dvh/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/44px/);

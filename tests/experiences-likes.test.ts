@@ -76,10 +76,15 @@ describe("likes css", () => {
   });
 
   it("meets 44px touch targets, dvh, and safe-area", () => {
-    expect(css).toMatch(/min-(width|height):\s*44px/);
+    expect(css).toMatch(/min-(width|height):\s*44px|--likes-hit:\s*44px/);
     expect(css).toMatch(/100dvh/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/overflow:\s*hidden/);
+  });
+
+  it("lets the desktop SearchBar shrink and keeps the phone launch at 44px", () => {
+    expect(css).toMatch(/\.likes-search[\s\S]{0,220}min-width:\s*0/);
+    expect(css).toMatch(/\.likes-search-launch[\s\S]{0,220}min-(width|height):\s*(44px|var\(--likes-hit\))/);
   });
 });
 

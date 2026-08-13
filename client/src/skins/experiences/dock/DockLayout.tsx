@@ -34,8 +34,13 @@ function useMq(query: string): boolean {
   return ok;
 }
 
-function tabLabel(tr: (k: string) => string, id: PanelTab, short: boolean): string {
-  return tr(short ? `tabs.${id}Short` : `tabs.${id}`);
+/** Full tab copy only — never `tabs.*Short` (those are 1-glyph on zh). */
+function tabLabel(tr: (k: string) => string, id: PanelTab): string {
+  return tr(`tabs.${id}`);
+}
+
+function brandCore(brand: string): string {
+  return brand.split("·")[0]?.trim() || brand;
 }
 
 function DockSearchPane({ tr }: { tr: (k: string, p?: Record<string, string | number>) => string }) {
@@ -177,7 +182,7 @@ export function DockLayout({ brand }: { brand: string }) {
           <span className="dock-brand__mark" aria-hidden>
             ⌁
           </span>
-          <span className="dock-brand__text">{brand}</span>
+          <span className="dock-brand__text">{phone ? brandCore(brand) : brand}</span>
         </div>
         {phone ? (
           <button
@@ -204,9 +209,10 @@ export function DockLayout({ brand }: { brand: string }) {
               key={id}
               type="button"
               className={`dock-tab ${tab === id ? "on" : ""}`}
+              aria-current={tab === id ? "page" : undefined}
               onClick={() => goTab(id)}
             >
-              {tabLabel(tr, id, true)}
+              {tabLabel(tr, id)}
             </button>
           ))}
         </nav>
@@ -220,9 +226,10 @@ export function DockLayout({ brand }: { brand: string }) {
                 key={id}
                 type="button"
                 className={`dock-tab dock-tab--side ${tab === id ? "on" : ""}`}
+                aria-current={tab === id ? "page" : undefined}
                 onClick={() => goTab(id)}
               >
-                <span className="dock-tab__full">{tabLabel(tr, id, false)}</span>
+                <span className="dock-tab__full">{tabLabel(tr, id)}</span>
               </button>
             ))}
           </nav>
@@ -312,9 +319,10 @@ export function DockLayout({ brand }: { brand: string }) {
               key={id}
               type="button"
               className={`dock-tab ${tab === id ? "on" : ""}`}
+              aria-current={tab === id ? "page" : undefined}
               onClick={() => goTab(id)}
             >
-              {tabLabel(tr, id, false)}
+              {tabLabel(tr, id)}
             </button>
           ))}
         </nav>
@@ -335,6 +343,7 @@ export function DockLayout({ brand }: { brand: string }) {
             <button
               type="button"
               className="dock-sheet__close dock-sheet__ghost"
+              aria-label={tr("shell.locate")}
               onClick={() => {
                 locateCurrentInList();
                 setSheet(false);
@@ -364,6 +373,7 @@ export function DockLayout({ brand }: { brand: string }) {
               <button
                 type="button"
                 className="dock-sheet__lyrics-btn"
+                aria-label={tr("shell.openLyrics")}
                 onClick={() => {
                   setTab("lyrics");
                   if (phone) setSheet(false);

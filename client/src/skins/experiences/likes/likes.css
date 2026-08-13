@@ -3,8 +3,13 @@
   --likes-tray: 76px;
   --likes-dest: 0px;
   --likes-top: 64px;
+  --likes-chip-h: 56px;
+  --likes-hit: 44px;
+  --likes-act: 36px;
   position: relative;
   box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   height: 100dvh;
   min-height: 100dvh;
@@ -16,6 +21,7 @@
     "spine stage"
     "tray tray";
   overflow: hidden;
+  overflow-x: hidden;
   background: var(--wallpaper, var(--bg));
   color: var(--fg);
   font-family: var(--font);
@@ -32,11 +38,13 @@
   align-items: stretch;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
   min-height: 0;
-  padding: 14px 10px 10px;
+  padding: 14px 8px 10px;
   border-right: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg2, var(--bg)) 88%, #000);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
 }
 
@@ -44,16 +52,17 @@
   display: grid;
   place-items: center;
   width: 100%;
+  min-width: 0;
   min-height: 56px;
   margin-bottom: 6px;
   color: var(--accent);
 }
 
 .likes-mark__seal {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: var(--likes-hit);
+  height: var(--likes-hit);
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -82,30 +91,35 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .likes-dest__item {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 8px 4px;
+  min-width: 0;
+  height: var(--likes-chip-h);
+  min-height: var(--likes-chip-h);
+  padding: 4px 2px;
   border-radius: var(--radius-sm, 8px);
   color: var(--muted);
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.02em;
-  line-height: 1.15;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
   text-align: center;
+  overflow: hidden;
 }
 
 .likes-dest__item svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.7;
@@ -120,7 +134,9 @@
 }
 
 .likes-dest__label {
+  display: block;
   max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -132,17 +148,23 @@
   flex-direction: column;
   gap: 6px;
   padding-top: 10px;
+  min-width: 0;
 }
 
 .likes-palettes__btn {
-  min-width: 44px;
-  min-height: 44px;
+  box-sizing: border-box;
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
+  height: var(--likes-hit);
   width: 100%;
   border-radius: var(--radius-sm, 8px);
   border: 1px solid var(--line);
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .likes-palettes__btn.on {
@@ -156,6 +178,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  max-width: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -168,11 +191,13 @@
   gap: 10px;
   min-height: var(--likes-top);
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   padding: 8px 16px;
 }
 
 .likes-brand {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
   font-family: var(--display-font);
   font-size: 18px;
@@ -189,7 +214,8 @@
   display: flex;
   flex: 1 1 0;
   min-width: 0;
-  height: 44px;
+  max-width: 100%;
+  height: var(--likes-hit);
   align-items: stretch;
   overflow: hidden;
   border-radius: 999px;
@@ -211,23 +237,26 @@
 }
 
 .likes-search button {
-  flex: 0 0 auto;
-  min-width: 52px;
-  min-height: 44px;
-  padding: 0 14px;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: var(--likes-hit);
+  padding: 0 12px;
   font-weight: 800;
   font-size: 13px;
   background: var(--accent);
   color: var(--accent-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .likes-search-launch {
   display: none;
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: var(--likes-hit);
+  height: var(--likes-hit);
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
   align-items: center;
   justify-content: center;
   border-radius: 12px;
@@ -239,7 +268,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.likes .skin-switcher {
   min-width: 0;
 }
 
@@ -247,13 +280,20 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .likes .skin-switcher__btn,
 .likes .locale-switch {
-  min-width: 44px;
-  min-height: 44px;
-  height: 44px;
+  box-sizing: border-box;
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
+  height: var(--likes-hit);
+}
+
+.likes .skin-switcher__btn {
+  max-width: 9.5em;
+  overflow: hidden;
 }
 
 .likes-hero {
@@ -262,16 +302,22 @@
   align-items: baseline;
   gap: 12px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   padding: 4px 20px 10px;
 }
 
 .likes-hero__title {
   margin: 0;
+  min-width: 0;
   font-family: var(--display-font);
   font-size: clamp(28px, 4vw, 42px);
   font-weight: 400;
   letter-spacing: -0.02em;
   line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .likes-hero__count,
@@ -279,17 +325,23 @@
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .likes-hero__blurb {
   margin-left: auto;
+  min-width: 0;
 }
 
 .likes-body {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  max-width: 100%;
   overflow: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   padding: 0 12px 12px;
 }
@@ -311,12 +363,20 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .likes .track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   border-radius: var(--radius-sm, 8px);
   border-left: 3px solid transparent;
   min-height: 64px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .likes .track-row.playing {
@@ -326,10 +386,45 @@
 
 .likes .track-row .cov,
 .likes .track-row .cov img {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+  width: var(--likes-hit);
+  height: var(--likes-hit);
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
   border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.likes .track-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.likes .track-name,
+.likes .track-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.likes .track-acts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  opacity: 1;
+}
+
+.likes .track-row:hover .track-acts,
+.likes .track-row:focus-within .track-acts {
+  opacity: 1;
+}
+
+.likes .track-acts .icon-btn {
+  box-sizing: border-box;
+  width: var(--likes-act);
+  height: var(--likes-act);
+  min-width: var(--likes-act);
+  min-height: var(--likes-act);
 }
 
 .likes-tray {
@@ -337,7 +432,10 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  max-width: 100%;
   min-height: var(--likes-tray);
+  overflow: hidden;
+  overflow-x: hidden;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg2, var(--bg)) 82%, #000);
   backdrop-filter: blur(16px);
@@ -346,23 +444,28 @@
 
 .likes-dest--bar {
   display: none;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
-.likes-mini {
-  display: flex;
+.likes .likes-mini {
+  display: grid;
+  grid-template-columns: var(--likes-hit) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  column-gap: 10px;
   min-height: 64px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   padding: 8px 12px;
 }
 
 .likes-mini__art {
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-  min-width: 44px;
-  min-height: 44px;
+  width: var(--likes-hit);
+  height: var(--likes-hit);
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
   padding: 0;
   border-radius: 8px;
   overflow: hidden;
@@ -379,11 +482,13 @@
 .likes-mini__meta {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
   text-align: left;
   background: transparent;
   border: 0;
   padding: 0;
-  min-height: 44px;
+  min-height: var(--likes-hit);
+  overflow: hidden;
 }
 
 .likes-mini__title,
@@ -406,28 +511,30 @@
 }
 
 .likes-mini__ctrls {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--likes-hit) var(--likes-hit) var(--likes-hit);
   align-items: center;
+  justify-items: center;
   gap: 4px;
   flex: 0 0 auto;
+  min-width: 0;
 }
 
-.likes-mini__btn {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+.likes-mini__btn,
+.likes-mini__btn.play {
+  box-sizing: border-box;
+  width: var(--likes-hit);
+  height: var(--likes-hit);
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
   display: grid;
   place-items: center;
   border-radius: 50%;
   color: var(--fg);
+  padding: 0;
 }
 
 .likes-mini__btn.play {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
   background: var(--accent);
   color: var(--accent-fg);
 }
@@ -441,7 +548,7 @@
 .likes-sheet {
   position: absolute;
   inset: 0;
-  z-index: 40;
+  z-index: 80;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -449,12 +556,15 @@
   background: color-mix(in srgb, var(--bg) 55%, transparent);
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
 }
 
 .likes-sheet__card {
   width: min(420px, 100%);
+  max-width: 100%;
   max-height: min(86dvh, 720px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   border-radius: var(--radius-lg, 20px);
   border: 1px solid var(--line);
@@ -464,6 +574,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  position: relative;
 }
 
 .likes-sheet__art {
@@ -486,6 +597,9 @@
   font-size: 22px;
   text-align: center;
   line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .likes-sheet__artist {
@@ -493,6 +607,9 @@
   color: var(--muted);
   font-size: 14px;
   text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .likes-sheet__lyric {
@@ -504,8 +621,8 @@
 }
 
 .likes-sheet__close {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
   padding: 0 16px;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -515,13 +632,16 @@
 .likes .transport {
   width: 100%;
   max-width: 360px;
+  overflow: visible;
+  position: relative;
+  z-index: 8;
 }
 
 .likes .t-btn {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: var(--likes-hit);
+  height: var(--likes-hit);
+  min-width: var(--likes-hit);
+  min-height: var(--likes-hit);
 }
 
 .likes .t-btn.play {
@@ -529,6 +649,18 @@
   height: 56px;
   min-width: 56px;
   min-height: 56px;
+}
+
+.likes .quality-wrap,
+.likes-sheet .quality-wrap {
+  position: relative;
+  z-index: 50;
+}
+
+.likes .quality-menu,
+.likes-sheet .quality-menu,
+body:has(.likes-sheet) .quality-menu {
+  z-index: 2000;
 }
 
 @media (min-width: 721px) {
@@ -546,9 +678,20 @@
   }
 }
 
+@media (min-width: 721px) and (max-width: 1024px) {
+  .likes-brand {
+    max-width: 8em;
+  }
+
+  .likes .skin-switcher__btn {
+    max-width: 7.5em;
+  }
+}
+
 @media (min-width: 1100px) {
   .likes {
     --likes-spine: 148px;
+    --likes-chip-h: 44px;
   }
 
   .likes-dest__item {
@@ -556,7 +699,8 @@
     justify-content: flex-start;
     gap: 10px;
     padding: 0 12px;
-    min-height: 44px;
+    height: var(--likes-hit);
+    min-height: var(--likes-hit);
     font-size: 13px;
   }
 
@@ -570,8 +714,9 @@
 @media (max-width: 720px) {
   .likes {
     --likes-spine: 0px;
-    --likes-tray: 128px;
+    --likes-tray: 120px;
     --likes-dest: 56px;
+    --likes-act: 44px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) var(--likes-tray);
     grid-template-areas:
@@ -593,7 +738,11 @@
 
   .likes-brand {
     flex: 1 1 auto;
-    max-width: none;
+    max-width: 8em;
+  }
+
+  .likes .skin-switcher__btn {
+    max-width: 6.5em;
   }
 
   .likes-hero {
@@ -615,20 +764,27 @@
   .likes-dest--bar {
     display: flex;
     flex-direction: row;
+    flex-wrap: nowrap;
     align-items: stretch;
-    justify-content: space-around;
+    justify-content: stretch;
     gap: 0;
-    min-height: 56px;
+    height: var(--likes-dest);
+    min-height: var(--likes-dest);
+    max-width: 100%;
+    overflow: hidden;
+    overflow-x: hidden;
     border-top: 1px solid var(--line);
-    padding: 0 4px;
+    padding: 0 2px;
   }
 
   .likes-dest--bar .likes-dest__item {
     flex: 1 1 0;
-    min-width: 44px;
-    min-height: 44px;
+    width: auto;
+    min-width: 0;
+    height: var(--likes-dest);
+    min-height: var(--likes-hit);
     box-shadow: none;
-    padding: 4px 2px;
+    padding: 2px 1px;
   }
 
   .likes-dest--bar .likes-dest__item.on {
@@ -636,16 +792,35 @@
   }
 
   .likes-dest--bar .likes-dest__label {
+    display: block;
     font-size: 10px;
+    letter-spacing: 0;
   }
 
   .likes-mini {
-    min-height: 64px;
+    min-height: 56px;
+    padding: 6px 10px;
+    column-gap: 8px;
   }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 390px) {
+  .likes,
+  .likes-top,
+  .likes-tray,
+  .likes-mini,
+  .likes-dest--bar,
+  .likes-body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
   .likes-dest--bar .likes-dest__label {
-    display: none;
+    display: block;
+    font-size: 9px;
+  }
+
+  .likes-mini__ctrls {
+    gap: 2px;
   }
 }

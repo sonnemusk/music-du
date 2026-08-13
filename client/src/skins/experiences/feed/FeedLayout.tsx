@@ -412,7 +412,7 @@ export function FeedLayout({ brand }: { brand: string }) {
               </article>
             </div>
 
-            <div className="feed-skips" data-no-swipe>
+            <div className="feed-skips" data-no-swipe role="group" aria-label={ft("navAria")}>
               <button
                 type="button"
                 className="feed-skip"

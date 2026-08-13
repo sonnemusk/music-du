@@ -153,9 +153,9 @@ export function FindLayout({ brand }: { brand: string }) {
         </div>
       </header>
 
-      <section className="find-hero" aria-label={tr("search.aria")}>
+      <section className="find-hero" aria-label={tr("search.aria")} data-find-hero>
         <p className="find-kicker">{findText(locale, "kicker")}</p>
-        <div className="find-well">
+        <div className="find-well" data-find-well>
           <SearchBar className="find-search skin-search" />
           <button
             type="button"
@@ -190,6 +190,7 @@ export function FindLayout({ brand }: { brand: string }) {
               key={id}
               type="button"
               className={`find-chip ${on ? "on" : ""}`}
+              data-find-chip={id}
               aria-current={on ? "page" : undefined}
               onClick={() => setTab(id)}
             >

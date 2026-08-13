@@ -28,11 +28,16 @@ describe("dock experience", () => {
     expect(tsx).not.toMatch(/[\u4e00-\u9fff]/);
   });
 
-  it("CSS contains 720px and a second breakpoint (1024px)", () => {
+  it("CSS contains 720px and 44px rules for play/prev/next", () => {
     const css = read("dock.css");
     expect(css.includes("720px")).toBe(true);
     expect(css.includes("1024px")).toBe(true);
     expect(css).toMatch(/100dvh/);
+    const phone = css.slice(css.indexOf("max-width: 720px"));
+    expect(phone).toMatch(/\.dock-mini__play[\s\S]{0,180}min-(width|height):\s*44px/);
+    expect(phone).toMatch(/\.dock-mini__skip[\s\S]{0,160}min-(width|height):\s*44px/);
+    expect(phone).toMatch(/width:\s*44px/);
+    expect(phone).toMatch(/height:\s*44px/);
   });
 
   it("exports two unique dock themes with layout dock", () => {
@@ -69,6 +74,16 @@ describe("dock experience", () => {
     expect(css).toMatch(/pointer:\s*coarse/);
     expect(css).toMatch(/min-width:\s*44px/);
     expect(css).toMatch(/min-height:\s*44px/);
+  });
+
+  it("phone bottom tabs never use tabs.*Short", () => {
+    const tsx = read("DockLayout.tsx");
+    expect(tsx).not.toMatch(/tabs\.\$\{id\}Short/);
+    expect(tsx).not.toMatch(/tabs\.\w+Short/);
+    expect(tsx).not.toMatch(/tabLabel\([^)]*true/);
+    const phoneNav = tsx.slice(tsx.indexOf("className=\"dock-tabs\""));
+    expect(phoneNav).toMatch(/tabLabel\(tr, id\)|tr\(`tabs\.\$\{id\}`\)/);
+    expect(phoneNav).not.toMatch(/Short/);
   });
 
   it("player sheet stacks below search overlay (900) and theme panel (2000)", () => {

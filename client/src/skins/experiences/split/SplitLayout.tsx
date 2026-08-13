@@ -123,6 +123,9 @@ function SplitNow({ phone }: { phone: boolean }) {
   const qShow = quality && quality !== "…" ? quality : preferredQuality;
   const qLabel = qualityShortLabel(qShow) || String(qShow || "").toUpperCase();
 
+  const title = curTrack?.name || splitT(locale, "idleTitle");
+  const artist = curTrack?.artist || splitT(locale, "idleArtist");
+
   return (
     <div
       className={`split-now now-playing ${phone ? "is-compact" : ""} ${loadingPlay ? "loading" : ""}`}
@@ -143,11 +146,11 @@ function SplitNow({ phone }: { phone: boolean }) {
         )}
       </div>
       <div className="split-now__text">
-        <h1 className="split-now__title">
-          {curTrack?.name || splitT(locale, "idleTitle")}
+        <h1 className="split-now__title" title={title}>
+          {title}
         </h1>
-        <p className="split-now__artist">
-          {curTrack?.artist || splitT(locale, "idleArtist")}
+        <p className="split-now__artist" title={artist}>
+          {artist}
         </p>
         {curTrack && !phone ? (
           <div className="split-now__badges">
@@ -202,6 +205,7 @@ export function SplitLayout({ brand }: { brand: string }) {
       className="split-root"
       data-layout="split"
       data-split-theme={theme.id}
+      data-split-mode={phone ? "stacked" : "two-pane"}
       data-phone={phone ? "1" : undefined}
       style={{
         ...vars,
@@ -235,9 +239,11 @@ export function SplitLayout({ brand }: { brand: string }) {
               <SkinSwitcher />
             </div>
           </header>
-          <SplitNow phone={phone} />
-          <div className="split-transport">
-            <Transport />
+          <div className="split-player__stage">
+            <SplitNow phone={phone} />
+            <div className="split-transport">
+              <Transport />
+            </div>
           </div>
         </section>
 

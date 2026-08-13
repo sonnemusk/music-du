@@ -42,7 +42,7 @@ Not a player-first dock. Not a cover grid. A **locator instrument**:
 [ mini: cover | title/artist | ⏮ ▶ ⏭  seek           ]
 ```
 
-Phone (≤720px): same stack, tighter padding, SearchBar always on, drawers scroll sideways, mini bar + home-indicator inset.
+Phone (≤720px): same stack, tighter padding, SearchBar always on (input 16px), drawers wrap (≥36px chips), mini prev/play/next 44×44, + home-indicator inset. Hero search height is reserved so empty vs results does not jump.
 
 ## Reuse
 
