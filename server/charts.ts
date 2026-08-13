@@ -248,12 +248,6 @@ function cacheWindows(board: ChartBoardId): { fresh: number; ttl: number } {
 }
 
 const MAX_TRACKS = 40;
-/**
- * Free Workers: each rematch is 1–2 upstream searches (subrequests).
- * NetEase rows already have ids and cost 0. Cap the rest so one chart
- * request cannot blow the 50-subrequest limit.
- */
-export const CHART_REMATCH_BUDGET = 6;
 
 /** Edge Cache-Control max-age (seconds) by board — soar must stay fresher. */
 export function chartEdgeMaxAgeSec(board: ChartBoardId): number {
@@ -262,18 +256,48 @@ export function chartEdgeMaxAgeSec(board: ChartBoardId): number {
   return 8 * 3600;
 }
 
-/** Split rows that already have a NetEase id from those that need search. */
-export function planChartRematch<T extends { neteaseId?: string | number }>(
-  rows: T[],
-  budget = CHART_REMATCH_BUDGET
-): { ready: T[]; toSearch: T[] } {
-  const ready: T[] = [];
-  const toSearch: T[] = [];
-  for (const row of rows) {
-    if (row.neteaseId != null && String(row.neteaseId) !== "") ready.push(row);
-    else toSearch.push(row);
+/** True when the id can be sent to /api/song (NetEase numeric). */
+export function isResolvedSongId(id: string | number | null | undefined): boolean {
+  return /^\d+$/.test(String(id ?? "").trim());
+}
+
+/**
+ * Display id for a chart row. NetEase playlists already have a playable id.
+ * QQ/酷狗/酷我 rows keep an `ext:` placeholder — the client searches on click.
+ */
+export function chartTrackFromRaw(
+  row: {
+    name: string;
+    artist: string;
+    album?: string;
+    cover?: string;
+    duration?: number;
+    neteaseId?: string | number;
+    sourceKey?: string;
+  },
+  rank: number
+): ChartTrack | null {
+  const name = String(row.name || "").trim();
+  if (!name) return null;
+  const artist = String(row.artist || "").trim();
+  let id: string | number;
+  if (row.neteaseId != null && String(row.neteaseId).trim() !== "") {
+    const raw = String(row.neteaseId).trim();
+    id = /^\d+$/.test(raw) ? Number(raw) : raw;
+  } else {
+    const key = String(row.sourceKey || `${name}|${artist}`).slice(0, 180);
+    id = `ext:${key}`;
   }
-  return { ready, toSearch: toSearch.slice(0, Math.max(0, budget)) };
+  return {
+    id,
+    name,
+    artist,
+    album: String(row.album || ""),
+    cover: String(row.cover || ""),
+    duration: Number(row.duration || 0) || 0,
+    rank,
+    sourceKey: row.sourceKey,
+  };
 }
 
 type RawRow = {
@@ -557,126 +581,25 @@ async function fetchRaw(
   return { rows: [], sourceLabel: "" };
 }
 
-function scoreMatch(row: RawRow, hit: Track): number {
-  const n1 = cleanName(row.name).toLowerCase();
-  const n2 = cleanName(hit.name).toLowerCase();
-  let s = 0;
-  if (n1 === n2) s += 100;
-  else if (n2.includes(n1) || n1.includes(n2)) s += 60;
-  else if (n1 && n2 && n1.slice(0, 2) === n2.slice(0, 2)) s += 10;
-  const a1 = cleanName(row.artist).toLowerCase();
-  const a2 = cleanName(hit.artist || "").toLowerCase();
-  if (a1 && a2) {
-    if (a1 === a2) s += 40;
-    else if (a2.includes(a1.split(" / ")[0]) || a1.includes(a2.split(" / ")[0])) s += 25;
-  }
-  // Penalize karaoke / DJ / cover / 伴奏 noise after cross-platform rematch
-  const bad = /dj|remix|live|伴奏|消音|片段|翻唱|cover|montagem|加速|剪辑/i;
-  if (bad.test(hit.name || "") && !bad.test(row.name || "")) s -= 45;
-  if (bad.test(hit.artist || "") && !bad.test(row.artist || "")) s -= 25;
-  return s;
-}
-
-async function resolveRow(
-  row: RawRow,
-  opts?: { apikey?: string }
-): Promise<ChartTrack | null> {
-  if (row.neteaseId != null && row.neteaseId !== "") {
-    return {
-      id: row.neteaseId,
-      name: row.name,
-      artist: row.artist,
-      album: row.album || "",
-      cover: row.cover || "",
-      duration: row.duration || 0,
-      rank: 0,
-      sourceKey: row.sourceKey,
-    };
-  }
-  const q = [row.name, row.artist].filter(Boolean).join(" ").trim();
-  if (!q) return null;
-  try {
-    // One search only — a name-only retry doubled subrequests per row.
-    const hits = await chksz.search(q, 6, opts);
-    if (!hits.length) return null;
-    let best = hits[0];
-    let bestScore = -1;
-    for (const h of hits) {
-      const sc = scoreMatch(row, h);
-      if (sc > bestScore) {
-        bestScore = sc;
-        best = h;
-      }
-    }
-    if (bestScore < 10 && hits[0]) best = hits[0];
-    return {
-      id: best.id,
-      name: best.name || row.name,
-      artist: best.artist || row.artist,
-      album: best.album || row.album || "",
-      cover: best.cover || row.cover || "",
-      duration: best.duration || row.duration || 0,
-      rank: 0,
-      sourceKey: row.sourceKey,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function mapPool<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T, i: number) => Promise<R>
-): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let i = 0;
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++;
-      out[idx] = await fn(items[idx], idx);
-    }
-  }
-  const n = Math.min(concurrency, Math.max(1, items.length));
-  await Promise.all(Array.from({ length: n }, () => worker()));
-  return out;
-}
-
 async function buildChart(
   platform: ChartPlatformId,
   board: ChartBoardId,
-  limit: number,
-  opts?: { apikey?: string }
+  limit: number
 ): Promise<ChartPayload> {
   const meta = metaOf(platform);
   const boardMeta = CHART_BOARDS.find((b) => b.id === board);
   const { rows, sourceLabel } = await fetchRaw(platform, board, limit);
-  const { ready, toSearch } = planChartRematch(rows);
-  const rematched = await mapPool(toSearch, 3, async (row) =>
-    resolveRow(row, { apikey: opts?.apikey })
-  );
-  const resolved = [
-    ...ready.map((row) => ({
-      id: row.neteaseId as string | number,
-      name: row.name,
-      artist: row.artist,
-      album: row.album || "",
-      cover: row.cover || "",
-      duration: row.duration || 0,
-      rank: 0,
-      sourceKey: row.sourceKey,
-    })),
-    ...rematched,
-  ];
-
+  // Show every row immediately. Playable NetEase ids are used when present;
+  // others get an ext: placeholder and the client searches on click.
   const tracks: ChartTrack[] = [];
   const seen = new Set<string>();
-  for (const t of resolved) {
-    if (!t || t.id == null || t.id === "") continue;
+  for (const row of rows) {
+    const t = chartTrackFromRaw(row, tracks.length + 1);
+    if (!t) continue;
     const k = String(t.id);
     if (seen.has(k)) continue;
     seen.add(k);
-    tracks.push({ ...t, rank: tracks.length + 1 });
+    tracks.push(t);
     if (tracks.length >= limit) break;
   }
 
@@ -711,7 +634,7 @@ export async function getChart(
       }
       if (age < ttl) {
         if (!inflight.has(cacheKey)) {
-          const p = buildChart(platform, board, limit, opts)
+          const p = buildChart(platform, board, limit)
             .then((payload) => {
               writeCache(cacheKey, payload);
               scheduleCoverWarm(payload.tracks);
@@ -731,7 +654,7 @@ export async function getChart(
   if (existing && !opts?.force) return existing;
 
   const work = (async () => {
-    const payload = await buildChart(platform, board, limit, opts);
+    const payload = await buildChart(platform, board, limit);
     writeCache(cacheKey, payload);
     scheduleCoverWarm(payload.tracks);
     return payload;

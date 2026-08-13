@@ -1,5 +1,41 @@
 import { getLocale, t, type Locale } from "../i18n";
-import type { LyricLine, PlayMode } from "./types";
+import type { LyricLine, PlayMode, Track } from "./types";
+
+/** NetEase ids are digits. Chart placeholders look like `ext:qq:…`. */
+export function isResolvedSongId(id: string | number | null | undefined): boolean {
+  return /^\d+$/.test(String(id ?? "").trim());
+}
+
+function foldName(s: string): string {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\(.*?\)|（.*?）|\[.*?\]/g, "")
+    .trim();
+}
+
+/** Pick the closest search hit for a chart row that has no playable id yet. */
+export function pickBestNameMatch(want: Pick<Track, "name" | "artist">, hits: Track[]): Track | null {
+  if (!hits.length) return null;
+  const n = foldName(want.name);
+  const a = foldName(want.artist).split(/[/,]/)[0]?.trim() || "";
+  let best = hits[0]!;
+  let score = -1;
+  for (const h of hits) {
+    const hn = foldName(h.name);
+    const ha = foldName(h.artist);
+    let s = 0;
+    if (hn === n) s += 50;
+    else if (n && (hn.includes(n) || n.includes(hn))) s += 20;
+    if (a && ha.includes(a)) s += 30;
+    else if (a && ha && (ha.includes(a.slice(0, 2)) || a.includes(ha.slice(0, 2)))) s += 8;
+    if (s > score) {
+      score = s;
+      best = h;
+    }
+  }
+  return best;
+}
 
 export function cyclePlayMode(mode: PlayMode): PlayMode {
   if (mode === "list") return "single";

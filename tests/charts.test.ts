@@ -6,9 +6,9 @@ import {
   listChartBoards,
   listChartPlatforms,
   normalizeBoard,
-  planChartRematch,
+  chartTrackFromRaw,
+  isResolvedSongId,
   resolveSource,
-  CHART_REMATCH_BUDGET,
   _clearChartCache,
 } from "../server/charts.js";
 
@@ -55,26 +55,22 @@ describe("charts catalog", () => {
     expect(true).toBe(true);
   });
 
-  it("caps rematch budget so QQ-style rows cannot fire 40 searches", () => {
-    const rows = Array.from({ length: 40 }, (_, i) => ({
-      name: `t${i}`,
-      artist: "a",
-    }));
-    const { ready, toSearch } = planChartRematch(rows);
-    expect(ready).toHaveLength(0);
-    expect(toSearch).toHaveLength(CHART_REMATCH_BUDGET);
-    expect(CHART_REMATCH_BUDGET).toBeLessThanOrEqual(8);
+  it("QQ-style rows keep a placeholder id and do not need a search", () => {
+    const tracks = Array.from({ length: 40 }, (_, i) =>
+      chartTrackFromRaw({ name: `t${i}`, artist: "a", sourceKey: `qq:${i}` }, i + 1)
+    );
+    expect(tracks.every(Boolean)).toBe(true);
+    expect(tracks.every((t) => t && String(t.id).startsWith("ext:"))).toBe(true);
+    expect(tracks.every((t) => t && !isResolvedSongId(t.id))).toBe(true);
   });
 
-  it("netease ids skip rematch and do not consume the budget", () => {
-    const rows = [
-      { name: "a", artist: "x", neteaseId: 1 },
-      { name: "b", artist: "y", neteaseId: 2 },
-      ...Array.from({ length: 20 }, (_, i) => ({ name: `q${i}`, artist: "z" })),
-    ];
-    const { ready, toSearch } = planChartRematch(rows);
-    expect(ready).toHaveLength(2);
-    expect(toSearch).toHaveLength(CHART_REMATCH_BUDGET);
+  it("NetEase rows stay playable numeric ids", () => {
+    const t = chartTrackFromRaw(
+      { name: "孤勇者", artist: "陈奕迅", neteaseId: 1901371647 },
+      1
+    );
+    expect(t?.id).toBe(1901371647);
+    expect(isResolvedSongId(t?.id)).toBe(true);
   });
 
   it("edge TTL is 2h for soar, not 12h", () => {

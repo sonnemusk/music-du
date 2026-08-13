@@ -8,6 +8,8 @@ import {
   cyclePlayMode,
   fmtTime,
   isEditableTarget,
+  isResolvedSongId,
+  pickBestNameMatch,
   lyricIndexAt,
   nextQueueIndex,
   parseLyric,
@@ -83,6 +85,24 @@ describe("player-core", () => {
     expect(clampSeek(2, -5, 20)).toBe(0);
     expect(clampVolume(1.5)).toBe(1);
     expect(clampVolume(-1)).toBe(0);
+  });
+
+  it("resolved vs placeholder chart ids", () => {
+    expect(isResolvedSongId(1901371647)).toBe(true);
+    expect(isResolvedSongId("1901371647")).toBe(true);
+    expect(isResolvedSongId("ext:qq:abc")).toBe(false);
+    expect(isResolvedSongId("")).toBe(false);
+  });
+
+  it("pickBestNameMatch prefers exact title", () => {
+    const best = pickBestNameMatch(
+      { name: "夜曲", artist: "周杰伦" },
+      [
+        { id: 1, name: "夜曲 (Live)", artist: "别人" },
+        { id: 2, name: "夜曲", artist: "周杰伦" },
+      ]
+    );
+    expect(best?.id).toBe(2);
   });
 
   it("isEditableTarget detects inputs", () => {

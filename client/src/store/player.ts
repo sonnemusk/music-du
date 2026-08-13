@@ -47,7 +47,9 @@ import {
   coverUrl,
   cyclePlayMode,
   fmtTime,
+  isResolvedSongId,
   lyricIndexAt,
+  pickBestNameMatch,
   nextQueueIndex,
   parseLyric,
   playModeLabel,
@@ -1083,6 +1085,43 @@ export const usePlayer = create<State>((set, get) => ({
     const curId = get().curTrack?.id;
     if (get().loadingPlay && curId != null && String(curId) === String(t.id)) {
       return;
+    }
+
+    // Chart rows from QQ/酷狗/酷我 have no NetEase id yet — show the row, then
+    // one search on click (never rematch the whole board on load).
+    if (!isResolvedSongId(t.id)) {
+      set({ curTrack: t, loadingPlay: true, playing: false });
+      get().showToast(i18n("toast.resolving"));
+      try {
+        const q = [t.name, t.artist].filter(Boolean).join(" ").trim();
+        const hits = q ? await api.searchSongs(q, 8) : [];
+        const best = pickBestNameMatch(t, hits);
+        if (!best || !isResolvedSongId(best.id)) {
+          set({ loadingPlay: false });
+          get().showToast(i18n("toast.noSource"));
+          return;
+        }
+        const fromId = String(t.id);
+        const merged: Track = {
+          ...t,
+          ...best,
+          id: best.id,
+          name: best.name || t.name,
+          artist: best.artist || t.artist,
+          cover: t.cover || best.cover,
+        };
+        const rewrite = (list: Track[]) =>
+          list.map((x) => (String(x.id) === fromId ? { ...x, ...merged } : x));
+        set({
+          chartTracks: rewrite(get().chartTracks),
+          searchResults: rewrite(get().searchResults),
+        });
+        return get().playTrack(merged, opts);
+      } catch {
+        set({ loadingPlay: false });
+        get().showToast(i18n("toast.networkFail"));
+        return;
+      }
     }
 
     // Shuffle: remember what we leave so 上一首 can come back (not another random)

@@ -3,6 +3,7 @@
  * Fills durable song-cache so playTrack hits cache and skips slow /api/song wait.
  * Does NOT download audio — only metadata + CDN url.
  */
+import { isResolvedSongId } from "./player-core";
 import { DEFAULT_QUALITY } from "./quality";
 import { getCachedSong, setCachedSong } from "./song-cache";
 import type { Track } from "./types";
@@ -58,7 +59,7 @@ export function prefetchSongResolves(
   const startDelayMs = opts?.startDelayMs ?? 200;
 
   const list = (tracks || [])
-    .filter((t) => t && t.id != null)
+    .filter((t) => t && t.id != null && isResolvedSongId(t.id))
     .slice(0, limit)
     .filter((t) => {
       const k = `${String(t.id)}@@${level}`;
@@ -136,7 +137,7 @@ export function prefetchSongResolveOne(
   resolveFn: ResolveFn,
   level: string = DEFAULT_QUALITY
 ): void {
-  if (id == null) return;
+  if (id == null || !isResolvedSongId(id)) return;
   const k = `${String(id)}@@${level}`;
   if (getCachedSong(id, level) || inflight.has(k)) return;
   inflight.add(k);
