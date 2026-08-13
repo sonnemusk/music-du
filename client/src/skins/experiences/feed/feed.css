@@ -766,11 +766,11 @@
   .feed-transport .vol-row {
     display: none;
   }
+}
 
-  /* Phone already has the vertical skip trio — don't stack another prev/play/next. */
-  .layout-feed .feed-transport .t-btn:not(.ghost) {
-    display: none;
-  }
+/* Reel already has ▲ / play / ▼ — don't stack another prev/play/next. */
+.layout-feed .feed-transport .t-btn:not(.ghost) {
+  display: none;
 }
 
 /* 390–720: keep chrome + extras on one line, no wrap overflow */

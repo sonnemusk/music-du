@@ -733,6 +733,11 @@
     padding-bottom: 8px;
   }
 
+  .desk-extras .desk-vol,
+  .desk-extras input[type="range"] {
+    display: none;
+  }
+
   .desk-foot {
     display: grid;
     grid-area: foot;

@@ -13,7 +13,7 @@ export const likesI18n = {
       history: "历史",
       charts: "榜单",
       lyrics: "歌词",
-      playlist: "播放列表",
+      playlist: "列表",
     },
     palette: {
       aria: "匣的配色",

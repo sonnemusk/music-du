@@ -94,7 +94,7 @@ function SplitSpine({ phone }: { phone: boolean }) {
     <nav className="split-spine" aria-label={splitT(locale, "sectionsAria")} data-no-swipe>
       {SECTIONS.map((id) => {
         const on = tab === id;
-        const label = phone ? tr(`tabs.${id}`) : tr(`tabs.${id}Short`);
+        const label = tr(`tabs.${id}`);
         return (
           <button
             key={id}

@@ -98,7 +98,7 @@ function RecentRail() {
 
   const labelFor = (id: PanelTab) => {
     if (id === "history") return phone ? rt(locale, "historyNavShort") : rt(locale, "historyNav");
-    return phone ? tr(`tabs.${id}Short`) : tr(`tabs.${id}`);
+    return tr(`tabs.${id}`);
   };
 
   const go = (id: PanelTab) => {
