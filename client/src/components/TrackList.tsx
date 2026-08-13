@@ -356,7 +356,7 @@ export function TrackList({
     <div className={className || "track-list"} ref={listRef} data-virtual={VIRTUAL ? "1" : undefined}>
       {tracks.map((t, i) => (
         <TrackRow
-          key={`${String(t.id)}-${t.rank || i}`}
+          key={mode === "charts" && t.rank ? `${String(t.id)}-${t.rank}` : String(t.id)}
           t={t}
           i={i}
           mode={mode}

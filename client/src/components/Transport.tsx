@@ -120,7 +120,7 @@ export function Transport({ compact }: { compact?: boolean }) {
           )}
         </div>
       )}
-      <div className="seek-row">
+      <div className="seek-row" data-no-swipe>
         <span aria-hidden="true">{fmt(currentTime)}</span>
         <div
           ref={seekTrackRef}

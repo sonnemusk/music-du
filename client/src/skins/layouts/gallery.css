@@ -176,6 +176,7 @@
   padding: 0;
   background: transparent;
   border-radius: var(--radius, 14px);
+  contain-intrinsic-size: auto 220px;
 }
 
 .layout-gallery .track-row .cov,
@@ -325,6 +326,23 @@
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
+}
+
+/* Lyrics tab: desktop/tablet hide the dock so .gal-body owns the stage.
+   Phone (≤720) keeps the mini bar — gallery has no other transport. */
+@media (min-width: 721px) {
+  .skin-host[data-tab="lyrics"] .layout-gallery .gal-shell {
+    grid-template-columns: var(--gal-rail) minmax(0, 1fr);
+  }
+  .skin-host[data-tab="lyrics"] .gal-dock {
+    display: none;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1023px) {
+  .skin-host[data-tab="lyrics"] .layout-gallery .gal-shell {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ── Dock ─────────────────────────────────────────────────────────────── */
@@ -661,14 +679,24 @@
     flex-wrap: nowrap;
   }
   .gal-dock .transport .t-btn {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
   }
   .gal-dock .transport .t-btn.play {
-    width: 46px;
-    min-width: 46px;
-    height: 46px;
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    height: 48px;
+  }
+
+  /* Lyrics: keep the mini bar (play stays reachable); drop duplicated chrome. */
+  .skin-host[data-tab="lyrics"] .gal-dock__art,
+  .skin-host[data-tab="lyrics"] .gal-dock__meta,
+  .skin-host[data-tab="lyrics"] .gal-dock__label,
+  .skin-host[data-tab="lyrics"] .gal-dock__lyric {
+    display: none;
   }
 }
 

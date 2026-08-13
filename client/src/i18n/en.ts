@@ -230,6 +230,8 @@ export const en: Dict = {
   },
   access: {
     reLogin: "Sign in again",
+    loginHint: "Sign in with Cloudflare Access (email) to continue",
+    denied: "Unauthorized",
   },
   contentAria: "Content sections",
 };

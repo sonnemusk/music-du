@@ -58,39 +58,10 @@ export function setCachedPlatforms(list: ChartPlatform[]) {
   setTimed(PLATFORMS_KEY, list);
 }
 
-/** Prefetch cover images so list paint is instant next time / while scrolling. */
-const warmed = new Set<string>();
-
+/** Prefetch list thumbs via CDN Image() only — no second Image() and no /api/cover-proxy. */
 export function prefetchCovers(tracks: Track[], limit = 40) {
   // Always thumb — never warm multi‑MB album art for lists
   warmTrackCovers(tracks, limit);
-  if (typeof window === "undefined" || typeof Image === "undefined") return;
-  const list = tracks.slice(0, limit);
-  list.forEach((t, i) => {
-    const raw = t.cover || "";
-    if (!raw) return;
-    const src = coverUrl(raw, "thumb");
-    if (!src || warmed.has(src)) return;
-    warmed.add(src);
-    const kick = () => {
-      try {
-        const img = new Image();
-        img.decoding = "async";
-        img.loading = "eager";
-        img.referrerPolicy = "no-referrer";
-        img.src = src;
-      } catch {
-        /* */
-      }
-    };
-    if (i < 6) kick();
-    else setTimeout(kick, 90 * (i - 5));
-  });
-  if (warmed.size > 300) {
-    const arr = [...warmed];
-    warmed.clear();
-    for (const u of arr.slice(-120)) warmed.add(u);
-  }
 }
 
 /** Warm a single cover. size=medium for now-playing; thumb for list neighbors. */

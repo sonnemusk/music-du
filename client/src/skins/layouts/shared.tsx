@@ -179,7 +179,7 @@ export function NowPlaying({
         )}
       </div>
       <div className="np-text">
-        <h1 className="np-title">{curTrack?.name || "Music"}</h1>
+        <h1 className="np-title">{curTrack?.name || tr("nowPlaying.pick")}</h1>
         <p className="np-artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
         {badges}
       </div>

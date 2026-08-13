@@ -465,6 +465,8 @@ button.badge,
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
 }
 /* Brief highlight after “locate playing track” (G / .) */
 .track-row.track-row--flash {

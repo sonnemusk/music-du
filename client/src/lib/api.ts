@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type {
   ChartBoard,
   ChartBoardId,
@@ -13,7 +14,7 @@ function withAuthHeaders(init?: RequestInit): RequestInit {
 }
 
 function accessLoginHint(): string {
-  return "需要登录 Cloudflare Access 后使用（邮箱验证）";
+  return t("access.loginHint");
 }
 
 async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
@@ -35,7 +36,7 @@ async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
     if (!msg || /access|cloudflare|login/i.test(msg)) {
       throw new Error(accessLoginHint());
     }
-    throw new Error(msg || "unauthorized — library token required");
+    throw new Error(msg || t("access.denied"));
   }
   if (r.status === 429) {
     throw new Error(j?.error || "HTTP 429 rate limited");
@@ -156,7 +157,7 @@ async function libraryJson(path: string, opts?: RequestInit): Promise<Library> {
     );
   }
   if (r.status === 401) {
-    throw new Error(j?.error || "unauthorized — library token required");
+    throw new Error(j?.error || t("access.denied"));
   }
   if (!r.ok && j?.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
   if (j?.ok === false) throw new Error(j.error || "request failed");

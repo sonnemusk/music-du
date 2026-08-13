@@ -1,8 +1,8 @@
 /**
  * Browser cover cache — free, no server product required.
- * Prefers direct CDN URLs for paint; warms same-origin proxy into Cache Storage.
+ * List warmup is CDN Image() only; /api/cover-proxy is CoverImg onError fallback.
  */
-import { coverProxyUrl, coverUrl, type CoverSize } from "./player-core";
+import { coverUrl, type CoverSize } from "./player-core";
 import type { Track } from "./types";
 
 const CACHE_NAME = "kazam-covers-v3";
@@ -88,20 +88,16 @@ export function warmCoverFromRemote(
   size: CoverSize = "thumb"
 ): void {
   if (!remoteUrl) return;
-  // Prefer warming direct URL via img/network; also warm proxy for offline
   const direct = coverUrl(remoteUrl, size);
-  const proxy = coverProxyUrl(remoteUrl, size);
-  if (direct && !direct.startsWith("/")) {
-    // lightweight: browser HTTP cache via Image()
-    try {
-      const img = new Image();
-      img.referrerPolicy = "no-referrer";
-      img.src = direct;
-    } catch {
-      /* */
-    }
+  if (!direct || direct.startsWith("/")) return;
+  // List thumbs: CDN Image() only. Proxy fetch is CoverImg onError, not prefetch.
+  try {
+    const img = new Image();
+    img.referrerPolicy = "no-referrer";
+    img.src = direct;
+  } catch {
+    /* */
   }
-  if (proxy) void warmCoverProxy(proxy);
 }
 
 /** Warm many track covers — always thumb (list / chart / queue). */
@@ -111,44 +107,9 @@ export function warmTrackCovers(tracks: Track[], limit = 40): void {
     if (!t.cover) return;
     const key = coverUrl(t.cover, "thumb") || t.cover;
     if (warmed.has(key)) return;
+    warmed.add(key);
     // Cap concurrency: first 8 immediate, rest staggered
     if (i < 8) warmCoverFromRemote(t.cover, "thumb");
     else setTimeout(() => warmCoverFromRemote(t.cover, "thumb"), 60 * (i - 7));
   });
-}
-
-/**
- * Resolve a display URL: Cache Storage proxy blob if present, else direct CDN.
- */
-export async function resolveCoverDisplayUrl(
-  remoteOrProxy: string,
-  size: CoverSize = "thumb"
-): Promise<string> {
-  if (!remoteOrProxy) return "";
-  const direct = remoteOrProxy.startsWith("/")
-    ? remoteOrProxy
-    : coverUrl(remoteOrProxy, size);
-  const proxy = remoteOrProxy.startsWith("/api/cover-proxy")
-    ? remoteOrProxy
-    : coverProxyUrl(remoteOrProxy, size);
-
-  // Prefer already-cached proxy blob for instant paint after first visit
-  if (proxy) {
-    const cache = await openCache();
-    if (cache) {
-      try {
-        const hit = await cache.match(proxy);
-        if (hit && hit.ok) {
-          const blob = await hit.blob();
-          if (blob.size > 32 && blob.type.startsWith("image/")) {
-            return URL.createObjectURL(blob);
-          }
-        }
-      } catch {
-        /* */
-      }
-    }
-    void warmCoverProxy(proxy);
-  }
-  return direct || proxy || "";
 }

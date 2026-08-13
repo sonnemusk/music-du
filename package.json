@@ -26,7 +26,6 @@
     "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.0",
     "hono": "^4.7.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -50,6 +49,6 @@
     "wrangler": "^4.0.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

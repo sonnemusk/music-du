@@ -149,7 +149,7 @@ function GalleryDock() {
         )}
       </button>
       <div className="gal-dock__meta">
-        <h2 className="gal-dock__title">{curTrack?.name || "Music"}</h2>
+        <h2 className="gal-dock__title">{curTrack?.name || tr("nowPlaying.pick")}</h2>
         <p className="gal-dock__artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
       </div>
       <p className="gal-dock__lyric" aria-live="off">

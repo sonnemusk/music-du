@@ -231,6 +231,8 @@ export const zh: Dict = {
   },
   access: {
     reLogin: "重新登录",
+    loginHint: "需要登录 Cloudflare Access 后使用（邮箱验证）",
+    denied: "未授权",
   },
   contentAria: "内容切换",
 };

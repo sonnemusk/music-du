@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect } from "react";
+import { themeDisplayName } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { getTheme, themeToCssVars, type SkinId } from "./theme-catalog";
 import { CompactLayout } from "./layouts/CompactLayout";
@@ -42,7 +43,8 @@ function ensureThemeFont(fontFamily: string | undefined) {
 
 export function SkinHost({ skin }: { skin: SkinId | string }) {
   const meta = getTheme(skin);
-  const brand = `Music · ${meta.name}`;
+  const locale = usePlayer((s) => s.locale);
+  const brand = `Music · ${themeDisplayName(meta, locale)}`;
   const vars = themeToCssVars(meta) as CSSProperties;
   const curTrack = usePlayer((s) => s.curTrack);
   const tab = usePlayer((s) => s.tab);

@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/sonnemusk/music-du/actions/workflows/ci.yml/badge.svg)](https://github.com/sonnemusk/music-du/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
+[![Node.js ≥ 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org/)
 
 开源的**个人音乐 Web 应用** — 搜索、榜单、收藏、歌词、多套皮肤。
 
@@ -73,7 +73,7 @@ cp .env.example .env    # 网关地址 / 密钥，仅服务端
 npm ci && npm run dev   # http://127.0.0.1:8787
 ```
 
-需要 Node **≥ 20**。测试：`npm test && npm run typecheck`。
+需要 Node **≥ 22**。测试：`npm test && npm run typecheck`。
 
 ---
 

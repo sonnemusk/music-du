@@ -472,8 +472,8 @@ function asQueueSource(from?: QueueSource | PanelTab): QueueSource | null {
 export const usePlayer = create<State>((set, get) => ({
   skin: typeof window !== "undefined" ? loadSkin() : DEFAULT_SKIN,
   skinOpen: false,
-  // Default charts: mobile scheme B hides search tab; empty search tab looks broken.
-  tab: "charts",
+  // Home is 收藏; charts load only when the user opens that tab.
+  tab: "favorites",
   queueSource: "playlist",
   playlist: [],
   favorites: [],
@@ -870,13 +870,7 @@ export const usePlayer = create<State>((set, get) => ({
         chartSourceLabel: hit.payload.sourceLabel || "",
         chartUpdatedAt: hit.payload.updatedAt || Date.now() - hit.ageMs,
       });
-      // Defer chart cover warm — lower priority than home first-track
-      setTimeout(() => prefetchCovers(hit.payload.tracks, 8), 1200);
     }
-    // Background revalidate (don't block home)
-    setTimeout(() => {
-      void get().loadCharts(chartPlat, hit?.stale === true, chartBoard);
-    }, 1800);
   },
 
   search: async (q) => {
@@ -1457,7 +1451,7 @@ export const usePlayer = create<State>((set, get) => ({
         if (!ok) {
           clearSlow();
           set({ loadingPlay: false });
-          get().showToast(i18n("toast.noSource"));
+          get().showToast(i18n("toast.cannotPlay"));
         } else {
           clearSlow();
         }
@@ -1488,8 +1482,7 @@ export const usePlayer = create<State>((set, get) => ({
           if (!ok) {
             clearSlow();
             set({ loadingPlay: false });
-            // F-10c: autoplay often blocked without gesture
-            get().showToast(i18n("toast.autoplayBlocked"));
+            get().showToast(i18n("toast.cannotPlay"));
           } else {
             clearSlow();
           }

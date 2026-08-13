@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/sonnemusk/music-du/actions/workflows/ci.yml/badge.svg)](https://github.com/sonnemusk/music-du/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
+[![Node.js ≥ 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org/)
 
 Open-source **personal music web app** — search, charts, likes, lyrics, many skins.
 
@@ -73,7 +73,7 @@ cp .env.example .env    # gateway URL / keys — server only
 npm ci && npm run dev   # http://127.0.0.1:8787
 ```
 
-Node **≥ 20**. Tests: `npm test && npm run typecheck`.
+Node **≥ 22**. Tests: `npm test && npm run typecheck`.
 
 ---
 
