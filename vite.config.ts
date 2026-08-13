@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 
-const outDir = path.resolve(__dirname, "dist/client");
+const outDir = path.resolve(import.meta.dirname, "dist/client");
 
 /**
  * F-8: stamp the service worker cache name per build so `activate` can drop the

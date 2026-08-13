@@ -26,27 +26,27 @@
     "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.1",
+    "@hono/node-server": "^2.1.0",
     "hono": "^4.7.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260801.1",
+    "@cloudflare/workers-types": "^5.20260810.1",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22.13.10",
+    "@types/node": "^26.2.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.11.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.67.0",
-    "vite": "^6.2.2",
-    "vitest": "^3.0.9",
+    "vite": "^8.2.1",
+    "vitest": "^4.0.0",
     "wrangler": "^4.0.0"
   },
   "engines": {
