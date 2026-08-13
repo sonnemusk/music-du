@@ -201,6 +201,16 @@ img {
   .skin-switcher__cycle {
     display: none;
   }
+  /* Phone header is tight — keep a 44px swatch, name lives in the panel. */
+  .skin-switcher__btn.primary {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .skin-switcher__btn.primary .skin-switcher__label {
+    display: none;
+  }
 }
 .skin-panel__hint {
   font-size: 11px;

@@ -634,12 +634,9 @@
 
   .desk-brand__theme,
   .desk-rail__kicker,
-  .desk-nav__full {
-    display: none;
-  }
-
+  .desk-nav__full,
   .desk-nav__short {
-    display: block;
+    display: none;
   }
 
   .desk-nav__btn {

@@ -286,7 +286,7 @@ export function StageLayout({ brand }: { brand: string }) {
           {WINGS.map((id) => {
             const on = sheetOpen && tab === id;
             const full = tr(WING_I18N[id].full);
-            const label = narrow ? tr(WING_I18N[id].short) : full;
+            const label = full;
             return (
               <button
                 key={id}

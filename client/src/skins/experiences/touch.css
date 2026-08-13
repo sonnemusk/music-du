@@ -1,3 +1,73 @@
+/* Shared experience chrome — compact chart intros so the list is the page. */
+.skin-host[data-layout="dock"] .charts-desc,
+.skin-host[data-layout="desk"] .charts-desc,
+.skin-host[data-layout="feed"] .charts-desc,
+.skin-host[data-layout="stage"] .charts-desc,
+.skin-host[data-layout="verse"] .charts-desc,
+.skin-host[data-layout="likes"] .charts-desc,
+.skin-host[data-layout="recent"] .charts-desc,
+.skin-host[data-layout="find"] .charts-desc,
+.skin-host[data-layout="boards"] .charts-desc,
+.skin-host[data-layout="split"] .charts-desc,
+.skin-host[data-layout="dock"] .charts-source,
+.skin-host[data-layout="desk"] .charts-source,
+.skin-host[data-layout="feed"] .charts-source,
+.skin-host[data-layout="stage"] .charts-source,
+.skin-host[data-layout="verse"] .charts-source,
+.skin-host[data-layout="likes"] .charts-source,
+.skin-host[data-layout="recent"] .charts-source,
+.skin-host[data-layout="find"] .charts-source,
+.skin-host[data-layout="boards"] .charts-source,
+.skin-host[data-layout="split"] .charts-source,
+.skin-host[data-layout="dock"] .charts-hint,
+.skin-host[data-layout="desk"] .charts-hint,
+.skin-host[data-layout="feed"] .charts-hint,
+.skin-host[data-layout="stage"] .charts-hint,
+.skin-host[data-layout="verse"] .charts-hint,
+.skin-host[data-layout="likes"] .charts-hint,
+.skin-host[data-layout="recent"] .charts-hint,
+.skin-host[data-layout="find"] .charts-hint,
+.skin-host[data-layout="boards"] .charts-hint,
+.skin-host[data-layout="split"] .charts-hint {
+  display: none;
+}
+
+/* Quality picker is portalled to <body>; keep it above player sheets (z≈80). */
+.quality-menu,
+body:has([role="dialog"]) .quality-menu,
+body:has(.dock-sheet) .quality-menu,
+body:has(.likes-sheet) .quality-menu,
+body:has(.stage-sheet) .quality-menu {
+  z-index: 2100;
+}
+
+.skin-host .track-loading-hint {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+  color: var(--accent-fg, #111);
+  background: color-mix(in srgb, var(--accent, #c4b496) 80%, transparent);
+}
+
+/* Phone header is tight — keep a 44px swatch, name lives in the panel. */
+@media (max-width: 720px) {
+  .skin-host .skin-switcher__btn.primary {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px;
+    padding: 0 !important;
+    justify-content: center;
+  }
+  .skin-host .skin-switcher__btn.primary .skin-switcher__label {
+    display: none !important;
+  }
+}
+
 /* Integrator pass: phone prev / play / next stay ≥44px across all 10 shells. */
 @media (max-width: 720px) {
   .skin-host button[aria-label="上一首"],
