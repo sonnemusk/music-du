@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useT } from "../i18n";
 import { labelForLevel, qualityShortLabel } from "../lib/quality";
 import { usePlayer } from "../store/player";
@@ -18,8 +19,52 @@ export function QualityPicker({ className }: { className?: string }) {
   const tr = useT(locale);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    placed: boolean;
+  } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * The menu is portalled to <body>: inside the transport it was trapped in
+   * .transport-row's stacking context (z-index 2), so the seek row — which jumps
+   * to z-index 30 on hover — painted over it and swallowed the clicks.
+   * Prefer opening upward, since every layout puts seek/volume under this button.
+   */
+  const place = useCallback(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const width = Math.min(288, Math.max(176, window.innerWidth * 0.8));
+    const left = Math.max(8, Math.min(r.left + r.width / 2 - width / 2, window.innerWidth - width - 8));
+    const h = menuRef.current?.offsetHeight ?? 0;
+    const room = { above: r.top - 8, below: window.innerHeight - r.bottom - 8 };
+    const up = h === 0 ? true : room.above >= h || room.above > room.below;
+    const top = up
+      ? Math.max(8, r.top - h - 6)
+      : Math.min(r.bottom + 6, Math.max(8, window.innerHeight - h - 8));
+    setMenuPos({ top, left, width, placed: h > 0 });
+  }, []);
+
+  // Measure once mounted, then re-anchor whenever the content height changes
+  useLayoutEffect(() => {
+    if (!open) return;
+    place();
+  }, [open, place, availableQualities.length, loading]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onMove = () => place();
+    window.addEventListener("resize", onMove);
+    window.addEventListener("scroll", onMove, true);
+    return () => {
+      window.removeEventListener("resize", onMove);
+      window.removeEventListener("scroll", onMove, true);
+    };
+  }, [open, place]);
 
   const currentLevel =
     quality && quality !== "…" ? quality : preferredQuality || "";
@@ -31,8 +76,11 @@ export function QualityPicker({ className }: { className?: string }) {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
       const el = wrapRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) setOpen(false);
+      if (!el || !(e.target instanceof Node)) return;
+      // The menu lives in a portal, so it is not inside wrapRef — without this
+      // check mousedown on an option would close the menu before its click.
+      if (el.contains(e.target) || menuRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -87,31 +135,38 @@ export function QualityPicker({ className }: { className?: string }) {
         }
         onClick={() => {
           setOpen((v) => {
-            const next = !v;
-            if (next && wrapRef.current) {
-              const r = wrapRef.current.getBoundingClientRect();
-              const w = Math.min(288, window.innerWidth * 0.8);
-              let left = r.left + r.width / 2 - w / 2;
-              left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
-              setMenuPos({ top: r.bottom + 6, left });
-            }
-            return next;
+            if (v) return false;
+            setMenuPos(null);
+            return true;
           });
         }}
       >
         {short}
       </button>
-      {open ? (
-        <div
-          className="quality-menu quality-menu--fixed"
-          role="listbox"
-          aria-label={tr("quality.menuAria")}
-          style={
-            menuPos
-              ? { position: "fixed", top: menuPos.top, left: menuPos.left, right: "auto", transform: "none", zIndex: 1200 }
-              : undefined
-          }
-        >
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              className="quality-menu quality-menu--fixed"
+              role="listbox"
+              aria-label={tr("quality.menuAria")}
+              style={{
+                position: "fixed",
+                top: menuPos?.top ?? 0,
+                left: menuPos?.left ?? 0,
+                width: menuPos?.width,
+                right: "auto",
+                // The base rule anchors upward with bottom: calc(100% + 8px).
+                // Leaving it set alongside top over-constrains a fixed box, which
+                // collapsed the menu to padding height (the 14px sliver).
+                bottom: "auto",
+                transform: "none",
+                zIndex: 1200,
+                // hidden for the frame before the height is known, so it never
+                // flashes at the wrong anchor
+                visibility: menuPos?.placed ? "visible" : "hidden",
+              }}
+            >
           {availableQualities.length > 0 ? (
             availableQualities.map((opt) => {
               const active = opt.level === currentLevel;
@@ -145,8 +200,10 @@ export function QualityPicker({ className }: { className?: string }) {
               <p className="quality-opt--hint-sub">{tr("quality.hint")}</p>
             </div>
           )}
-        </div>
-      ) : null}
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

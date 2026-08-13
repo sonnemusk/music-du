@@ -819,8 +819,11 @@ button.badge,
   max-width: min(18rem, 80vw);
   padding: 6px;
   border-radius: 10px;
-  background: color-mix(in srgb, #12121a 94%, currentColor 6%);
-  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  /* Portalled to <body>, so it reads the tokens mirrored on :root — a hardcoded
+     dark surface looked pasted-on over the light skins. */
+  background: color-mix(in srgb, var(--bg, #12121a) 94%, var(--fg, #fff));
+  color: var(--fg, #f5f5f7);
+  border: 1px solid color-mix(in srgb, var(--fg, #fff) 14%, transparent);
   box-shadow: 0 10px 28px color-mix(in srgb, #000 42%, transparent);
   z-index: 60;
   gap: 2px;
