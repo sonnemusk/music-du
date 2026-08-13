@@ -625,6 +625,9 @@ export const usePlayer = create<State>((set, get) => ({
     }
   },
   setTab: (t) => {
+    // bootstrap lands on 收藏, but it only resolves after the library round-trip.
+    // Remember that navigation already happened so it cannot yank the user back.
+    tabTouched = true;
     // Keep searchResults when leaving 搜索; clear the query string so the
     // header input does not still show the old keyword on other tabs.
     if (t !== "search") {
@@ -783,7 +786,8 @@ export const usePlayer = create<State>((set, get) => ({
       }
     }
 
-    // Home: open 收藏 + queue follows favorites
+    // Home: open 收藏 + queue follows favorites — unless the user already picked
+    // a tab while the library was still loading.
     set({
       playlist,
       favorites,
@@ -791,7 +795,7 @@ export const usePlayer = create<State>((set, get) => ({
       curIdx,
       libraryRevision,
       libraryReadOnly,
-      tab: "favorites",
+      ...(tabTouched ? {} : { tab: "favorites" as PanelTab }),
       queueSource: "favorites",
     });
 
@@ -2426,6 +2430,9 @@ function applyLib(set: (p: Partial<State>) => void) {
 }
 
 /** Prevents double-fetch when setTab + ChartsPanel mount both call loadCharts */
+/** Set once any tab navigation happens, so async bootstrap won't override it. */
+let tabTouched = false;
+
 let chartsInflight: string | null = null;
 
 /**

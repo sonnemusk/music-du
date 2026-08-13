@@ -18,10 +18,14 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
       if (reg.waiting) reg.waiting.postMessage?.({ type: "SKIP_WAITING" });
     }).catch(() => {});
   });
-  // One reload when controller swaps (new SW took over)
+  // One reload when a NEW worker takes over an already-controlled page.
+  // On a first visit the page starts uncontrolled and clients.claim() fires
+  // controllerchange too — reloading there cost a second full boot, re-randomised
+  // the pre-warmed track and discarded whatever tab the user had just opened.
+  const hadController = Boolean(navigator.serviceWorker.controller);
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (refreshing) return;
+    if (!hadController || refreshing) return;
     try {
       if (sessionStorage.getItem("music-sw-reloaded") === "1") return;
       sessionStorage.setItem("music-sw-reloaded", "1");
