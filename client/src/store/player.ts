@@ -641,9 +641,9 @@ export const usePlayer = create<State>((set, get) => ({
       api.resolveSong(id, { level: opts?.level || get().preferredQuality });
     if (t === "favorites") {
       prefetchSongResolves(get().favorites, resolve, { level: get().preferredQuality, 
-        limit: 24,
-        concurrency: 2,
-        startDelayMs: 120,
+        limit: 4,
+        concurrency: 1,
+        startDelayMs: 200,
       });
       // Auto-scroll after list has a chance to mount (defer nonce so TrackList effect re-runs)
       const cur = get().curTrack;
@@ -660,21 +660,15 @@ export const usePlayer = create<State>((set, get) => ({
       }
     } else if (t === "playlist") {
       prefetchSongResolves(get().playlist, resolve, { level: get().preferredQuality, 
-        limit: 20,
-        concurrency: 2,
-        startDelayMs: 120,
-      });
-    } else if (t === "history") {
-      prefetchSongResolves(get().history, resolve, { level: get().preferredQuality, 
-        limit: 16,
-        concurrency: 2,
-        startDelayMs: 120,
+        limit: 3,
+        concurrency: 1,
+        startDelayMs: 200,
       });
     } else if (t === "search") {
       prefetchSongResolves(get().searchResults, resolve, { level: get().preferredQuality, 
-        limit: 12,
-        concurrency: 2,
-        startDelayMs: 80,
+        limit: 3,
+        concurrency: 1,
+        startDelayMs: 120,
       });
     }
   },
@@ -836,47 +830,27 @@ export const usePlayer = create<State>((set, get) => ({
       // Pre-resolve favorites / playlist / history URLs in background (not full audio)
       const resolve = (id: string | number, opts?: { level?: string }) =>
       api.resolveSong(id, { level: opts?.level || get().preferredQuality });
-      prefetchSongResolves(favorites, resolve, { level: get().preferredQuality, limit: 48,
-        concurrency: 2,
-        startDelayMs: 350,
+      prefetchSongResolves(favorites, resolve, { level: get().preferredQuality, limit: 4,
+        concurrency: 1,
+        startDelayMs: 800,
       });
       setTimeout(
         () =>
-          prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 36,
-            concurrency: 2,
+          prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 2,
+            concurrency: 1,
             startDelayMs: 0,
           }),
-        2500
-      );
-      setTimeout(
-        () =>
-          prefetchSongResolves(history, resolve, { level: get().preferredQuality, limit: 24,
-            concurrency: 2,
-            startDelayMs: 0,
-          }),
-        5000
+        4000
       );
 
-      // Secondary: covers / other lyrics after a short delay so first-track warm wins bandwidth
+      // Secondary: a few covers only — lyrics wait until the user opens that tab
       setTimeout(() => {
-        prefetchCovers(favorites, 24);
-        for (const f of favorites.slice(1, 8)) {
-          prefetchLyric(
-            f.id,
-            {
-              name: f.name,
-              artist: f.artist,
-              duration: Number(f.duration || 0) || undefined,
-            },
-            (id, o) => api.fetchLyric(id, o)
-          );
-        }
-      }, 900);
+        prefetchCovers(favorites, 8);
+      }, 1200);
     } else if (playlist.length || history.length) {
       const resolve = (id: string | number, opts?: { level?: string }) =>
       api.resolveSong(id, { level: opts?.level || get().preferredQuality });
-      prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 36, concurrency: 2, startDelayMs: 400 });
-      prefetchSongResolves(history, resolve, { level: get().preferredQuality, limit: 24, concurrency: 2, startDelayMs: 2000 });
+      prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 3, concurrency: 1, startDelayMs: 800 });
     }
 
     // Prefetch default chart into memory from localStorage + background refresh
@@ -897,7 +871,7 @@ export const usePlayer = create<State>((set, get) => ({
         chartUpdatedAt: hit.payload.updatedAt || Date.now() - hit.ageMs,
       });
       // Defer chart cover warm — lower priority than home first-track
-      setTimeout(() => prefetchCovers(hit.payload.tracks, 40), 1200);
+      setTimeout(() => prefetchCovers(hit.payload.tracks, 8), 1200);
     }
     // Background revalidate (don't block home)
     setTimeout(() => {
@@ -933,8 +907,8 @@ export const usePlayer = create<State>((set, get) => ({
         });
         // Warm URLs for list (and siblings) while playing the random pick
         prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-          limit: 12,
-          concurrency: 2,
+          limit: 3,
+          concurrency: 1,
         });
         get().showToast(i18n("toast.random", { name: pick.name || "Douyin" }));
         void get().playTrack(pick, { from: "search" });
@@ -958,9 +932,9 @@ export const usePlayer = create<State>((set, get) => ({
       else {
         recordRecentSearch(query);
         prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-          limit: 12,
-          concurrency: 2,
-          startDelayMs: 200,
+          limit: 3,
+          concurrency: 1,
+          startDelayMs: 250,
         });
       }
     } catch (e: any) {
@@ -1023,10 +997,10 @@ export const usePlayer = create<State>((set, get) => ({
         chartUpdatedAt: localHit.payload.updatedAt || Date.now() - localHit.ageMs,
         chartLoading: localHit.stale,
       });
-      prefetchCovers(localHit.payload.tracks, 40);
+      prefetchCovers(localHit.payload.tracks, 8);
       prefetchSongResolves(
         localHit.payload.tracks.map(norm).filter(Boolean) as Track[], (id) => api.resolveSong(id, { level: get().preferredQuality }),
-        { limit: 10, concurrency: 2, startDelayMs: 500 }
+        { limit: 3, concurrency: 1, startDelayMs: 600 }
       );
       if (!localHit.stale && !force) return;
     }
@@ -1090,12 +1064,11 @@ export const usePlayer = create<State>((set, get) => ({
         chartPlatform: (data.platform as ChartPlatformId) || p,
         chartBoard: payload.board,
       });
-      prefetchCovers(tracks, 40);
-      // Pre-resolve top chart tracks so first click doesn't wait on /api/song
+      prefetchCovers(tracks, 8);
       prefetchSongResolves(tracks, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-        limit: 10,
-        concurrency: 2,
-        startDelayMs: 400,
+        limit: 3,
+        concurrency: 1,
+        startDelayMs: 500,
       });
       if (!tracks.length) get().showToast(i18n("toast.chartEmpty"));
     } catch (e: any) {
@@ -1854,6 +1827,7 @@ export const usePlayer = create<State>((set, get) => ({
     if (!audio || !audio.duration) return;
     audio.currentTime = Math.max(0, Math.min(1, ratio)) * audio.duration;
     set({ currentTime: audio.currentTime });
+    setPlaybackClock({ currentTime: audio.currentTime });
   },
 
   seekBy: (deltaSec) => {
@@ -1862,6 +1836,7 @@ export const usePlayer = create<State>((set, get) => ({
     const next = clampSeek(audio.currentTime || 0, deltaSec, audio.duration || 0);
     audio.currentTime = next;
     set({ currentTime: next });
+    setPlaybackClock({ currentTime: next });
   },
 
   setVolume: (v) => {

@@ -50,7 +50,9 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
 
   useEffect(() => {
     ensureThemeFont(meta.font);
-  }, [meta.font]);
+    ensureThemeFont(meta.displayFont);
+    ensureThemeFont(meta.monoFont);
+  }, [meta.font, meta.displayFont, meta.monoFont]);
 
   // Portalled surfaces (theme panel, mobile search layer) hang off <body> and
   // would otherwise miss the tokens set on .skin-host — mirror them on :root.

@@ -18,11 +18,11 @@ Status codes: `200` success · `4xx` client · `5xx` upstream/server.
 | Mechanism | Applies to | Header / cookie |
 |-----------|------------|-----------------|
 | **None** | Search, song, lyric, charts, health, stream, cover (typical) | — |
-| **`MUSIC_ACCESS_TOKEN`** | `/api/library*` when secret is set | `X-Music-Token: <token>` (also `?token=` or cookie `music_tok`) |
+| **`MUSIC_ACCESS_TOKEN`** | `/api/library*`, `/favs`, `/export`, `/import` when secret is set | `X-Music-Token: <token>` (or cookie `music_tok`; `?token=` is rejected) |
 | **Cloudflare Access** (optional edge) | Whole site or `/favs` `/import` | Access JWT / service token headers |
 | **`LIBRARY_READONLY=true`** | Worker demo mode | All library **writes** + import/export → `403` |
 
-SPA can bake `VITE_MUSIC_ACCESS_TOKEN` at build time, or store token in `localStorage` key `music.accessToken`.
+SPA stores the token in `localStorage` key `music.accessToken`. Do **not** bake `VITE_MUSIC_ACCESS_TOKEN` into production builds.
 
 ---
 

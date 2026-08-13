@@ -46,7 +46,7 @@ Fill `.env` (names only — see [`.env.example`](../.env.example)):
 | `CHKSZ_API_BASE` | No | Default free primary gateway |
 | `CHKSZ_FALLBACK_BASE` / `CHKSZ_FALLBACK_APIKEYS` | If using paid fallback | Server-only |
 | `MUSIC_ACCESS_TOKEN` | Recommended for private | Protects library API |
-| `VITE_MUSIC_ACCESS_TOKEN` | Optional | Build-time SPA token; prefer runtime for public repos |
+| `VITE_MUSIC_ACCESS_TOKEN` | Do not set in production | Bakes the library write token into the SPA JS |
 | `HOST` / `PORT` | Node | Default `127.0.0.1:8787` |
 | `MUSIC_DATA_DIR` | Node | Default `./data` |
 | `LIBRARY_READONLY` | **Demo only — leave unset for your site** | `true` = no library writes / no export |

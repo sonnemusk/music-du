@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { useT } from "../i18n";
 import * as api from "../lib/api";
 import { warmTrackCovers } from "../lib/cover-browser-cache";
+import type { CoverSize } from "../lib/player-core";
 import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
 import { usePlayer } from "../store/player";
@@ -13,6 +14,7 @@ type Props = {
   empty?: string;
   className?: string;
   loading?: boolean;
+  coverSize?: CoverSize;
 };
 
 /** Pick the most roomy scrollable ancestor (list panel), never document/body. */
@@ -79,6 +81,7 @@ type RowProps = {
   onRemoveHi: (id: string | number) => void;
   onWarm: (t: Track) => void;
   setRowRef: (id: string, node: HTMLDivElement | null) => void;
+  coverSize: CoverSize;
 };
 
 const TrackRow = memo(function TrackRow({
@@ -97,6 +100,7 @@ const TrackRow = memo(function TrackRow({
   onRemoveHi,
   onWarm,
   setRowRef,
+  coverSize,
 }: RowProps) {
   const rank = t.rank ?? (mode === "charts" ? i + 1 : 0);
   const id = String(t.id);
@@ -138,7 +142,7 @@ const TrackRow = memo(function TrackRow({
           {rank}
         </span>
       ) : null}
-      {t.cover ? <CoverImg src={t.cover} className="cov" size="thumb" /> : <div className="cov" />}
+      {t.cover ? <CoverImg src={t.cover} className="cov" size={coverSize} /> : <div className="cov" />}
       <div className="track-meta">
         <div className="track-name">
           {t.name}
@@ -222,7 +226,14 @@ const TrackRow = memo(function TrackRow({
   );
 });
 
-export function TrackList({ tracks, mode, empty, className, loading }: Props) {
+export function TrackList({
+  tracks,
+  mode,
+  empty,
+  className,
+  loading,
+  coverSize = "thumb",
+}: Props) {
   const playTrack = usePlayer((s) => s.playTrack);
   const curTrack = usePlayer((s) => s.curTrack);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
@@ -361,6 +372,7 @@ export function TrackList({ tracks, mode, empty, className, loading }: Props) {
           onRemoveHi={removeFromHistory}
           onWarm={warmRow}
           setRowRef={setRowRef}
+          coverSize={coverSize}
         />
       ))}
     </div>

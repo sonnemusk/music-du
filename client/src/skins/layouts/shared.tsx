@@ -13,6 +13,7 @@ import { isMobileSearchUi } from "../../lib/mobile-ui";
 import { qualityShortLabel } from "../../lib/quality";
 import type { PanelTab } from "../../lib/types";
 import { usePlayer } from "../../store/player";
+import { getTheme } from "../theme-catalog";
 
 function useMobileSearchChrome() {
   const [mobile, setMobile] = useState(() => isMobileSearchUi());
@@ -53,16 +54,46 @@ export function usePanelBody() {
   const playlist = usePlayer((s) => s.playlist);
   const favorites = usePlayer((s) => s.favorites);
   const history = usePlayer((s) => s.history);
+  const skin = usePlayer((s) => s.skin);
+  const coverSize = getTheme(skin).layout === "gallery" ? "medium" : "thumb";
 
   if (tab === "search")
-    return <TrackList tracks={searchResults} mode="search" empty={tr("empty.search")} />;
-  if (tab === "charts") return <ChartsPanel />;
+    return (
+      <TrackList
+        tracks={searchResults}
+        mode="search"
+        empty={tr("empty.search")}
+        coverSize={coverSize}
+      />
+    );
+  if (tab === "charts") return <ChartsPanel coverSize={coverSize} />;
   if (tab === "playlist")
-    return <TrackList tracks={playlist} mode="playlist" empty={tr("empty.playlist")} />;
+    return (
+      <TrackList
+        tracks={playlist}
+        mode="playlist"
+        empty={tr("empty.playlist")}
+        coverSize={coverSize}
+      />
+    );
   if (tab === "favorites")
-    return <TrackList tracks={favorites} mode="favorites" empty={tr("empty.favorites")} />;
+    return (
+      <TrackList
+        tracks={favorites}
+        mode="favorites"
+        empty={tr("empty.favorites")}
+        coverSize={coverSize}
+      />
+    );
   if (tab === "history")
-    return <TrackList tracks={history} mode="history" empty={tr("empty.history")} />;
+    return (
+      <TrackList
+        tracks={history}
+        mode="history"
+        empty={tr("empty.history")}
+        coverSize={coverSize}
+      />
+    );
   if (tab === "lyrics") return <LyricsView variant="panel" />;
   return null;
 }

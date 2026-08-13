@@ -248,6 +248,33 @@ function cacheWindows(board: ChartBoardId): { fresh: number; ttl: number } {
 }
 
 const MAX_TRACKS = 40;
+/**
+ * Free Workers: each rematch is 1–2 upstream searches (subrequests).
+ * NetEase rows already have ids and cost 0. Cap the rest so one chart
+ * request cannot blow the 50-subrequest limit.
+ */
+export const CHART_REMATCH_BUDGET = 6;
+
+/** Edge Cache-Control max-age (seconds) by board — soar must stay fresher. */
+export function chartEdgeMaxAgeSec(board: ChartBoardId): number {
+  if (board === "soar") return 2 * 3600;
+  if (board === "new") return 3 * 3600;
+  return 8 * 3600;
+}
+
+/** Split rows that already have a NetEase id from those that need search. */
+export function planChartRematch<T extends { neteaseId?: string | number }>(
+  rows: T[],
+  budget = CHART_REMATCH_BUDGET
+): { ready: T[]; toSearch: T[] } {
+  const ready: T[] = [];
+  const toSearch: T[] = [];
+  for (const row of rows) {
+    if (row.neteaseId != null && String(row.neteaseId) !== "") ready.push(row);
+    else toSearch.push(row);
+  }
+  return { ready, toSearch: toSearch.slice(0, Math.max(0, budget)) };
+}
 
 type RawRow = {
   name: string;
@@ -569,13 +596,9 @@ async function resolveRow(
   const q = [row.name, row.artist].filter(Boolean).join(" ").trim();
   if (!q) return null;
   try {
+    // One search only — a name-only retry doubled subrequests per row.
     const hits = await chksz.search(q, 6, opts);
-    if (!hits.length) {
-      // retry with name only
-      const hits2 = await chksz.search(row.name, 6, opts);
-      if (!hits2.length) return null;
-      hits.push(...hits2);
-    }
+    if (!hits.length) return null;
     let best = hits[0];
     let bestScore = -1;
     for (const h of hits) {
@@ -628,9 +651,23 @@ async function buildChart(
   const meta = metaOf(platform);
   const boardMeta = CHART_BOARDS.find((b) => b.id === board);
   const { rows, sourceLabel } = await fetchRaw(platform, board, limit);
-  const resolved = await mapPool(rows, platform === "netease" ? 8 : 4, async (row) =>
+  const { ready, toSearch } = planChartRematch(rows);
+  const rematched = await mapPool(toSearch, 3, async (row) =>
     resolveRow(row, { apikey: opts?.apikey })
   );
+  const resolved = [
+    ...ready.map((row) => ({
+      id: row.neteaseId as string | number,
+      name: row.name,
+      artist: row.artist,
+      album: row.album || "",
+      cover: row.cover || "",
+      duration: row.duration || 0,
+      rank: 0,
+      sourceKey: row.sourceKey,
+    })),
+    ...rematched,
+  ];
 
   const tracks: ChartTrack[] = [];
   const seen = new Set<string>();

@@ -52,7 +52,8 @@ jobs:
       - run: npm ci
       - name: Build client + server
         env:
-          VITE_MUSIC_ACCESS_TOKEN: ${{ secrets.MUSIC_ACCESS_TOKEN }}
+          # Never bake MUSIC_ACCESS_TOKEN into the SPA — it ships to every browser.
+          VITE_MUSIC_ACCESS_TOKEN: ""
         run: npm run build
       - name: Deploy primary Worker (music-du)
         uses: cloudflare/wrangler-action@v3

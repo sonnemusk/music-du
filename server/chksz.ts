@@ -133,6 +133,7 @@ function buildAttempts(opts?: { apikey?: string }): Attempt[] {
 }
 
 function isRetryableStatus(status: number): boolean {
+  // 403 on .top is often CF bot score — one fallback is enough, not every key.
   return status === 401 || status === 402 || status === 403 || status === 429 || status >= 500;
 }
 
@@ -181,7 +182,8 @@ async function apiGet(
   params: Record<string, string | number> = {},
   opts?: { apikey?: string; timeout?: number }
 ): Promise<{ status: number; body: any }> {
-  const attempts = buildAttempts(opts);
+  // Free Workers: primary + at most one fallback host (not every .com key).
+  const attempts = buildAttempts(opts).slice(0, 2);
   const timeout = opts?.timeout ?? 12000;
   let last: { status: number; body: any } | null = null;
   let lastErr: unknown = null;
@@ -345,7 +347,8 @@ export async function fetchMusic(
   level?: string | null,
   opts?: { apikey?: string }
 ): Promise<Record<string, any>> {
-  for (const lv of qualityLevels(level)) {
+  // Cap ladder walk: requested + next 3. Full 8-level walk is 8+ subrequests.
+  for (const lv of qualityLevels(level).slice(0, 4)) {
     const hit = await fetchMusicExact(sid, lv, opts);
     if (hit) return hit;
   }

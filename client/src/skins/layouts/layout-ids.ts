@@ -1,6 +1,6 @@
 /**
- * Active skin layouts — only those still used by THEME_CATALOG.
- * (side / immersive / compact only; showcase layouts removed)
+ * Active skin layouts used by THEME_CATALOG.
+ * (side / immersive / compact / gallery; showcase layouts removed)
  */
 export const LAYOUT_IDS = [
   "side",

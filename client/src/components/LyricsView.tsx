@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useT } from "../i18n";
 import { lyricIndexAt } from "../lib/player-core";
+import { setPlaybackClock } from "../store/playback-clock";
 import { usePlayer } from "../store/player";
 
 type Props = {
@@ -185,6 +186,7 @@ export function LyricsView({
     }
     const idx = lyricIndexAt(lyrics, ms);
     usePlayer.setState({ currentTime: t, lyricIdx: idx });
+    setPlaybackClock({ currentTime: t });
     // Resume follow shortly after intentional seek
     pauseUntilRef.current = Date.now() + 300;
     lastCenteredIdx.current = -999; // force re-center

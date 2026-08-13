@@ -6,7 +6,7 @@ import {
   themeDisplayTagline,
   type SkinId,
 } from "../lib/types";
-import { LAYOUT_META, type SkinLayout } from "../skins/layouts/layout-ids";
+import { LAYOUT_IDS, LAYOUT_META, type SkinLayout } from "../skins/layouts/layout-ids";
 import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 import { isMobileSearchUi } from "../lib/mobile-ui";
@@ -118,7 +118,7 @@ export function SkinSwitcher() {
     if (mobile) setSkinOpen(false);
   };
 
-  const layouts: Array<SkinLayout | "all"> = ["all", "side", "immersive", "compact"];
+  const layouts: Array<SkinLayout | "all"> = ["all", ...LAYOUT_IDS];
 
   const panelBody = (
     <>

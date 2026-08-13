@@ -34,7 +34,7 @@ GET /api/library
 X-Music-Token: <token>
 ```
 
-SPA: build-time `VITE_MUSIC_ACCESS_TOKEN` or runtime `localStorage.music.accessToken`.
+SPA: runtime `localStorage.music.accessToken` only. Never bake `VITE_MUSIC_ACCESS_TOKEN` into a production bundle.
 
 Optional Worker var `LIBRARY_TOKEN_REQUIRED_HOSTS=your.domain.com` — if the secret is missing on that host, library APIs return **503** (fail closed).
 

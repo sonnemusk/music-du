@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useT } from "../i18n";
+import type { CoverSize } from "../lib/player-core";
 import type { ChartBoardId, ChartPlatformId } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { TrackList } from "./TrackList";
@@ -19,7 +20,7 @@ const FALLBACK_PLATFORM_IDS: {
   { id: "original", boards: ["hot", "new"] },
 ];
 
-export function ChartsPanel() {
+export function ChartsPanel({ coverSize }: { coverSize?: CoverSize }) {
   const platforms = usePlayer((s) => s.chartPlatforms);
   const boards = usePlayer((s) => s.chartBoards);
   const platform = usePlayer((s) => s.chartPlatform);
@@ -174,6 +175,7 @@ export function ChartsPanel() {
           mode="charts"
           empty={loading ? tr("empty.chartsLoading") : tr("empty.charts")}
           className="track-list charts-list"
+          coverSize={coverSize}
         />
       )}
     </div>

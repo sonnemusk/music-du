@@ -68,7 +68,8 @@ export function edgePut(
 
 export function withCacheHeaders(
   headers: Record<string, string>,
-  kind: "cover" | "chart" | "lyric"
+  kind: "cover" | "chart" | "lyric",
+  opts?: { maxAgeSec?: number }
 ): Record<string, string> {
   if (kind === "cover") {
     return {
@@ -79,10 +80,12 @@ export function withCacheHeaders(
     };
   }
   if (kind === "chart") {
+    const age = Math.max(300, opts?.maxAgeSec ?? 2 * 3600);
+    const swr = Math.min(86400, age * 2);
     return {
       ...headers,
-      "Cache-Control": "public, max-age=43200, s-maxage=43200, stale-while-revalidate=86400",
-      "CDN-Cache-Control": "public, max-age=43200",
+      "Cache-Control": `public, max-age=${age}, s-maxage=${age}, stale-while-revalidate=${swr}`,
+      "CDN-Cache-Control": `public, max-age=${age}`,
     };
   }
   return {

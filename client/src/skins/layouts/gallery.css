@@ -527,14 +527,14 @@
 /* ── Phone: bottom nav + mini player ──────────────────────────────────── */
 @media (max-width: 720px) {
   /* The search layer is portalled to <body>, so tell it how tall this layout's
-     bottom chrome is (mini bar 66 + tab bar 58) instead of the 72px default. */
+     bottom chrome is (mini bar 96 + tab bar 58) instead of the 72px default. */
   :root:has(.layout-gallery) {
-    --search-overlay-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+    --search-overlay-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
   }
   .layout-gallery {
     --gal-gutter: 12px;
     --gal-card-min: 148px;
-    --gal-bar-h: 66px;
+    --gal-bar-h: 96px;
   }
   .gal-shell {
     grid-template-columns: minmax(0, 1fr);
@@ -641,17 +641,20 @@
   .gal-dock__artist {
     font-size: 11px;
   }
-  /* Mini bar keeps transport controls only — seek/volume stay in the player tab */
+  /* Mini bar keeps transport + seek; volume / quality / mode stay hidden */
   .gal-dock .transport {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     width: auto;
     max-width: none;
   }
-  .gal-dock .transport .seek-row,
   .gal-dock .transport .vol-row,
   .gal-dock .transport .quality-wrap,
   .gal-dock .transport .t-btn.ghost.mode {
     display: none;
+  }
+  .gal-dock .transport .seek-row {
+    margin-top: 2px;
   }
   .gal-dock .transport-row {
     gap: 4px;
@@ -672,11 +675,5 @@
 @media (max-width: 380px) {
   .layout-gallery {
     --gal-card-min: 132px;
-  }
-  .gal-dock .transport .t-btn:not(.play):not(.ghost) {
-    display: none;
-  }
-  .gal-dock .transport .t-btn.play {
-    display: grid;
   }
 }

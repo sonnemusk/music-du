@@ -229,4 +229,43 @@ describe("worker library routes", () => {
     const j = await r.json();
     expect(j.localOnly).toBe(true);
   });
+
+  it("private: /favs without token → 401", async () => {
+    const e = env({
+      MUSIC_DU_DB: createMockD1(),
+      MUSIC_ACCESS_TOKEN: "s3cret",
+    });
+    const r = await req("/favs", { method: "GET", env: e });
+    expect(r.status).toBe(401);
+  });
+
+  it("private: /favs with token → 200", async () => {
+    const db = createMockD1();
+    await db
+      .prepare(
+        `INSERT OR REPLACE INTO library_tracks
+         (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      )
+      .bind("favorites", "1", 0, "A", "Art", "", "", 0, "", 0, 0, 0, 1)
+      .run();
+    const e = env({ MUSIC_DU_DB: db, MUSIC_ACCESS_TOKEN: "s3cret" });
+    const r = await req("/favs", {
+      method: "GET",
+      env: e,
+      headers: { "X-Music-Token": "s3cret" },
+    });
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.count).toBe(1);
+  });
+
+  it("query token is not accepted", async () => {
+    const e = env({
+      MUSIC_DU_DB: createMockD1(),
+      MUSIC_ACCESS_TOKEN: "s3cret",
+    });
+    const r = await req("/api/library?token=s3cret", { method: "GET", env: e });
+    expect(r.status).toBe(401);
+  });
 });

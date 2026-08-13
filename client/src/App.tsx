@@ -65,7 +65,7 @@ export default function App() {
     const bind = () => {
       for (const c of cleanups.splice(0)) c();
       const nodes = shell.querySelectorAll<HTMLElement>(
-        ".side-player, .imm-now, .compact-now, .player-bar, .now-playing"
+        ".side-player, .imm-now, .compact-now, .player-bar, .now-playing, .gal-dock"
       );
       const seen = new Set<HTMLElement>();
       nodes.forEach((node) => {

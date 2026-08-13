@@ -141,7 +141,7 @@ export type QualityLevelId = (typeof DEFAULT_QUALITY)[number];
 
 export function qualityLadder(): string[] {
   const env = (process.env.CHKSZ_QUALITY_LEVELS || "").trim();
-  if (env) return env.split(",").map((x) => x.trim()).filter(Boolean);
+  if (env) return env.split(",").map((x: string) => x.trim()).filter(Boolean);
   return [...DEFAULT_QUALITY];
 }
 

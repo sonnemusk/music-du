@@ -112,7 +112,11 @@ else
 fi
 
 echo "==> favs export (Access login or service token → 200 JSON)"
-code=$(curl -sS "${AUTH_HEADERS[@]}" -o /tmp/smoke-favs.body -w '%{http_code}' "$BASE/favs" || true)
+FAVS_HEADERS=("${AUTH_HEADERS[@]}")
+if [[ -n "${MUSIC_ACCESS_TOKEN:-}" ]]; then
+  FAVS_HEADERS+=(-H "X-Music-Token: ${MUSIC_ACCESS_TOKEN}")
+fi
+code=$(curl -sS "${FAVS_HEADERS[@]}" -o /tmp/smoke-favs.body -w '%{http_code}' "$BASE/favs" || true)
 echo "favs HTTP $code"
 case "$code" in
   200)

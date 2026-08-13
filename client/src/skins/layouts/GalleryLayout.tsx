@@ -91,6 +91,7 @@ function GalleryRail() {
             type="button"
             className={`gal-rail__item ${on ? "on" : ""}`}
             aria-current={on ? "page" : undefined}
+            aria-label={t.label}
             title={t.label}
             onClick={() => setTab(t.id)}
           >
@@ -136,6 +137,7 @@ function GalleryDock() {
         type="button"
         className={`gal-dock__art ${curTrack?.cover ? "has" : ""}`}
         onClick={() => setTab("lyrics")}
+        aria-label={tr("tabs.lyrics")}
         title={tr("tabs.lyrics")}
       >
         {curTrack?.cover ? (

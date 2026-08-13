@@ -18,7 +18,7 @@ preview_urls = false
 
 [observability]
 enabled = true
-head_sampling_rate = 1
+head_sampling_rate = 0.05
 
 [vars]
 CHKSZ_API_BASE = "https://api.chksz.top"
@@ -51,7 +51,7 @@ preview_urls = false
 
 [env.demo.observability]
 enabled = true
-head_sampling_rate = 1
+head_sampling_rate = 0.05
 
 [env.demo.vars]
 CHKSZ_API_BASE = "https://api.chksz.top"

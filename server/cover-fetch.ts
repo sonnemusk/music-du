@@ -104,31 +104,46 @@ export async function fetchCoverUpstream(
   const timeoutMs = opts?.timeoutMs ?? 10000;
   const candidates = coverMirrorCandidates(url);
 
-  for (const candidate of candidates) {
+  for (const start of candidates) {
     try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-      const up = await fetch(candidate, {
-        headers: {
-          "User-Agent": COVER_UA,
-          Referer: "https://music.163.com/",
-          Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        },
-        signal: ctrl.signal,
-        redirect: "follow",
-      });
-      clearTimeout(timer);
-      if (!up.ok) continue;
-      const body = await up.arrayBuffer();
-      const contentType = up.headers.get("Content-Type") || "image/jpeg";
-      if (!looksLikeImage(body, contentType)) continue;
-      return {
-        body,
-        contentType: contentType.startsWith("image/")
-          ? contentType
-          : "image/jpeg",
-        finalUrl: candidate,
-      };
+      let current = start;
+      for (let hop = 0; hop < 3; hop++) {
+        if (!isAllowedCoverUrl(current)) break;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        const up = await fetch(current, {
+          headers: {
+            "User-Agent": COVER_UA,
+            Referer: "https://music.163.com/",
+            Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+          },
+          signal: ctrl.signal,
+          redirect: "manual",
+        });
+        clearTimeout(timer);
+        if (up.status >= 300 && up.status < 400) {
+          const loc = up.headers.get("Location") || "";
+          if (!loc) break;
+          try {
+            current = new URL(loc, current).toString();
+          } catch {
+            break;
+          }
+          continue;
+        }
+        if (!up.ok) break;
+        const body = await up.arrayBuffer();
+        if (body.byteLength > 1.5 * 1024 * 1024) break;
+        const contentType = up.headers.get("Content-Type") || "image/jpeg";
+        if (!looksLikeImage(body, contentType)) break;
+        return {
+          body,
+          contentType: contentType.startsWith("image/")
+            ? contentType
+            : "image/jpeg",
+          finalUrl: current,
+        };
+      }
     } catch {
       /* try next mirror */
     }

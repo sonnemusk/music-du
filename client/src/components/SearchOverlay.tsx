@@ -30,11 +30,17 @@ export function SearchOverlay() {
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 720px)");
-    const apply = () => setMobile(mq.matches);
+    const apply = () => {
+      const next = mq.matches;
+      setMobile(next);
+      if (!next && usePlayer.getState().searchOpen) {
+        closeSearchOverlay({ fromPopstate: true });
+      }
+    };
     apply();
     mq.addEventListener?.("change", apply);
     return () => mq.removeEventListener?.("change", apply);
-  }, []);
+  }, [closeSearchOverlay]);
 
   // Sync draft when opening / when store query changes while open
   useEffect(() => {
@@ -66,6 +72,14 @@ export function SearchOverlay() {
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
+      if (pushedRef.current) {
+        pushedRef.current = false;
+        try {
+          window.history.back();
+        } catch {
+          /* */
+        }
+      }
     };
   }, [open, mobile, closeSearchOverlay]);
 
@@ -133,7 +147,10 @@ export function SearchOverlay() {
           <button
             type="button"
             className="search-overlay__cancel"
-            onClick={() => closeSearchOverlay()}
+            onClick={() => {
+              pushedRef.current = false;
+              closeSearchOverlay();
+            }}
           >
             {tr("search.cancel")}
           </button>

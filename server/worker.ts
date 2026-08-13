@@ -11,10 +11,12 @@
 /// <reference types="@cloudflare/workers-types" />
 import { Hono } from "hono";
 import {
+  chartEdgeMaxAgeSec,
   getChart,
   isChartPlatform,
   listChartBoards,
   listChartPlatforms,
+  normalizeBoard,
   type ChartPlatformId,
 } from "./charts.js";
 import { qualityLadder } from "./config.js";
@@ -393,30 +395,71 @@ async function deleteSid(
     .prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`)
     .bind(listType, String(sid))
     .run();
-  // Compact positions in one pass (avoid N sequential UPDATEs timing out)
-  const { results } = await db
-    .prepare(`SELECT sid FROM library_tracks WHERE list_type=? ORDER BY pos ASC`)
-    .bind(listType)
-    .all();
-  const stmts: D1PreparedStatement[] = [];
-  let i = 0;
-  for (const r of results || []) {
-    stmts.push(
-      db
-        .prepare(`UPDATE library_tracks SET pos=? WHERE list_type=? AND sid=?`)
-        .bind(i++, listType, (r as any).sid)
-    );
-    if (stmts.length >= 80) {
-      await db.batch(stmts.splice(0, stmts.length));
+  // History uses sparse monotonic pos — do not rewrite 200 rows on one delete.
+  if (listType !== "history") {
+    const { results } = await db
+      .prepare(`SELECT sid FROM library_tracks WHERE list_type=? ORDER BY pos ASC`)
+      .bind(listType)
+      .all();
+    const stmts: D1PreparedStatement[] = [];
+    let i = 0;
+    for (const r of results || []) {
+      stmts.push(
+        db
+          .prepare(`UPDATE library_tracks SET pos=? WHERE list_type=? AND sid=?`)
+          .bind(i++, listType, (r as any).sid)
+      );
+      if (stmts.length >= 80) {
+        await db.batch(stmts.splice(0, stmts.length));
+      }
     }
+    if (stmts.length) await db.batch(stmts);
   }
-  if (stmts.length) await db.batch(stmts);
   await bumpRevision(db, serverRev);
   return { conflict: false as const, data: await loadLib(db) };
 }
 
 function envReadonly(env: Env): boolean {
   return isLibraryReadonly(env.LIBRARY_READONLY);
+}
+
+/** In-isolate demo limiter — cuts public-gateway abuse on the free request quota. */
+const demoHits = new Map<string, { n: number; t: number }>();
+
+function demoRateLimited(
+  c: { env: Env; req: { header: (n: string) => string | undefined } },
+  bucket: string,
+  limitPerMin: number
+): Response | null {
+  if (!envReadonly(c.env)) return null;
+  const ip = (c.req.header("CF-Connecting-IP") || c.req.header("cf-connecting-ip") || "x").trim();
+  const window = Math.floor(Date.now() / 60_000);
+  const key = `${ip}:${bucket}:${window}`;
+  const prev = demoHits.get(key);
+  const n = (prev?.n || 0) + 1;
+  demoHits.set(key, { n, t: Date.now() });
+  if (demoHits.size > 4000) {
+    const cutoff = Date.now() - 120_000;
+    for (const [k, v] of demoHits) {
+      if (v.t < cutoff) demoHits.delete(k);
+    }
+  }
+  if (n > limitPerMin) {
+    return new Response(JSON.stringify({ ok: false, error: "rate limited" }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+        "Retry-After": "60",
+      },
+    });
+  }
+  return null;
+}
+
+function clampSearchLimit(raw: string | undefined): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 20;
+  return Math.min(20, Math.max(1, Math.floor(n)));
 }
 
 /** JSON 403 for demo write / export / import. */
@@ -465,17 +508,16 @@ function libraryUnauthorized(c: {
     return null;
   }
   const header = (c.req.header("X-Music-Token") || c.req.header("x-music-token") || "").trim();
-  let queryTok = "";
   let cookieTok = "";
   try {
-    queryTok = new URL(c.req.url).searchParams.get("token") || "";
     const cookie = c.req.header("Cookie") || "";
     const m = cookie.match(/(?:^|;\s*)music_tok=([^;]+)/);
     if (m) cookieTok = decodeURIComponent(m[1]);
   } catch {
     /* */
   }
-  const got = header || queryTok.trim() || cookieTok.trim();
+  // Query ?token= is rejected (logs / Referer leak). Header or cookie only.
+  const got = header || cookieTok.trim();
   if (libraryTokenOk(expected, got)) return null;
   return new Response(
     JSON.stringify({ ok: false, error: "unauthorized — set X-Music-Token" }),
@@ -525,11 +567,11 @@ app.get("/api/health", (c) => {
       cover_chart_cache: "workers-cache-api-free",
       library: c.env.MUSIC_DU_DB
         ? readOnly
-          ? "music-du-library (d1 free, read-only demo)"
+          ? "music-du-demo (d1 free, read-only demo)"
           : "music-du-library (d1 free)"
         : "browser-localStorage",
       worker_name: readOnly ? "music-du-demo" : "music-du",
-      d1_name: "music-du-library",
+      d1_name: readOnly ? "music-du-demo" : "music-du-library",
       library_readonly: readOnly,
       export_import: readOnly ? false : true,
     },
@@ -538,9 +580,11 @@ app.get("/api/health", (c) => {
 });
 
 app.get("/api/search", async (c) => {
+  const denied = demoRateLimited(c, "search", 20);
+  if (denied) return denied;
   const q = c.req.query("q") || c.req.query("keyword") || "";
   try {
-    const songs = await chksz.search(q, Number(c.req.query("limit") || 30), {
+    const songs = await chksz.search(q, clampSearchLimit(c.req.query("limit")), {
       apikey: withKey(c.env),
     });
     return c.json({ ok: true, data: songs });
@@ -568,10 +612,16 @@ app.get("/api/charts/:platform", async (c) => {
     return c.json({ ok: false, error: "unknown platform" }, 400);
   }
   // Q-1: accept force or refresh (align with Node app.ts)
+  // Demo: ignore force — a public ?force=1 would rematch and burn the free quota.
   const force =
-    c.req.query("force") === "1" ||
-    c.req.query("refresh") === "1" ||
-    c.req.query("force") === "true";
+    !envReadonly(c.env) &&
+    (c.req.query("force") === "1" ||
+      c.req.query("refresh") === "1" ||
+      c.req.query("force") === "true");
+  const board = normalizeBoard(
+    platform,
+    c.req.query("board") || c.req.query("type") || "soar"
+  );
   // Free CF Cache API — skip when force refresh
   if (!force) {
     const hit = await edgeMatch(c.req.url);
@@ -584,14 +634,15 @@ app.get("/api/charts/:platform", async (c) => {
   try {
     const data = await getChart(platform as ChartPlatformId, {
       apikey: withKey(c.env),
-      limit: Number(c.req.query("limit") || 40) || 40,
+      limit: Math.min(40, Math.max(10, Number(c.req.query("limit") || 40) || 40)),
       force,
-      board: c.req.query("board") || c.req.query("type") || "soar",
+      board,
     });
     const body = JSON.stringify({ ok: true, data });
     const headers = withCacheHeaders(
       { "Content-Type": "application/json; charset=utf-8", "X-Chart-Cache": "MISS" },
-      "chart"
+      "chart",
+      { maxAgeSec: chartEdgeMaxAgeSec(board) }
     );
     const res = new Response(body, { status: 200, headers });
     if (!force) {
@@ -607,9 +658,11 @@ app.get("/api/charts/:platform", async (c) => {
 
 /** Top N ladder levels that actually return a URL for this track. */
 app.get("/api/song/:sid/qualities", async (c) => {
+  const denied = demoRateLimited(c, "qualities", 8);
+  if (denied) return denied;
   const sid = c.req.param("sid");
   const limit = Math.min(5, Math.max(1, Number(c.req.query("limit") || 3)));
-  const force = c.req.query("force") === "1";
+  const force = c.req.query("force") === "1" && !envReadonly(c.env);
   const cacheUrl = new URL(c.req.url);
   cacheUrl.searchParams.delete("force");
   if (!force) {
@@ -662,25 +715,31 @@ app.get("/api/song/:sid/qualities", async (c) => {
       }
     }
 
+    // Demo: never walk the quality ladder (3–8 upstream calls per click).
+    if (envReadonly(c.env)) {
+      return c.json({ ok: true, data: { id: sid, qualities: [] } });
+    }
     const qualities = await chksz.probeTopQualities(sid, limit, {
       apikey: withKey(c.env),
     });
     // Persist each tier into D1 for instant later switches / multi-device
     if (db && qualities.length) {
       await ensureResolveCacheSchema(db);
-      for (const q of qualities) {
-        await putResolveCache(db, {
-          sid,
-          level: q.level,
-          url: q.url,
-          br: q.br,
-          size: q.size,
-          name: q.name,
-          artist: q.artist,
-          cover: q.cover,
-          source: "remote",
-        });
-      }
+      await Promise.all(
+        qualities.map((q) =>
+          putResolveCache(db, {
+            sid,
+            level: q.level,
+            url: q.url,
+            br: q.br,
+            size: q.size,
+            name: q.name,
+            artist: q.artist,
+            cover: q.cover,
+            source: "remote",
+          })
+        )
+      );
       // Opportunistic prune (ignore errors)
       c.executionCtx?.waitUntil?.(pruneResolveCache(db));
     }
@@ -701,9 +760,11 @@ app.get("/api/song/:sid/qualities", async (c) => {
 });
 
 app.get("/api/song/:sid", async (c) => {
+  const denied = demoRateLimited(c, "song", 30);
+  if (denied) return denied;
   const sid = c.req.param("sid");
   const level = c.req.query("level") || "";
-  const force = c.req.query("force") === "1";
+  const force = c.req.query("force") === "1" && !envReadonly(c.env);
   // Cache API: JSON metadata only (never audio bytes). Short TTL — signed URLs die.
   const cacheUrl = new URL(c.req.url);
   cacheUrl.searchParams.set("level", level || "default");
@@ -783,9 +844,8 @@ app.get("/api/song/:sid", async (c) => {
             // Only cache under the *actual* delivered level — never poison
             // requested keys (e.g. jymaster) with a fallthrough standard URL.
             const actualLevel = src.level || level || "default";
-            await putResolveCache(db, {
+            const row = {
               sid,
-              level: actualLevel,
               url: remoteUrl,
               br: src.br,
               size: src.size,
@@ -793,7 +853,13 @@ app.get("/api/song/:sid", async (c) => {
               artist: src.artist,
               cover: src.cover,
               source: src.source,
-            });
+            };
+            await putResolveCache(db, { ...row, level: actualLevel });
+            // Alias requested intent (e.g. sky) so the next play hits D1
+            // instead of walking the ladder again.
+            if (level && level !== actualLevel) {
+              await putResolveCache(db, { ...row, level });
+            }
             await pruneResolveCache(db);
           } catch {
             /* */
@@ -821,7 +887,9 @@ app.get("/api/song/:sid", async (c) => {
 });
 
 app.get("/api/lyric/:sid", async (c) => {
-  const force = c.req.query("force") === "1";
+  const denied = demoRateLimited(c, "lyric", 20);
+  if (denied) return denied;
+  const force = c.req.query("force") === "1" && !envReadonly(c.env);
   if (!force) {
     const hit = await edgeMatch(c.req.url);
     if (hit) {
@@ -864,6 +932,8 @@ app.get("/api/lyric/:sid", async (c) => {
  * NEVER put audio into Cache API.
  */
 app.get("/api/stream/:sid", async (c) => {
+  const denied = demoRateLimited(c, "stream", 30);
+  if (denied) return denied;
   try {
     const sid = c.req.param("sid");
     const level = c.req.query("level") || "";
@@ -997,6 +1067,8 @@ async function favoritesExportResponse(c: {
   if (envReadonly(c.env)) {
     return readOnlyForbidden("export disabled on demo");
   }
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return new Response(
       JSON.stringify({
@@ -1137,11 +1209,13 @@ app.get("/import", (c) => {
       403
     );
   }
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   return c.html(favoritesImportHtml());
 });
 
 /** Cap name-match rows per request (free-tier rate limits). */
-const IMPORT_NAME_MATCH_CAP = 80;
+const IMPORT_NAME_MATCH_CAP = 15;
 
 app.post("/import", async (c) => {
   if (envReadonly(c.env)) {
@@ -1150,6 +1224,8 @@ app.post("/import", async (c) => {
       403
     );
   }
+  const denied = libraryUnauthorized(c);
+  if (denied) return denied;
   if (!c.env.MUSIC_DU_DB) {
     return c.html(favoritesImportHtml("D1 未配置，无法导入"), 503);
   }
