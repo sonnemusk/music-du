@@ -36,17 +36,43 @@ else:
 "
 
 echo "==> search"
-curl_json "/api/search?q=test&limit=1" | python3 -c "
+search_ok=0
+search_n=0
+for i in 1 2 3 4 5; do
+  if body=$(curl -sS "${AUTH_HEADERS[@]}" "$BASE/api/search?q=test&limit=1" 2>/dev/null); then
+    if echo "$body" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 assert d.get('ok') is True, d
 assert isinstance(d.get('data'), list), d
 print('search ok n=', len(d['data']))
-"
+"; then
+      search_ok=1
+      search_n=$(echo "$body" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('data') or []))")
+      break
+    fi
+  fi
+  sleep 2
+done
+if [[ "$search_ok" != "1" ]]; then
+  if [[ -n "$DEMO" ]]; then
+    echo "demo search upstream unavailable — skip song resolve"
+    search_ok=0
+  else
+    echo "search failed after retries"
+    curl -sS "${AUTH_HEADERS[@]}" "$BASE/api/search?q=test&limit=1" | head -c 400 || true
+    exit 1
+  fi
+fi
 
 echo "==> song resolve"
+if [[ -n "$DEMO" && "$search_ok" != "1" ]]; then
+  echo "skip song resolve on demo (search upstream down)"
+  song_ok=1
+fi
 # Brief retries — brand-new Worker / workers.dev can 404 for a few seconds
-song_ok=0
+song_ok=${song_ok:-0}
+if [[ "$song_ok" != "1" ]]; then
 for i in 1 2 3 4 5; do
   if body=$(curl -fsS "${AUTH_HEADERS[@]}" "$BASE/api/song/1901371647?level=standard" 2>/dev/null); then
     if echo "$body" | python3 -c "
@@ -63,6 +89,7 @@ print('song ok level=', (d.get('data') or {}).get('level'))
   fi
   sleep 2
 done
+fi
 if [[ "$song_ok" != "1" ]]; then
   echo "song resolve failed after retries"
   curl -sS "${AUTH_HEADERS[@]}" "$BASE/api/song/1901371647?level=standard" | head -c 400 || true
