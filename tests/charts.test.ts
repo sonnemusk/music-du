@@ -9,6 +9,7 @@ import {
   chartTrackFromRaw,
   isResolvedSongId,
   resolveSource,
+  kuwoTrackDuration,
   _clearChartCache,
 } from "../server/charts.js";
 
@@ -77,5 +78,12 @@ describe("charts catalog", () => {
     expect(chartEdgeMaxAgeSec("soar")).toBe(2 * 3600);
     expect(chartEdgeMaxAgeSec("new")).toBe(3 * 3600);
     expect(chartEdgeMaxAgeSec("hot")).toBe(8 * 3600);
+  });
+
+  it("kuwo bang duration uses song_duration seconds, not minutes*1000", () => {
+    expect(kuwoTrackDuration({ song_duration: "275", duration: "4" })).toBe(275);
+    expect(kuwoTrackDuration({ duration: "4" })).toBe(240);
+    expect(kuwoTrackDuration({ duration: "03:15" })).toBe(195);
+    expect(kuwoTrackDuration({ duration: 275 })).toBe(275);
   });
 });

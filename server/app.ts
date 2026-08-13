@@ -137,7 +137,7 @@ export function createApp(opts?: {
       if (src.source === "none" && !src.meta) {
         return c.json({ ok: false, error: "no url" }, 404);
       }
-      const stream = `/api/stream/${sid}`;
+      const stream = `/api/stream/${sid}${level ? `?level=${encodeURIComponent(level)}` : ""}`;
       const remoteUrl = src.source === "remote" ? src.url : "";
       let qualities: chksz.ProbedQuality[] | undefined;
       if (withQualities) {

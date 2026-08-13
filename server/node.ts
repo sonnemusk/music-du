@@ -149,7 +149,10 @@ async function main() {
   const server = http.createServer(async (req, res) => {
     try {
       const url = req.url || "/";
-      if (url.startsWith("/api/")) {
+      const apiPath = (url.split("?")[0] || "/").replace(/\/+$/, "") || "/";
+      // Hono also owns /favs and /export (not only /api/*). Vite would otherwise
+      // serve the SPA HTML for those short URLs.
+      if (url.startsWith("/api/") || apiPath === "/favs" || apiPath === "/export") {
         await handleApi(api, req, res);
         return;
       }

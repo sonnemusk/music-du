@@ -15,27 +15,27 @@ async function once(label: string) {
   if (!h.body.ok) throw new Error("health failed");
   lines.push(`health ok runtime=${h.body.runtime} has_apikey=${h.body.has_apikey}`);
 
+  const smokeId = `smoke-${Date.now()}`;
+  const before = await j("/api/library");
   const put = await j("/api/library", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      playlist: [
-        { id: 900001, name: "T1", artist: "A" },
-        { id: 900002, name: "T2", artist: "B" },
-      ],
-      favorites: [],
-      history: [{ id: 900001, name: "T1", artist: "A" }],
-      forceClearPlaylist: true,
-      forceClearHistory: true,
-      curIdx: 0,
+      playlist: [{ id: smokeId, name: "Smoke Probe", artist: "Auditor" }],
+      favorites: before.body.data?.favorites || [],
+      history: before.body.data?.history || [],
+      curIdx: before.body.data?.curIdx ?? -1,
+      revision: before.body.data?.revision,
     }),
   });
   lines.push(`library put ok=${put.body.ok}`);
 
-  const del = await j("/api/library/history/900001", { method: "DELETE" });
-  const hist = (del.body.data?.history || []).map((t: any) => String(t.id));
-  if (hist.includes("900001")) throw new Error("history delete failed");
-  lines.push(`history delete ok remaining=${hist.length}`);
+  const del = await j(`/api/library/playlist/${encodeURIComponent(smokeId)}`, {
+    method: "DELETE",
+  });
+  const list = (del.body.data?.playlist || []).map((t: any) => String(t.id));
+  if (list.includes(smokeId)) throw new Error("playlist delete failed");
+  lines.push(`playlist delete ok remaining=${list.length}`);
 
   try {
     const s = await j("/api/search?q=%E5%AD%A4%E5%8B%87%E8%80%85&limit=2");

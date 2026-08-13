@@ -509,6 +509,27 @@ export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise
   return out;
 }
 
+/** Bang JSON `duration` is minutes; `song_duration` is seconds. Track.duration is seconds. */
+export function kuwoTrackDuration(t: {
+  song_duration?: unknown;
+  duration?: unknown;
+  songTimeMinutes?: unknown;
+}): number {
+  const song = Number(t.song_duration);
+  if (Number.isFinite(song) && song > 0) return Math.round(song);
+  const raw = t.duration ?? t.songTimeMinutes;
+  if (typeof raw === "string" && raw.includes(":")) {
+    const parts = raw.split(":").map((x) => Number(x));
+    if (parts.length === 2 && parts.every((n) => Number.isFinite(n))) {
+      return Math.round(parts[0] * 60 + parts[1]);
+    }
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  // "4" on the bang list means ~4 minutes, not 4 seconds.
+  return n <= 30 ? Math.round(n * 60) : Math.round(n);
+}
+
 export async function fetchKuwoBang(bangId = 16, limit = MAX_TRACKS): Promise<RawRow[]> {
   const url =
     `http://kbangserver.kuwo.cn/ksong.s?from=pc&fmt=json&pn=0&rn=${limit}` +
@@ -529,7 +550,7 @@ export async function fetchKuwoBang(bangId = 16, limit = MAX_TRACKS): Promise<Ra
       artist: cleanName(artist),
       album: String(t.album || t.ALBUM || ""),
       cover,
-      duration: Number(t.duration || t.songTimeMinutes || 0) * 1000 || 0,
+      duration: kuwoTrackDuration(t),
       sourceKey: `kw:${t.id || t.MUSICRID || name}`,
     });
     if (out.length >= limit) break;

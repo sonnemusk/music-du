@@ -26,6 +26,16 @@ function tmpLib() {
 }
 
 describe("Hono app API", () => {
+  it("favs export is JSON, not the SPA shell", async () => {
+    const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
+    const r = await app.request("/favs");
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type") || "").toContain("application/json");
+    const j = await r.json();
+    expect(Array.isArray(j.favorites)).toBe(true);
+    expect(typeof j.count).toBe("number");
+  });
+
   it("health", async () => {
     const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
     const r = await app.request("/api/health");

@@ -20,6 +20,29 @@ export function coverHash(url: string): string {
   return crypto.createHash("sha1").update(String(url)).digest("hex");
 }
 
+/** Trust bytes over the file extension / upstream Content-Type. */
+export function sniffImageContentType(body: Buffer | Uint8Array): string | null {
+  if (!body || body.length < 12) return null;
+  if (body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff) return "image/jpeg";
+  if (body[0] === 0x89 && body[1] === 0x50 && body[2] === 0x4e && body[3] === 0x47) {
+    return "image/png";
+  }
+  if (body[0] === 0x47 && body[1] === 0x49 && body[2] === 0x46) return "image/gif";
+  if (
+    body[0] === 0x52 &&
+    body[1] === 0x49 &&
+    body[2] === 0x46 &&
+    body[3] === 0x46 &&
+    body[8] === 0x57 &&
+    body[9] === 0x45 &&
+    body[10] === 0x42 &&
+    body[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return null;
+}
+
 function extFromContentType(ct: string): string {
   const c = (ct || "").toLowerCase();
   if (c.includes("png")) return "png";
@@ -57,6 +80,8 @@ export function readCoverCache(url: string): CoverHit | null {
   try {
     const body = fs.readFileSync(hit.file);
     if (body.length < 32) return null;
+    const sniffed = sniffImageContentType(body);
+    if (sniffed) return { body, contentType: sniffed, fromCache: true };
     const ext = path.extname(hit.file).slice(1).toLowerCase();
     const contentType =
       ext === "png"
@@ -76,7 +101,7 @@ export function writeCoverCache(url: string, body: Buffer, contentType: string):
   if (!url || body.length < 32) return;
   try {
     const hash = coverHash(url);
-    const ext = extFromContentType(contentType);
+    const ext = extFromContentType(sniffImageContentType(body) || contentType);
     const dir = coversDir();
     // remove other extensions for same hash
     for (const f of fs.readdirSync(dir)) {
