@@ -3,12 +3,23 @@ import { useEffect } from "react";
 import { themeDisplayName } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { getTheme, themeToCssVars, type SkinId } from "./theme-catalog";
+import { BoardsLayout } from "./experiences/boards/BoardsLayout";
+import { DeskLayout } from "./experiences/desk/DeskLayout";
+import { DockLayout } from "./experiences/dock/DockLayout";
+import { FeedLayout } from "./experiences/feed/FeedLayout";
+import { FindLayout } from "./experiences/find/FindLayout";
+import { LikesLayout } from "./experiences/likes/LikesLayout";
+import { RecentLayout } from "./experiences/recent/RecentLayout";
+import { SplitLayout } from "./experiences/split/SplitLayout";
+import { StageLayout } from "./experiences/stage/StageLayout";
+import { VerseLayout } from "./experiences/verse/VerseLayout";
 import { CompactLayout } from "./layouts/CompactLayout";
 import { GalleryLayout } from "./layouts/GalleryLayout";
 import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
 import { SideLayout } from "./layouts/SideLayout";
 import "./layouts/layouts.css";
 import "./themes/refined-base.css";
+import "./experiences/touch.css";
 
 const FONT_LINKS: Record<string, string> = {
   "Bebas Neue": "Bebas+Neue",
@@ -69,6 +80,26 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
 
   const layout = (() => {
     switch (meta.layout) {
+      case "dock":
+        return <DockLayout brand={brand} />;
+      case "desk":
+        return <DeskLayout brand={brand} />;
+      case "feed":
+        return <FeedLayout brand={brand} />;
+      case "stage":
+        return <StageLayout brand={brand} />;
+      case "verse":
+        return <VerseLayout brand={brand} />;
+      case "likes":
+        return <LikesLayout brand={brand} />;
+      case "recent":
+        return <RecentLayout brand={brand} />;
+      case "find":
+        return <FindLayout brand={brand} />;
+      case "boards":
+        return <BoardsLayout brand={brand} />;
+      case "split":
+        return <SplitLayout brand={brand} />;
       case "immersive":
         return <ImmersiveLayout brand={brand} />;
       case "compact":

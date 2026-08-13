@@ -49,6 +49,26 @@ describe("theme catalog", () => {
     }
   });
 
+  it("each new experience layout ships with dim + deep palettes", () => {
+    const shells = [
+      "dock",
+      "desk",
+      "feed",
+      "stage",
+      "verse",
+      "likes",
+      "recent",
+      "find",
+      "boards",
+      "split",
+    ];
+    for (const id of shells) {
+      const pair = THEME_CATALOG.filter((t) => t.layout === id);
+      expect(pair.map((t) => t.id).sort(), id).toEqual([`${id}-deep`, `${id}-dim`].sort());
+      expect(pair[0]!.bg).not.toBe(pair[1]!.bg);
+    }
+  });
+
   it("gallery layout ships with exactly one theme and its stylesheet", () => {
     expect(LAYOUT_IDS).toContain("gallery");
     const onGallery = THEME_CATALOG.filter((t) => t.layout === "gallery");

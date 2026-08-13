@@ -1,0 +1,742 @@
+/* 泊位 — phone listening berth. Tokens come from the active theme. */
+
+.layout-dock {
+  --dock-sheet-z: 80;
+  --dock-mini-h: 64px;
+  --dock-tab-h: 58px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  color: var(--fg);
+  background: var(--wallpaper, var(--bg));
+  font-family: var(--font);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.layout-dock *,
+.layout-dock *::before,
+.layout-dock *::after {
+  box-sizing: border-box;
+}
+
+.layout-dock::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 55px,
+    color-mix(in srgb, var(--fg) 4%, transparent) 55px 56px
+  );
+  opacity: 0.28;
+  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 78%, transparent);
+}
+
+.layout-dock > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* —— head —— */
+.dock-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px 6px;
+}
+
+.dock-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
+  font-family: var(--display-font, var(--font));
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.dock-brand__mark {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.dock-brand__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16em;
+}
+
+.dock-search {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.dock-search input {
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.dock-search button {
+  flex: 0 0 auto;
+  min-width: 52px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dock-search-launch {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  font-size: 1.15rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dock-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.layout-dock .skin-switcher__bar {
+  flex-wrap: nowrap;
+}
+
+/* —— body / rail —— */
+.dock-body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.dock-rail {
+  display: flex;
+  gap: 6px;
+}
+
+.dock-rail--top {
+  flex: 0 0 auto;
+  padding: 0 12px 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dock-rail--side {
+  flex: 0 0 168px;
+  flex-direction: column;
+  padding: 8px 10px 12px;
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.dock-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 8px 12px;
+}
+
+.dock-main[data-tab="lyrics"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.dock-main[data-tab="lyrics"] > .lyrics-scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+}
+
+.dock-demo {
+  margin: 4px 8px 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dock-search-pane {
+  min-height: 0;
+}
+
+.dock-recent {
+  padding: 8px 8px 12px;
+}
+
+.dock-recent__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.dock-recent__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dock-recent__chip {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dock-recent__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* —— tabs —— */
+.dock-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 8px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dock-tab.on {
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.dock-tab.on::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-fg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-fg) 28%, transparent);
+}
+
+.dock-tab--side {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 44px;
+}
+
+.dock-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--bg) 88%, var(--card));
+  border-top: 1px solid var(--line);
+}
+
+.dock-tabs .dock-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+/* —— mini berth —— */
+.dock-mini {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: var(--dock-mini-h);
+  padding: 8px 10px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--card) 92%, var(--bg));
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 10px 18px color-mix(in srgb, #000 12%, transparent);
+}
+
+/* Phone tab bar already owns the home-indicator inset. */
+.layout-dock[data-phone="1"] .dock-mini {
+  padding-bottom: 8px;
+}
+
+.dock-mini__progress {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dock-mini {
+  position: relative;
+}
+
+.dock-mini__progress::after {
+  content: "";
+  display: block;
+  width: var(--dock-play, 0%);
+  height: 100%;
+  background: var(--accent);
+}
+
+.dock-mini__now {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  min-height: 44px;
+}
+
+.dock-mini__cov,
+.dock-mini__now .cov {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.dock-mini__cov.is-live,
+.dock-mini__now .is-live {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.dock-mini__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dock-mini__title,
+.dock-mini__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-mini__title {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.dock-mini__sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dock-mini__seek {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 360px;
+}
+
+.dock-mini__seek .transport {
+  max-width: none;
+  margin: 0;
+}
+
+.dock-mini__acts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.dock-mini__skip,
+.dock-mini__play {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.dock-mini__play {
+  width: 48px;
+  height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: transparent;
+  font-size: 16px;
+}
+
+/* —— boarded sheet (below search 900 / theme 2000) —— */
+.dock-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--dock-sheet-z, 80);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100dvh;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg) 92%, #000 8%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding: max(10px, env(safe-area-inset-top, 0px)) 16px
+    max(16px, env(safe-area-inset-bottom, 0px));
+  animation: dock-board 0.28s ease;
+}
+
+@keyframes dock-board {
+  from {
+    transform: translateY(18px);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.dock-sheet__bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.dock-sheet__close {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dock-sheet__ghost {
+  background: transparent;
+}
+
+.dock-sheet__hint {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.dock-sheet__stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.dock-sheet__hero {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.dock-sheet__ring {
+  width: min(58vw, 280px);
+  aspect-ratio: 1;
+  border-radius: 28px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+
+.dock-sheet__ring.is-live {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.dock-sheet__cov,
+.dock-sheet__ring img,
+.dock-sheet__ring .cov {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 22px;
+  display: block;
+}
+
+.dock-sheet__title {
+  margin: 14px 0 4px;
+  font-family: var(--display-font, var(--font));
+  font-size: 1.25rem;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-sheet__artist {
+  margin: 0 0 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-sheet__transport {
+  width: 100%;
+  max-width: 420px;
+}
+
+.dock-sheet__transport .transport {
+  max-width: none;
+}
+
+.dock-sheet__lyrics-btn {
+  margin-top: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dock-sheet__verse {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dock-sheet__verse > .lyrics-scroller,
+.dock-sheet__verse > .split-lyrics {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  text-align: center;
+}
+
+.layout-dock .lyrics-panel.lyrics-scroller,
+.layout-dock .split-lyrics.lyrics-scroller {
+  height: 100%;
+  min-height: 120px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+}
+
+.layout-dock .ly {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.layout-dock .ly.on {
+  color: var(--fg);
+  font-weight: 800;
+}
+
+/* lists inside the berth */
+.layout-dock .track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--radius);
+}
+
+.layout-dock .track-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.layout-dock .track-name,
+.layout-dock .track-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* phone */
+@media (max-width: 720px) {
+  .dock-brand__text {
+    max-width: 7.5em;
+  }
+
+  .layout-dock input,
+  .layout-dock .dock-search input,
+  .layout-dock .skin-search input {
+    font-size: 16px;
+  }
+
+  .dock-sheet__verse {
+    min-height: 22vh;
+  }
+
+  .layout-dock .skin-switcher__label {
+    max-width: 4em;
+  }
+}
+
+/* desktop boarding: cover + lyrics side by side */
+@media (min-width: 1024px) {
+  .dock-mini {
+    min-height: 72px;
+    padding: 10px 18px;
+    gap: 16px;
+  }
+
+  .dock-sheet__stage {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 28px;
+    padding: 8px 24px 0;
+  }
+
+  .dock-sheet__hero {
+    flex: 0 0 min(42%, 420px);
+    justify-content: center;
+  }
+
+  .dock-sheet__verse {
+    flex: 1 1 auto;
+  }
+
+  .dock-head {
+    padding: 12px 18px 8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .layout-dock .dock-mini__play,
+  .layout-dock .dock-mini__skip,
+  .layout-dock .dock-tab,
+  .layout-dock .dock-search-launch,
+  .layout-dock .dock-sheet__close,
+  .layout-dock .dock-sheet__lyrics-btn,
+  .layout-dock .dock-mini__now,
+  .layout-dock .dock-recent__chip {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-sheet {
+    animation: none;
+  }
+}

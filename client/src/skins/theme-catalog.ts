@@ -1,4 +1,14 @@
 import { LAYOUT_IDS, type SkinLayout } from "./layouts/layout-ids";
+import { BOARDS_THEMES } from "./experiences/boards/theme";
+import { THEMES as DESK_THEMES } from "./experiences/desk/theme";
+import { THEMES as DOCK_THEMES } from "./experiences/dock/theme";
+import { THEMES as FEED_THEMES } from "./experiences/feed/theme";
+import { FIND_THEMES } from "./experiences/find/theme";
+import { LIKES_THEMES } from "./experiences/likes/theme";
+import { RECENT_THEMES } from "./experiences/recent/theme";
+import { SPLIT_THEMES } from "./experiences/split/theme";
+import { STAGE_THEMES } from "./experiences/stage/theme";
+import { VERSE_THEMES } from "./experiences/verse/theme";
 
 export type { SkinLayout };
 export { LAYOUT_IDS };
@@ -36,6 +46,16 @@ export type ThemeTokens = {
 
 /** 80-ish color + layout showcase themes — CSS vars paint; layout drives structure. */
 export const THEME_CATALOG: ThemeTokens[] = [
+  ...(DOCK_THEMES as ThemeTokens[]),
+  ...(DESK_THEMES as ThemeTokens[]),
+  ...(FEED_THEMES as ThemeTokens[]),
+  ...(STAGE_THEMES as ThemeTokens[]),
+  ...(VERSE_THEMES as ThemeTokens[]),
+  ...(LIKES_THEMES as ThemeTokens[]),
+  ...(RECENT_THEMES as ThemeTokens[]),
+  ...(FIND_THEMES as ThemeTokens[]),
+  ...(BOARDS_THEMES as ThemeTokens[]),
+  ...(SPLIT_THEMES as ThemeTokens[]),
   {
     id: "aurora",
     name: "极光",

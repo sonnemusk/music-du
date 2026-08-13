@@ -1,0 +1,13 @@
+/* Integrator pass: phone prev / play / next stay ≥44px across all 10 shells. */
+@media (max-width: 720px) {
+  .skin-host button[aria-label="上一首"],
+  .skin-host button[aria-label="下一首"],
+  .skin-host button[aria-label="播放/暂停"],
+  .skin-host button[aria-label="Previous"],
+  .skin-host button[aria-label="Next"],
+  .skin-host button[aria-label="Play / pause"] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    box-sizing: border-box;
+  }
+}

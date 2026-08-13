@@ -1,0 +1,477 @@
+.layout-find {
+  --find-overlay-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
+  color: var(--fg);
+  background: var(--wallpaper, var(--bg));
+  font-family: var(--font);
+  padding: max(10px, env(safe-area-inset-top, 0px)) 18px 0;
+}
+
+.layout-find[data-find="find-dim"] {
+  --find-ring: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.layout-find[data-find="find-deep"] {
+  --find-ring: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.find-top,
+.find-hero,
+.find-drawers,
+.find-mini {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.find-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.find-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  min-width: 0;
+  font-family: var(--display-font);
+}
+
+.find-mark {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.find-brand-sep {
+  opacity: 0.35;
+}
+
+.find-brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.find-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.find-tools .skin-switcher__btn,
+.find-tools .locale-switch {
+  min-height: 44px;
+  min-width: 44px;
+  height: 44px;
+}
+
+.find-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 18px 0 8px;
+}
+
+.find-hero::before,
+.find-hero::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 1px solid var(--find-ring, color-mix(in srgb, var(--accent) 16%, transparent));
+}
+
+.find-hero::before {
+  width: min(92vw, 720px);
+  height: min(92vw, 720px);
+  opacity: 0.45;
+}
+
+.find-hero::after {
+  width: min(56vw, 420px);
+  height: min(56vw, 420px);
+  opacity: 0.7;
+}
+
+.find-kicker {
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.find-well {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+.layout-find .find-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 48px;
+  min-height: 44px;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.layout-find .find-search input {
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 48px;
+  height: 100%;
+  padding: 0 16px;
+}
+
+.layout-find .find-search button {
+  flex: 0 0 auto;
+  min-width: 64px;
+  min-height: 44px;
+  height: 100%;
+  padding: 0 16px;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.find-overlay-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  color: var(--fg);
+}
+
+.find-overlay-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.find-status {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 2px;
+  text-align: left;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+}
+
+.find-status:disabled {
+  cursor: default;
+}
+
+.find-status-pill {
+  flex: 0 0 auto;
+  font-family: var(--mono-font);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent);
+}
+
+.find-status-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.find-drawers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 4px 0 8px;
+}
+
+.find-drawers::-webkit-scrollbar {
+  display: none;
+}
+
+.find-drawers-label {
+  flex: 0 0 auto;
+  font-family: var(--mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.find-chip {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.find-chip.on {
+  color: var(--accent-fg);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.find-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 8px;
+}
+
+.layout-find[data-tab="search"] .find-stage .track-list {
+  counter-reset: find-idx;
+}
+
+.layout-find[data-tab="search"] .find-stage .track-row {
+  counter-increment: find-idx;
+}
+
+.layout-find[data-tab="search"] .find-stage .track-row::before {
+  content: counter(find-idx, decimal-leading-zero);
+  flex: 0 0 auto;
+  width: 1.8em;
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.find-mini {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-areas:
+    "art meta"
+    "transport transport";
+  gap: 8px 12px;
+  align-items: center;
+  padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+
+.find-mini-art {
+  grid-area: art;
+  width: 48px;
+  height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+}
+
+.find-mini-cover,
+.find-mini-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.find-mini-meta {
+  grid-area: meta;
+  min-width: 0;
+}
+
+.find-mini-title,
+.find-mini-artist {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.find-mini-title {
+  font-weight: 750;
+  font-size: 0.92rem;
+}
+
+.find-mini-artist {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.find-mini-transport {
+  grid-area: transport;
+  min-width: 0;
+}
+
+.layout-find .find-mini .transport {
+  max-width: none;
+}
+
+.layout-find .find-mini .vol-row {
+  display: none;
+}
+
+.layout-find .find-mini .transport-row {
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.layout-find .find-mini .t-btn:not(.ghost) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.layout-find .find-mini .t-btn.play {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+@media (max-width: 720px) {
+  .layout-find {
+    --find-overlay-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+    padding: max(8px, env(safe-area-inset-top, 0px)) 12px 0;
+  }
+
+  .find-hero {
+    padding: 10px 0 4px;
+  }
+
+  .find-hero::before,
+  .find-hero::after {
+    display: none;
+  }
+
+  .find-mark {
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+  }
+
+  .find-brand-name {
+    max-width: 28vw;
+  }
+
+  .layout-find .find-search,
+  .layout-find .find-search input,
+  .find-overlay-btn {
+    height: 48px;
+    min-height: 44px;
+  }
+
+  .layout-find .find-search input {
+    font-size: 16px;
+    line-height: 48px;
+  }
+
+  .layout-find .find-mini .t-btn.ghost.mode,
+  .layout-find .find-mini .quality-wrap {
+    display: none;
+  }
+
+  .find-mini {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 721px) {
+  .find-hero {
+    max-width: 720px;
+    width: 100%;
+    align-self: center;
+  }
+
+  .find-drawers,
+  .find-stage {
+    max-width: 860px;
+    width: 100%;
+    align-self: center;
+  }
+
+  .find-mini {
+    grid-template-columns: 56px minmax(0, 220px) minmax(0, 1fr);
+    grid-template-areas: "art meta transport";
+    max-width: 960px;
+    width: 100%;
+    align-self: center;
+  }
+
+  .find-mini-art {
+    width: 56px;
+    height: 56px;
+  }
+
+  .layout-find .find-search {
+    height: 52px;
+  }
+
+  .layout-find .find-search input {
+    font-size: 17px;
+    line-height: 52px;
+  }
+
+  .find-overlay-btn {
+    width: 52px;
+    height: 52px;
+  }
+}
