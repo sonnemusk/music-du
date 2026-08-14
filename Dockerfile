@@ -13,6 +13,7 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=8787
 ENV MUSIC_DATA_DIR=/data
+# Set LIBRARY_TOKEN at runtime if this port is reachable from the internet.
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force \
   && groupadd -r music && useradd -r -g music -d /app music \

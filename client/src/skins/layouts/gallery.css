@@ -585,7 +585,7 @@
      quality picker stay in the docked column and the player tab. */
   .gal-dock .transport .vol-row,
   .gal-dock .transport .t-btn.ghost.mode,
-  .gal-dock .transport .quality-wrap {
+  .gal-dock .transport .quality-wrap:not(.quality-wrap--keep) {
     display: none;
   }
   .gal-dock .transport-row {
@@ -723,7 +723,7 @@
     max-width: none;
   }
   .gal-dock .transport .vol-row,
-  .gal-dock .transport .quality-wrap,
+  .gal-dock .transport .quality-wrap:not(.quality-wrap--keep),
   .gal-dock .transport .t-btn.ghost.mode {
     display: none;
   }

@@ -1,3 +1,5 @@
+import { libraryTokenOk } from "./library-merge.js";
+
 /**
  * Site mode flags (Worker env).
  * Demo: LIBRARY_READONLY=true → public read of library, no writes / export / import.
@@ -58,17 +60,23 @@ export function envDemoMode(): boolean {
 }
 
 /**
- * Library mutations: demo readonly is the only app-layer gate.
- * Private installs rely on Cloudflare Access at the edge.
+ * Library gate: demo readonly blocks writes; optional LIBRARY_TOKEN (Node)
+ * protects the whole library surface when set. Empty expected token → allow
+ * (local default). Cloudflare Access still covers the Worker hostname.
  */
 export function libraryGate(opts: {
   method: string;
   readonly?: boolean;
+  expectedToken?: string;
+  gotToken?: string;
 }): { ok: true } | { ok: false; status: number; error: string; readOnly?: boolean } {
   const readonly = opts.readonly ?? false;
   const method = (opts.method || "GET").toUpperCase();
   if (readonly && method !== "GET" && method !== "HEAD") {
     return { ok: false, status: 403, error: "read-only demo", readOnly: true };
+  }
+  if (!libraryTokenOk(opts.expectedToken, opts.gotToken)) {
+    return { ok: false, status: 401, error: "unauthorized" };
   }
   return { ok: true };
 }

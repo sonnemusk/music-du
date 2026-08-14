@@ -129,4 +129,46 @@ describe("Hono app API", () => {
     expect(j.data[0].name).toBe("T");
     expect(j.data[0].artist).toContain("A");
   });
+
+  it("does not reflect an arbitrary CORS origin", async () => {
+    const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
+    const r = await app.request("/api/health", {
+      headers: { Origin: "https://evil.example" },
+    });
+    expect(r.headers.get("access-control-allow-origin")).not.toBe("https://evil.example");
+  });
+
+  it("serves /import on the Node app", async () => {
+    const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
+    const r = await app.request("/import");
+    expect(r.status).toBe(200);
+    expect(await r.text()).toMatch(/Import/i);
+  });
+
+  it("rejects library writes when a token is required", async () => {
+    const app = createApp({
+      library: tmpLib(),
+      apikey: "",
+      readonly: false,
+      libraryToken: "secret",
+    });
+    const denied = await app.request("/api/library", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlist: [], favorites: [], history: [], curIdx: -1 }),
+    });
+    expect(denied.status).toBe(401);
+    const ok = await app.request("/api/library", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer secret" },
+      body: JSON.stringify({
+        playlist: [],
+        favorites: [{ id: 1, name: "A", artist: "B" }],
+        history: [],
+        curIdx: -1,
+        forceClearFavorites: true,
+      }),
+    });
+    expect(ok.status).toBe(200);
+  });
 });

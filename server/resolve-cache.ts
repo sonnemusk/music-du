@@ -21,7 +21,12 @@ export type ResolveCacheRow = {
 /** Keep under typical signed-URL lifetime; client durable cache is ~25m. */
 export const RESOLVE_TTL_SEC = 18 * 60;
 
+const resolveSchemaReady = new WeakMap<D1Database, Promise<void>>();
+
 export async function ensureResolveCacheSchema(db: D1Database): Promise<void> {
+  let p = resolveSchemaReady.get(db);
+  if (p) return p;
+  p = (async () => {
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS resolve_cache (
       sid TEXT NOT NULL,
@@ -41,6 +46,12 @@ export async function ensureResolveCacheSchema(db: D1Database): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_resolve_expires ON resolve_cache(expires_at)`
     ),
   ]);
+  })().catch((e) => {
+    resolveSchemaReady.delete(db);
+    throw e;
+  });
+  resolveSchemaReady.set(db, p);
+  return p;
 }
 
 function normLevel(level?: string | null): string {

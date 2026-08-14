@@ -469,7 +469,7 @@ export async function fetchQqToplist(topid: number, limit = MAX_TRACKS): Promise
 
 export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise<RawRow[]> {
   const url =
-    `http://mobilecdn.kugou.com/api/v3/rank/song?version=9108` +
+    `https://mobilecdn.kugou.com/api/v3/rank/song?version=9108` +
     `&rankid=${rankid}&page=1&pagesize=${limit}&area_code=1&with_cover=1`;
   const body = await httpJson(url);
   const info = body?.data?.info || [];
@@ -533,7 +533,7 @@ export function kuwoTrackDuration(t: {
 
 export async function fetchKuwoBang(bangId = 16, limit = MAX_TRACKS): Promise<RawRow[]> {
   const url =
-    `http://kbangserver.kuwo.cn/ksong.s?from=pc&fmt=json&pn=0&rn=${limit}` +
+    `https://kbangserver.kuwo.cn/ksong.s?from=pc&fmt=json&pn=0&rn=${limit}` +
     `&type=bang&data=content&id=${bangId}&show_copyright_off=0&pcmp4=1&isbang=1`;
   const body = await httpJson(url);
   const list = body?.musiclist || body?.musicList || [];
@@ -726,13 +726,17 @@ export async function warmAllCharts(opts?: { apikey?: string; limit?: number }):
 }
 
 /** Interval revalidate (call from node entry). */
-export function startChartWarmLoop(opts?: { apikey?: string }) {
+export function startChartWarmLoop(opts?: { apikey?: string }): () => void {
   const run = () => {
     void warmAllCharts({ apikey: opts?.apikey }).catch(() => {});
   };
-  setTimeout(run, 8_000);
+  const delay = setTimeout(run, 8_000);
   // Soar boards: refresh every 2h
-  setInterval(run, 2 * 60 * 60 * 1000);
+  const interval = setInterval(run, 2 * 60 * 60 * 1000);
+  return () => {
+    clearTimeout(delay);
+    clearInterval(interval);
+  };
 }
 
 /** test helper — clears memory + optional disk chart cache */

@@ -3,6 +3,7 @@ import { ChartsPanel } from "../../components/ChartsPanel";
 import { CoverImg } from "../../components/CoverImg";
 import { LocaleSwitcher } from "../../components/LocaleSwitcher";
 import { LyricsView } from "../../components/LyricsView";
+import { QualityPicker } from "../../components/QualityPicker";
 import { openMobileSearchFromGesture } from "../../components/SearchOverlay";
 import { SearchBar } from "../../components/SearchBar";
 import { SkinSwitcher } from "../../components/SkinSwitcher";
@@ -14,6 +15,26 @@ import { qualityShortLabel } from "../../lib/quality";
 import type { PanelTab } from "../../lib/types";
 import { usePlayer } from "../../store/player";
 import { getTheme } from "../theme-catalog";
+
+/** Classic shells: reserve the stacked mini player so the search portal does not cover it. */
+export function useSearchOverlayBottom(cssValue: string) {
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      const narrow = window.matchMedia("(max-width: 860px)").matches;
+      root.style.setProperty(
+        "--search-overlay-bottom",
+        narrow ? cssValue : "calc(72px + env(safe-area-inset-bottom, 0px))"
+      );
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    return () => {
+      window.removeEventListener("resize", apply);
+      root.style.removeProperty("--search-overlay-bottom");
+    };
+  }, [cssValue]);
+}
 
 function useMobileSearchChrome() {
   const [mobile, setMobile] = useState(() => isMobileSearchUi());
@@ -149,9 +170,7 @@ export function NowPlaying({
     <div className="np-badges">
       {loadingPlay ? <span className="badge">{tr("nowPlaying.switching")}</span> : null}
       {qLabel ? (
-        <span className="badge" title={tr("nowPlaying.qualityTitle")}>
-          {qLabel}
-        </span>
+        <QualityPicker className="quality-wrap--keep np-quality" />
       ) : null}
       {playSource ? (
         <span className="badge">

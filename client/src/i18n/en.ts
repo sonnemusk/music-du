@@ -43,11 +43,12 @@ export const en: Dict = {
     emptyHint: "Try another keyword, or pick from Charts",
     loading: "Searching…",
     overlayAria: "Search",
+    draftHint: "Press Search to see results",
   },
   nowPlaying: {
     pick: "Pick a track to start",
     switching: "Switching…",
-    qualityTitle: "Current quality (change via the quality button below)",
+    qualityTitle: "Current quality (tap to change)",
     remote: "Direct",
     proxy: "Proxy",
   },

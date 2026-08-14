@@ -9,8 +9,19 @@ import type {
   Track,
 } from "./types";
 
+function libraryToken(): string {
+  try {
+    return (localStorage.getItem("kazam.v2.libraryToken") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function withAuthHeaders(init?: RequestInit): RequestInit {
-  return { credentials: "same-origin", ...init };
+  const headers = new Headers(init?.headers || undefined);
+  const tok = libraryToken();
+  if (tok && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${tok}`);
+  return { credentials: "same-origin", ...init, headers };
 }
 
 function accessLoginHint(): string {

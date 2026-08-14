@@ -32,6 +32,13 @@
   display: none;
 }
 
+/* Mobile: a keep-class quality chip stays tappable when transport hides the rest. */
+.quality-wrap--keep,
+.np-badges .quality-wrap,
+.gal-dock__quality {
+  display: inline-flex !important;
+}
+
 /* Quality picker is portalled to <body>; keep it above player sheets (z≈80). */
 .quality-menu,
 body:has([role="dialog"]) .quality-menu,

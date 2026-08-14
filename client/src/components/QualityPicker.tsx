@@ -74,7 +74,7 @@ export function QualityPicker({ className }: { className?: string }) {
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: PointerEvent) => {
       const el = wrapRef.current;
       if (!el || !(e.target instanceof Node)) return;
       // The menu lives in a portal, so it is not inside wrapRef — without this
@@ -85,10 +85,10 @@ export function QualityPicker({ className }: { className?: string }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);

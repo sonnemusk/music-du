@@ -110,6 +110,9 @@ async function ensureSchema(db: D1Database) {
       updated_at REAL DEFAULT 0, PRIMARY KEY (list_type, sid))`),
       db.prepare(`CREATE TABLE IF NOT EXISTS library_meta (
       key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
+      db.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_library_tracks_list_pos ON library_tracks(list_type, pos)`
+      ),
     ]);
   })().catch((e) => {
     schemaReady.delete(db);
@@ -199,13 +202,61 @@ async function loadLib(db: D1Database) {
  * Returns the sid order the table will report, so the PUT response can echo the
  * stored order instead of whatever the client happened to send.
  */
-async function writeHistoryList(
+function listWriteStatements(
+  db: D1Database,
+  listType: string,
+  tracks: any[],
+  cap: number,
+  now: number
+): D1PreparedStatement[] {
+  const seen = new Set<string>();
+  let pos = 0;
+  const stmts: D1PreparedStatement[] = [];
+  for (const raw of tracks || []) {
+    const t = sanitize(raw);
+    if (!t) continue;
+    const k = String(t.id);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (pos >= cap) break;
+    stmts.push(
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO library_tracks
+           (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        )
+        .bind(
+          listType,
+          k,
+          pos,
+          t.name,
+          t.artist,
+          t.album,
+          t.cover,
+          t.duration,
+          t.level,
+          t.br,
+          t.size,
+          0,
+          now
+        )
+    );
+    pos++;
+  }
+  stmts.push(
+    db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`).bind(listType, now)
+  );
+  return stmts;
+}
+
+async function historyWritePlan(
   db: D1Database,
   tracks: any[],
   cap: number
-): Promise<string[]> {
+): Promise<{ stmts: D1PreparedStatement[]; finalOrder: string[] }> {
   const { results } = await db
-    .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=?`)
+    .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=? LIMIT 2000`)
     .bind("history")
     .all();
   const existing = (results || []).map((r: any) => ({
@@ -246,63 +297,7 @@ async function writeHistoryList(
       db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`).bind("history", sid)
     );
   }
-  for (let i = 0; i < stmts.length; i += 80) {
-    await db.batch(stmts.slice(i, i + 80));
-  }
-  return plan.finalOrder;
-}
-
-async function writeList(db: D1Database, listType: string, tracks: any[], cap: number) {
-  const seen = new Set<string>();
-  let pos = 0;
-  const now = Date.now() / 1000;
-  const stmts: D1PreparedStatement[] = [];
-  const flush = async () => {
-    if (!stmts.length) return;
-    const chunk = stmts.splice(0, stmts.length);
-    for (let i = 0; i < chunk.length; i += 80) {
-      await db.batch(chunk.slice(i, i + 80));
-    }
-  };
-  for (const raw of tracks || []) {
-    const t = sanitize(raw);
-    if (!t) continue;
-    const k = String(t.id);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    if (pos >= cap) break;
-    stmts.push(
-      db
-        .prepare(
-          `INSERT OR REPLACE INTO library_tracks
-           (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
-        )
-        .bind(
-          listType,
-          k,
-          pos,
-          t.name,
-          t.artist,
-          t.album,
-          t.cover,
-          t.duration,
-          t.level,
-          t.br,
-          t.size,
-          0,
-          now
-        )
-    );
-    pos++;
-    if (stmts.length >= 80) await flush();
-  }
-  await flush();
-  // Drop rows not rewritten in this pass (removed tracks)
-  await db
-    .prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`)
-    .bind(listType, now)
-    .run();
+  return { stmts, finalOrder: plan.finalOrder };
 }
 
 /** Reorder client tracks to match the stored sid order (drops unknown sids). */
@@ -353,15 +348,28 @@ async function saveLib(
   if (!plChanged && !favChanged && !hiChanged && !curChanged) {
     return { conflict: false as const, data: existing };
   }
-  if (plChanged) await writeList(db, "playlist", pl, 2000);
-  if (favChanged) await writeList(db, "favorites", fav, 2000);
+  const now = Date.now() / 1000;
+  const stmts: D1PreparedStatement[] = [];
+  if (plChanged) stmts.push(...listWriteStatements(db, "playlist", pl, 2000, now));
+  if (favChanged) stmts.push(...listWriteStatements(db, "favorites", fav, 2000, now));
   let historyOut = hi;
   if (hiChanged) {
-    const order = await writeHistoryList(db, hi, 2000);
-    historyOut = orderTracksBySids(hi, order);
+    const planned = await historyWritePlan(db, hi, 2000);
+    stmts.push(...planned.stmts);
+    historyOut = orderTracksBySids(hi, planned.finalOrder);
   }
-  if (curChanged) await setMeta(db, "curIdx", String(curIdx));
-  const nextRev = await bumpRevision(db, serverRev);
+  if (curChanged) {
+    stmts.push(
+      db.prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES(?,?)`).bind("curIdx", String(curIdx))
+    );
+  }
+  const nextRev = nextLibraryRevision(serverRev);
+  stmts.push(
+    db.prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES(?,?)`).bind("revision", String(nextRev))
+  );
+  for (let i = 0; i < stmts.length; i += 80) {
+    await db.batch(stmts.slice(i, i + 80));
+  }
   if (opts?.verify) {
     return { conflict: false as const, data: await loadLib(db) };
   }
@@ -1162,6 +1170,11 @@ app.post("/import", async (c) => {
   }
   try {
     injectEnv(c.env);
+    const MAX_IMPORT = 2 * 1024 * 1024;
+    const contentLength = Number(c.req.header("content-length") || 0);
+    if (contentLength > MAX_IMPORT) {
+      return c.html(favoritesImportHtml("文件过大（上限 2MB）"), 413);
+    }
     const ct = c.req.header("content-type") || "";
     let text = "";
     if (ct.includes("multipart/form-data")) {
@@ -1176,6 +1189,9 @@ app.post("/import", async (c) => {
       text = JSON.stringify(await c.req.json().catch(() => null));
     } else {
       text = await c.req.text();
+    }
+    if (text.length > MAX_IMPORT) {
+      return c.html(favoritesImportHtml("文件过大（上限 2MB）"), 413);
     }
     if (!text?.trim()) {
       return c.html(favoritesImportHtml("未收到文件内容"), 400);

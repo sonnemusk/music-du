@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { CoverImg } from "../../components/CoverImg";
+import { QualityPicker } from "../../components/QualityPicker";
 import { Transport } from "../../components/Transport";
 import { useT } from "../../i18n";
 import { isMobileSearchUi } from "../../lib/mobile-ui";
@@ -152,6 +153,7 @@ function GalleryDock() {
       <div className="gal-dock__meta">
         <h2 className="gal-dock__title">{curTrack?.name || tr("nowPlaying.pick")}</h2>
         <p className="gal-dock__artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
+        {curTrack ? <QualityPicker className="quality-wrap--keep gal-dock__quality" /> : null}
       </div>
       <p className="gal-dock__lyric" aria-live="off">
         {line?.orig || ""}

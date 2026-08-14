@@ -20,4 +20,12 @@ describe("libraryGate Q-2", () => {
     expect(libraryGate({ method: "PUT" }).ok).toBe(true);
     expect(libraryGate({ method: "DELETE" }).ok).toBe(true);
   });
+
+  it("requires the token when one is configured", () => {
+    const denied = libraryGate({ method: "GET", expectedToken: "secret", gotToken: "" });
+    expect(denied.ok).toBe(false);
+    if (!denied.ok) expect(denied.status).toBe(401);
+    expect(libraryGate({ method: "GET", expectedToken: "secret", gotToken: "secret" }).ok).toBe(true);
+    expect(libraryGate({ method: "PUT", expectedToken: "secret", gotToken: "nope" }).ok).toBe(false);
+  });
 });

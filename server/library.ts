@@ -6,6 +6,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { dataDir, libraryDbPath } from "./config.js";
+import {
+  libraryRevisionOk,
+  nextLibraryRevision,
+  planHistoryWrites,
+} from "./library-merge.js";
 import type { Library, Track } from "./types.js";
 
 const LIST_CAPS = { playlist: 2000, favorites: 2000, history: 2000 } as const;
@@ -92,18 +97,44 @@ export class SqliteLibrary {
   }
 
   private writeList(listType: ListType, tracks: any[]) {
-    this.db.prepare("DELETE FROM library_tracks WHERE list_type=?").run(listType);
     const cap = LIST_CAPS[listType];
     const now = Date.now() / 1000;
-    const insert = this.db.prepare(
-      `INSERT INTO library_tracks
+    const upsert = this.db.prepare(
+      `INSERT OR REPLACE INTO library_tracks
        (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
     );
+    if (listType === "history") {
+      const existing = this.db
+        .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=? LIMIT 2000`)
+        .all("history") as { sid: string; pos: number }[];
+      const plan = planHistoryWrites(existing, tracks, cap);
+      for (const u of plan.upserts) {
+        const t = u.track;
+        upsert.run(
+          "history",
+          u.sid,
+          u.pos,
+          String(t.name || ""),
+          String(t.artist || ""),
+          String(t.album || ""),
+          String(t.cover || ""),
+          Number(t.duration || 0) || 0,
+          String(t.level || ""),
+          Number(t.br || 0) || 0,
+          Number(t.size || 0) || 0,
+          0,
+          now
+        );
+      }
+      const del = this.db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`);
+      for (const sid of plan.deleteSids) del.run("history", sid);
+      return;
+    }
     let pos = 0;
     for (const t of dedupe(tracks)) {
       if (pos >= cap) break;
-      insert.run(
+      upsert.run(
         listType,
         String(t.id),
         pos,
@@ -120,6 +151,17 @@ export class SqliteLibrary {
       );
       pos++;
     }
+    this.db
+      .prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`)
+      .run(listType, now);
+  }
+
+  private loadRevision(): number {
+    const row = this.db
+      .prepare(`SELECT value FROM library_meta WHERE key='revision'`)
+      .get() as { value: string } | undefined;
+    const n = row ? parseInt(row.value, 10) : 0;
+    return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
   private readList(listType: ListType): Track[] {
@@ -152,10 +194,18 @@ export class SqliteLibrary {
     if (Number.isNaN(curIdx) || curIdx >= playlist.length) {
       curIdx = playlist.length ? 0 : -1;
     }
-    return { playlist, favorites, history, curIdx };
+    return { playlist, favorites, history, curIdx, revision: this.loadRevision() };
   }
 
   save(data: Partial<Library>): Library {
+    const serverRev = this.loadRevision();
+    const clientRev = data.revision != null ? Number(data.revision) : null;
+    if (!libraryRevisionOk(serverRev, clientRev)) {
+      const err = new Error("revision conflict") as Error & { conflict: true; data: Library };
+      err.conflict = true;
+      err.data = this.load();
+      throw err;
+    }
     const payload: Library = {
       playlist: dedupe(data.playlist || []).slice(0, LIST_CAPS.playlist),
       favorites: dedupe(data.favorites || []).slice(0, LIST_CAPS.favorites),
@@ -165,12 +215,28 @@ export class SqliteLibrary {
     if (Number.isNaN(payload.curIdx) || payload.curIdx >= payload.playlist.length) {
       payload.curIdx = payload.playlist.length ? 0 : -1;
     }
-    this.writeList("playlist", payload.playlist);
-    this.writeList("favorites", payload.favorites);
-    this.writeList("history", payload.history);
-    this.db
-      .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('curIdx',?)`)
-      .run(String(payload.curIdx));
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.writeList("playlist", payload.playlist);
+      this.writeList("favorites", payload.favorites);
+      this.writeList("history", payload.history);
+      this.db
+        .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('curIdx',?)`)
+        .run(String(payload.curIdx));
+      const nextRev = nextLibraryRevision(serverRev);
+      this.db
+        .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('revision',?)`)
+        .run(String(nextRev));
+      payload.revision = nextRev;
+      this.db.exec("COMMIT");
+    } catch (e) {
+      try {
+        this.db.exec("ROLLBACK");
+      } catch {
+        /* */
+      }
+      throw e;
+    }
     try {
       fs.writeFileSync(
         path.join(dataDir(), "library.json"),
@@ -253,7 +319,13 @@ export class SqliteLibrary {
 
     let curIdx = Number(incoming.curIdx ?? existing.curIdx);
     if (Number.isNaN(curIdx) || curIdx >= pl.length) curIdx = pl.length ? 0 : -1;
-    return this.save({ playlist: pl, favorites: fav, history: hi, curIdx });
+    return this.save({
+      playlist: pl,
+      favorites: fav,
+      history: hi,
+      curIdx,
+      revision: incoming.revision,
+    });
   }
 
   deleteSid(listType: ListType, sid: string | number): Library {
@@ -278,6 +350,10 @@ export class SqliteLibrary {
         .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('curIdx',?)`)
         .run(String(cur));
     }
+    const nextRev = nextLibraryRevision(this.loadRevision());
+    this.db
+      .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('revision',?)`)
+      .run(String(nextRev));
     return this.load();
   }
 }
