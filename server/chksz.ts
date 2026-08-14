@@ -410,8 +410,9 @@ export async function searchAll(
     searchKugou(keyword, extra, opts),
   ]);
   const lists = settled.map((r) => (r.status === "fulfilled" ? r.value : []));
-  if (settled.every((r) => r.status === "rejected")) {
-    throw settled[0]!.reason;
+  const firstReject = settled.find((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (settled.every((r) => r.status === "rejected") && firstReject) {
+    throw firstReject.reason;
   }
   const seen = new Set<string>();
   const out: Track[] = [];
