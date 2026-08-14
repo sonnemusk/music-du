@@ -119,6 +119,7 @@ export function DockLayout({ brand }: { brand: string }) {
   const next = usePlayer((s) => s.next);
   const locateCurrentInList = usePlayer((s) => s.locateCurrentInList);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
+  const isDemoSite = usePlayer((s) => s.isDemoSite);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
   const playing = usePlaybackClock((c) => c.playing);
   const currentTime = usePlaybackClock((c) => c.currentTime);
@@ -240,7 +241,7 @@ export function DockLayout({ brand }: { brand: string }) {
           data-tab={tab}
           aria-label={tr("contentAria")}
         >
-          {libraryReadOnly ? <p className="dock-demo">{tr("demo.banner")}</p> : null}
+          {isDemoSite ? <p className="dock-demo">{tr("demo.banner")}</p> : null}
           <DockMain tr={tr} />
         </main>
       </div>

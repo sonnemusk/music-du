@@ -17,11 +17,12 @@ export default function App() {
   const skinOpen = usePlayer((s) => s.skinOpen);
   const next = usePlayer((s) => s.next);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
+  const isDemoSite = usePlayer((s) => s.isDemoSite);
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);
   const shellRef = useRef<HTMLDivElement>(null);
   const [demoBanner, setDemoBanner] = useState(readDemoBannerOpen);
-  const showDemoBanner = libraryReadOnly && demoBanner;
+  const showDemoBanner = isDemoSite && demoBanner;
 
   const showToast = usePlayer((s) => s.showToast);
   const reloadLibrary = usePlayer((s) => s.reloadLibrary);

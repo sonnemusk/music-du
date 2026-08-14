@@ -297,6 +297,8 @@ type State = {
    * No D1 writes, import, or export; skin/quality still localStorage.
    */
   libraryReadOnly: boolean;
+  /** Public showcase Worker (music.du.dev). Private installs stay false. */
+  isDemoSite: boolean;
   /** UI language: default zh, switchable to en (localStorage). */
   locale: Locale;
   playMode: PlayMode;
@@ -513,6 +515,7 @@ export const usePlayer = create<State>((set, get) => ({
   curIdx: -1,
   libraryRevision: 0,
   libraryReadOnly: false,
+  isDemoSite: false,
   locale: typeof window !== "undefined" ? initLocaleFromStorage() : "zh",
   playMode: typeof window !== "undefined" ? loadPlayMode() : "shuffle",
   playing: false,
@@ -727,9 +730,11 @@ export const usePlayer = create<State>((set, get) => ({
     hydrateLyricCache();
 
     let libraryReadOnly = false;
+    let isDemoSite = false;
     try {
       const flags = await api.fetchSiteFlags();
       libraryReadOnly = flags.readOnly;
+      isDemoSite = flags.demo;
     } catch {
       /* */
     }
@@ -803,6 +808,7 @@ export const usePlayer = create<State>((set, get) => ({
       curIdx,
       libraryRevision,
       libraryReadOnly,
+      isDemoSite,
       ...(tabTouched ? {} : { tab: homeTab }),
       queueSource: homeQueue,
     });

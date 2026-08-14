@@ -38,6 +38,7 @@ describe("cross-layout chrome consistency", () => {
     );
     expect(app).toMatch(/demo-readonly-banner__close/);
     expect(app).toMatch(/data-demo-banner/);
+    expect(app).toMatch(/isDemoSite && demoBanner/);
     expect(app).toMatch(/kazam\.v2\.demoBannerDismissed/);
     expect(css).toMatch(/\.app-shell \.skin-host > \*\s*\{[^}]*max-height:\s*100%/s);
     expect(css).toMatch(/\.app-shell \.skin-host > \*\s*\{[^}]*min-height:\s*0/s);

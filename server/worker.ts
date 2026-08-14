@@ -51,7 +51,11 @@ import {
   pruneResolveCache,
   putResolveCache,
 } from "./resolve-cache.js";
-import { isLibraryReadonly, publicReadonlyLibraryData } from "./site-mode.js";
+import {
+  isDemoMode,
+  isLibraryReadonly,
+  publicReadonlyLibraryData,
+} from "./site-mode.js";
 
 export type Env = {
   CHKSZ_APIKEY?: string;
@@ -66,6 +70,8 @@ export type Env = {
    * Private site auth is Cloudflare Access at the edge, not an app token.
    */
   LIBRARY_READONLY?: string;
+  /** Public showcase Worker only. Never set on the private install. */
+  DEMO_MODE?: string;
   ASSETS: Fetcher;
   /** Free D1 library binding MUSIC_DU_DB. */
   MUSIC_DU_DB?: D1Database;
@@ -466,8 +472,13 @@ function withKey(env: Env) {
 
 const app = new Hono<{ Bindings: Env }>();
 
+function envDemo(env: Env): boolean {
+  return isDemoMode(env.DEMO_MODE);
+}
+
 app.get("/api/health", (c) => {
   const readOnly = envReadonly(c.env);
+  const demo = envDemo(c.env);
   return c.json({
     ok: true,
     service: "music",
@@ -481,8 +492,9 @@ app.get("/api/health", (c) => {
     // Private Worker: Access is at the hostname (not in this process).
     // Demo Worker: no Access, public read, writes 403 via LIBRARY_READONLY.
     library_auth: false,
+    demo,
     readOnly,
-    project: readOnly ? "music-du-demo" : "music-du",
+    project: demo ? "music-du-demo" : "music-du",
     /** Free-tier contract for operators */
     policy: {
       paid_services: false,
@@ -491,15 +503,16 @@ app.get("/api/health", (c) => {
       audio_play: "remote-url-direct",
       cover_chart_cache: "workers-cache-api-free",
       library: c.env.MUSIC_DU_DB
-        ? readOnly
+        ? demo
           ? "music-du-demo (d1 free, read-only demo)"
           : "music-du-library (d1 free)"
         : "browser-localStorage",
-      worker_name: readOnly ? "music-du-demo" : "music-du",
-      d1_name: readOnly ? "music-du-demo" : "music-du-library",
+      worker_name: demo ? "music-du-demo" : "music-du",
+      d1_name: demo ? "music-du-demo" : "music-du-library",
       library_readonly: readOnly,
+      demo,
       export_import: readOnly ? false : true,
-      access: readOnly ? "none-public-demo" : "cloudflare-access",
+      access: demo ? "none-public-demo" : "cloudflare-access",
     },
     version: 2,
   });

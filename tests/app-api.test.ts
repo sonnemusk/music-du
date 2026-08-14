@@ -43,6 +43,8 @@ describe("Hono app API", () => {
     expect(j.ok).toBe(true);
     expect(j.service).toBe("music");
     expect(j.has_apikey).toBe(false);
+    expect(j.demo).toBe(false);
+    expect(j.project).toBe("music-du");
   });
 
   it("charts platforms list", async () => {

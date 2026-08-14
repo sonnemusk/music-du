@@ -53,6 +53,7 @@ head_sampling_rate = 0.05
 CHKSZ_API_BASE = "https://api.chksz.top"
 CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
 LIBRARY_READONLY = "true"
+DEMO_MODE = "true"
 
 [env.demo.assets]
 directory = "./dist/client"

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isDemoMode,
   isLibraryReadonly,
   publicReadonlyLibraryData,
 } from "../server/site-mode.js";
@@ -12,6 +13,14 @@ describe("site-mode", () => {
     expect(isLibraryReadonly("demo")).toBe(true);
     expect(isLibraryReadonly("readonly")).toBe(true);
     expect(isLibraryReadonly(true)).toBe(true);
+  });
+
+  it("demo chrome is DEMO_MODE only — not library readonly", () => {
+    expect(isDemoMode("true")).toBe(true);
+    expect(isDemoMode("demo")).toBe(true);
+    expect(isDemoMode(undefined)).toBe(false);
+    expect(isDemoMode("false")).toBe(false);
+    expect(isDemoMode("readonly")).toBe(false);
   });
 
   it("private default is writable", () => {

@@ -53,6 +53,9 @@ export function createApp(opts?: {
       // free .top needs no key; keys are only for .com backup
       has_apikey: Boolean(keyOf()),
       primary_needs_key: false,
+      demo: false,
+      readOnly: readonlyOf(),
+      project: "music-du",
       version: 2,
     })
   );

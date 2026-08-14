@@ -15,6 +15,15 @@ export function isLibraryReadonly(
   return s === "1" || s === "true" || s === "yes" || s === "readonly" || s === "demo";
 }
 
+/** Public showcase Worker only (`[env.demo]`). Private installs must stay false. */
+export function isDemoMode(value: string | boolean | undefined | null): boolean {
+  if (value === true) return true;
+  const s = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return s === "1" || s === "true" || s === "yes" || s === "demo";
+}
+
 /** Library snapshot shape returned by loadLib / client hydrators. */
 export type LibrarySnapshot = {
   playlist?: unknown[];
@@ -41,6 +50,11 @@ export function envLibraryReadonly(): boolean {
   return isLibraryReadonly(
     process.env.MUSIC_LIBRARY_READONLY || process.env.LIBRARY_READONLY
   );
+}
+
+/** Node env helper: MUSIC_DEMO_MODE / DEMO_MODE — never on a private install. */
+export function envDemoMode(): boolean {
+  return isDemoMode(process.env.MUSIC_DEMO_MODE || process.env.DEMO_MODE);
 }
 
 /**

@@ -168,19 +168,23 @@ export async function loadLibrary(): Promise<Library> {
   return libraryJson("/api/library");
 }
 
-/** Site flags from /api/health (demo read-only etc.). */
-export async function fetchSiteFlags(): Promise<{ readOnly: boolean }> {
+/** Site flags from /api/health (demo Worker vs private install). */
+export async function fetchSiteFlags(): Promise<{ readOnly: boolean; demo: boolean }> {
   try {
     const r = await fetch("/api/health", { credentials: "same-origin" });
     const j = (await r.json().catch(() => null)) as {
+      demo?: boolean;
       readOnly?: boolean;
-      policy?: { library_readonly?: boolean };
+      project?: string;
+      policy?: { library_readonly?: boolean; demo?: boolean };
     } | null;
+    const demo = Boolean(j?.demo || j?.policy?.demo || j?.project === "music-du-demo");
     return {
       readOnly: Boolean(j?.readOnly || j?.policy?.library_readonly),
+      demo,
     };
   } catch {
-    return { readOnly: false };
+    return { readOnly: false, demo: false };
   }
 }
 
