@@ -64,8 +64,8 @@ describe("Hono app API", () => {
     expect(j.ok).toBe(false);
   });
 
-  it("search without key is allowed (free .top primary)", async () => {
-    // free primary needs no apikey; without transport, real upstream may 200 or soft-fail
+  it("search with mocked gateway does not require a live key", async () => {
+    // transport stub keeps this offline-stable even when .com requires apikey
     const app = createApp({ library: tmpLib(), apikey: "", readonly: false });
     // inject transport so test is offline-stable
     const chksz = await import("../server/chksz.js");

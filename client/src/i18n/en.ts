@@ -194,6 +194,7 @@ export const en: Dict = {
     autoplayBlocked: "Autoplay blocked — tap play or press Space",
     networkFail: "Network error — try again",
     noSource: "No playable source (copyright or resolve failed)",
+    gatewayFail: "Music gateway is unavailable. Try again later.",
     noPlaying: "Nothing is playing",
     notInList: "Now playing is not in this list",
     chartEmptyKw: "Charts empty — type a keyword to search",

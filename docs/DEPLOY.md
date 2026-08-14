@@ -43,8 +43,8 @@ Fill `.env` (names only — see [`.env.example`](../.env.example)):
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `CHKSZ_API_BASE` | No | Default free primary gateway |
-| `CHKSZ_FALLBACK_BASE` / `CHKSZ_FALLBACK_APIKEYS` | If using paid fallback | Server-only |
+| `CHKSZ_API_BASE` | No | Default `https://api.chksz.com` |
+| `CHKSZ_APIKEY` / `CHKSZ_FALLBACK_APIKEYS` | **Yes** for ChKSz | Server-only; `.com` requires `apikey` |
 | `HOST` / `PORT` | Node | Default `127.0.0.1:8787` |
 | `MUSIC_DATA_DIR` | Node | Default `./data` |
 | `LIBRARY_READONLY` | **Demo only — leave unset for your site** | `true` = no library writes / no export |
@@ -73,8 +73,8 @@ npx wrangler d1 migrations apply music-du-library --remote
 3. Secrets:
 
 ```bash
-npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if needed
-# optional: CHKSZ_APIKEY
+npx wrangler secret put CHKSZ_APIKEY
+# optional extra keys: npx wrangler secret put CHKSZ_FALLBACK_APIKEYS
 ```
 
 4. **Do not** set `LIBRARY_READONLY` on the main Worker.

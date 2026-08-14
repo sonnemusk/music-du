@@ -31,7 +31,7 @@
 
 ```bash
 npm i -D playwright && npx playwright install chromium --with-deps
-npm run dev            # 127.0.0.1:8787，上游 api.chksz.top 免 key 可直连
+npm run dev            # 127.0.0.1:8787，上游 api.chksz.com，需 CHKSZ_APIKEY
 node /tmp/audit.mjs    # 见 §附录 A
 ```
 

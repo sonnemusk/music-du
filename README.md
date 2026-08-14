@@ -91,7 +91,7 @@ Self-host the **writable** app. You do **not** need the demo Worker.
 ```bash
 # Cloudflare (most common)
 npm run setup:d1
-npx wrangler secret put CHKSZ_FALLBACK_APIKEYS   # if backup gateway needs keys
+npx wrangler secret put CHKSZ_APIKEY             # required for api.chksz.com
 npm run deploy:cf
 ```
 

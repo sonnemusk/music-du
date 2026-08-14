@@ -119,8 +119,7 @@ function createMockD1() {
 
 function env(partial: Partial<WorkerEnv> & { MUSIC_DU_DB?: D1Database | null }): WorkerEnv {
   return {
-    CHKSZ_API_BASE: "https://api.chksz.top",
-    CHKSZ_FALLBACK_BASE: "https://api.chksz.com",
+    CHKSZ_API_BASE: "https://api.chksz.com",
     ...partial,
   } as WorkerEnv;
 }

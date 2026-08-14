@@ -77,44 +77,53 @@ function splitKeys(raw: string): string[] {
 
 /** Live read — Worker injectEnv may set process.env after module load. */
 export function chkszPrimaryBase(): string {
-  return stripSlash(process.env.CHKSZ_API_BASE || "https://api.chksz.top");
+  return stripSlash(process.env.CHKSZ_API_BASE || "https://api.chksz.com");
 }
 
-/** Backup gateway (default api.chksz.com). Empty / same as primary → no fallback host. */
+/** Optional extra host. Empty / same as primary → no second hop. */
 export function chkszFallbackBase(): string {
-  const raw = (
-    process.env.CHKSZ_FALLBACK_BASE ||
-    process.env.CHKSZ_API_FALLBACK ||
-    "https://api.chksz.com"
-  ).trim();
+  const raw = (process.env.CHKSZ_FALLBACK_BASE || process.env.CHKSZ_API_FALLBACK || "").trim();
   if (!raw) return "";
   const base = stripSlash(raw);
   if (base === chkszPrimaryBase()) return "";
   return base;
 }
 
+export function chkszHostNeedsKey(base: string): boolean {
+  try {
+    return /\.chksz\.com$/i.test(new URL(base).hostname);
+  } catch {
+    return /chksz\.com/i.test(base);
+  }
+}
+
 /**
- * API keys for paid backup host (.com) only.
- * Free primary (.top) does not use keys.
- * Prefer CHKSZ_FALLBACK_APIKEYS; also accept CHKSZ_APIKEY / TOKEN as .com keys.
+ * Gateway keys (required on api.chksz.com).
+ * Prefer CHKSZ_APIKEY; CHKSZ_FALLBACK_APIKEYS stays as a multi-key alias.
  */
 export function chkszComKeys(): string[] {
   const dedicated = splitKeys(
-    process.env.CHKSZ_FALLBACK_APIKEYS ||
-      process.env.CHKSZ_BACKUP_APIKEYS ||
-      process.env.CHKSZ_APIKEY_2 ||
-      ""
-  );
-  if (dedicated.length) return dedicated;
-  return splitKeys(
     process.env.CHKSZ_APIKEY ||
       process.env.CHKSZ_TOKEN ||
       process.env.API_TOKEN ||
       ""
   );
+  const extra = splitKeys(
+    process.env.CHKSZ_FALLBACK_APIKEYS ||
+      process.env.CHKSZ_BACKUP_APIKEYS ||
+      process.env.CHKSZ_APIKEY_2 ||
+      ""
+  );
+  const seen = new Set(dedicated);
+  for (const k of extra) {
+    if (seen.has(k)) continue;
+    seen.add(k);
+    dedicated.push(k);
+  }
+  return dedicated;
 }
 
-/** @deprecated alias — keys are for .com backup, not free .top */
+/** @deprecated alias — same list as chkszComKeys */
 export function chkszFallbackKeys(): string[] {
   return chkszComKeys();
 }
@@ -122,7 +131,7 @@ export function chkszFallbackKeys(): string[] {
 /** @deprecated use chkszPrimaryBase() — kept for import sites that expect a const. */
 export const CHKSZ_API_BASE = chkszPrimaryBase();
 
-/** First .com key (compat). Free .top does not require this. */
+/** First configured gateway key. */
 export const CHKSZ_APIKEY = chkszComKeys()[0] || "";
 
 /** High → low. Used to pick “top 3 that actually have a URL” per track. */

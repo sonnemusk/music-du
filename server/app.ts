@@ -50,9 +50,8 @@ export function createApp(opts?: {
       service: "music",
       provider: "chksz",
       runtime: "node-hono",
-      // free .top needs no key; keys are only for .com backup
       has_apikey: Boolean(keyOf()),
-      primary_needs_key: false,
+      primary_needs_key: true,
       demo: false,
       readOnly: readonlyOf(),
       project: "music-du",

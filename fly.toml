@@ -15,8 +15,7 @@ primary_region = "nrt"
   PORT = "8787"
   NODE_ENV = "production"
   MUSIC_DATA_DIR = "/data"
-  CHKSZ_API_BASE = "https://api.chksz.top"
-  CHKSZ_FALLBACK_BASE = "https://api.chksz.com"
+  CHKSZ_API_BASE = "https://api.chksz.com"
 
 [http_service]
   internal_port = 8787

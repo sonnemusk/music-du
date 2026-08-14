@@ -1555,6 +1555,8 @@ export const usePlayer = create<State>((set, get) => ({
             get().showToast(i18n("toast.autoplayBlocked"));
           } else if (/network|fetch|Failed to fetch|timeout|abort/i.test(msg)) {
             get().showToast(i18n("toast.networkFail"));
+          } else if (/upstream|no url|apikey|gateway|chksz/i.test(msg)) {
+            get().showToast(i18n("toast.gatewayFail"));
           } else {
             get().showToast(i18n("toast.noSource"));
           }

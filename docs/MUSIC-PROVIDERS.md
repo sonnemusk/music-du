@@ -30,8 +30,10 @@ Out of the box the server talks to a **third-party NetEase-compatible HTTP gatew
 
 | Role | Default base | Key |
 |------|----------------|-----|
-| Primary | `https://api.chksz.top` | Usually **none** (community free tier — availability not guaranteed) |
-| Fallback | `https://api.chksz.com` | **Required** (`CHKSZ_FALLBACK_APIKEYS` / `CHKSZ_APIKEY`) |
+| Primary | `https://api.chksz.com` | **Required** (`CHKSZ_APIKEY` / `CHKSZ_FALLBACK_APIKEYS`) |
+| Fallback | unset | Optional second host via `CHKSZ_FALLBACK_BASE` |
+
+`api.chksz.top` was shut down (2026-08); the operator moved everything to `api.chksz.com` with `apikey` auth. Paths (`/api/163_search`, `/api/163_music`, `/api/163_lyric`) are unchanged.
 
 Implementation: [`server/chksz.ts`](../server/chksz.ts)  
 Env: [`.env.example`](../.env.example)

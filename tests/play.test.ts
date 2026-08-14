@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as chksz from "../server/chksz.js";
 import { chooseAudioSrc, onRemoteError, resolvePlay } from "../server/play.js";
 
-afterEach(() => chksz.setHttpTransport(null));
+afterEach(() => {
+  chksz.setHttpTransport(null);
+  delete process.env.CHKSZ_FALLBACK_APIKEYS;
+  delete process.env.CHKSZ_APIKEY;
+  delete process.env.CHKSZ_TOKEN;
+});
 
 describe("play path", () => {
   it("prefers remote https url", () => {
@@ -29,7 +34,7 @@ describe("play path", () => {
     });
   });
 
-  it("resolvePlay remote via transport without apikey on free primary", async () => {
+  it("resolvePlay remote via transport without apikey", async () => {
     chksz.setHttpTransport(async (_m, _u, init) => {
       expect(init?.params?.apikey).toBeUndefined();
       return {

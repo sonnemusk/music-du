@@ -466,8 +466,9 @@ function readOnlyForbidden(message = "read-only demo"): Response {
 }
 
 function withKey(env: Env) {
-  // Patch process-less env for chksz via opts
-  return env.CHKSZ_APIKEY || "";
+  if (env.CHKSZ_APIKEY?.trim()) return env.CHKSZ_APIKEY.trim();
+  const first = (env.CHKSZ_FALLBACK_APIKEYS || "").split(/[,;\n\r\t]+/)[0]?.trim();
+  return first || "";
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -484,10 +485,9 @@ app.get("/api/health", (c) => {
     service: "music",
     provider: "chksz",
     runtime: "cloudflare-workers",
-    // .top is free (no key). Keys are only for .com backup.
     has_apikey: Boolean(c.env.CHKSZ_APIKEY || c.env.CHKSZ_FALLBACK_APIKEYS),
     has_fallback_keys: Boolean(c.env.CHKSZ_FALLBACK_APIKEYS || c.env.CHKSZ_APIKEY),
-    primary_needs_key: false,
+    primary_needs_key: true,
     has_d1: Boolean(c.env.MUSIC_DU_DB),
     // Private Worker: Access is at the hostname (not in this process).
     // Demo Worker: no Access, public read, writes 403 via LIBRARY_READONLY.

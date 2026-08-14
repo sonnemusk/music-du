@@ -1,13 +1,14 @@
 /**
  * ChKSz NetEase adapter.
  *
- * Primary:  https://api.chksz.top  — free, NO apikey
- * Fallback: https://api.chksz.com — needs apikey(s), round-robin
+ * Primary: https://api.chksz.com — apikey required (api.chksz.top shut down 2026-08).
+ * Optional CHKSZ_FALLBACK_BASE for a second host.
  */
 import {
   CHKSZ_APIKEY,
   chkszComKeys,
   chkszFallbackBase,
+  chkszHostNeedsKey,
   chkszPrimaryBase,
   qualityLevels,
 } from "./config.js";
@@ -53,10 +54,7 @@ export function tryHttps(url: string): string {
 /** Only for .com backup paths that truly need a key. */
 export function requireApikey(key = CHKSZ_APIKEY): string {
   if (!key) {
-    throw new ChkszError(
-      "CHKSZ_FALLBACK_APIKEYS not configured (needed for api.chksz.com)",
-      401
-    );
+    throw new ChkszError("CHKSZ_APIKEY not configured (needed for api.chksz.com)", 401);
   }
   return key;
 }
@@ -91,43 +89,50 @@ function splitOptKeys(raw: string): string[] {
   return out;
 }
 
+function gatewayKeys(opts?: { apikey?: string }): string[] {
+  const fromEnv = chkszComKeys();
+  if (fromEnv.length) return fromEnv;
+  if (opts?.apikey?.trim()) return splitOptKeys(opts.apikey);
+  return [];
+}
+
 /**
  * Try order:
- * 1) free primary base (.top) — always no apikey
- * 2) paid fallback (.com) × com keys, round-robin start each call
+ * 1) primary host × configured keys (round-robin start)
+ * 2) optional fallback host with the same keys
  *
- * Mock transport (unit tests): only primary, no key (unless test forces opts.apikey
- * solely for asserting param plumbing — still not required).
+ * Mock transport (unit tests): primary only. Key is attached only when configured.
  */
 function buildAttempts(opts?: { apikey?: string }): Attempt[] {
   const primary = chkszPrimaryBase();
   const fallback = chkszFallbackBase();
+  const keys = gatewayKeys(opts);
+  const need = chkszHostNeedsKey(primary);
 
-  // Primary free gateway: never requires / sends key
-  const out: Attempt[] = [{ base: primary, key: "", label: "primary-free" }];
-
-  // Unit tests with injected transport: free primary only (no .com fan-out)
-  if (transport) return out;
-
-  if (!fallback) return out;
-
-  // .com keys from env; opts.apikey only fills in when env has none
-  let comKeys = chkszComKeys();
-  if (!comKeys.length && opts?.apikey?.trim()) {
-    comKeys = splitOptKeys(opts.apikey);
+  if (transport) {
+    return [{ base: primary, key: keys[0] || "", label: keys[0] ? "primary" : "primary-nokey" }];
   }
 
-  if (!comKeys.length) return out; // free-only mode when no com keys configured
-
-  const start = comKeyCursor % comKeys.length;
-  comKeyCursor += 1;
-  for (let i = 0; i < comKeys.length; i++) {
-    const key = comKeys[(start + i) % comKeys.length]!;
-    out.push({
-      base: fallback,
-      key,
-      label: `com#${i + 1}`,
-    });
+  const out: Attempt[] = [];
+  if (keys.length) {
+    const start = comKeyCursor % keys.length;
+    comKeyCursor += 1;
+    const first = keys[start]!;
+    out.push({ base: primary, key: first, label: "primary#1" });
+    // Fail over to the other host before burning more keys on a dead primary.
+    if (fallback) out.push({ base: fallback, key: first, label: "fallback" });
+    for (let i = 1; i < keys.length; i++) {
+      out.push({
+        base: primary,
+        key: keys[(start + i) % keys.length]!,
+        label: `primary#${i + 1}`,
+      });
+    }
+  } else if (need) {
+    throw new ChkszError("CHKSZ_APIKEY not configured (needed for api.chksz.com)", 401);
+  } else {
+    out.push({ base: primary, key: "", label: "primary" });
+    if (fallback) out.push({ base: fallback, key: "", label: "fallback" });
   }
   return out;
 }

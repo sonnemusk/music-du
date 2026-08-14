@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import * as chksz from "../server/chksz.js";
+import { chkszHostNeedsKey, chkszPrimaryBase } from "../server/config.js";
 
 afterEach(() => {
   chksz.setHttpTransport(null);
@@ -48,7 +49,31 @@ describe("chksz adapter", () => {
     expect(got.body.code).toBe(200);
   });
 
-  it("search on free primary works without apikey", async () => {
+  it("defaults to the keyed .com gateway", () => {
+    const prev = process.env.CHKSZ_API_BASE;
+    delete process.env.CHKSZ_API_BASE;
+    try {
+      expect(chkszPrimaryBase()).toBe("https://api.chksz.com");
+      expect(chkszHostNeedsKey("https://api.chksz.com")).toBe(true);
+      expect(chkszHostNeedsKey("https://api.chksz.top")).toBe(false);
+    } finally {
+      if (prev !== undefined) process.env.CHKSZ_API_BASE = prev;
+      else delete process.env.CHKSZ_API_BASE;
+    }
+  });
+
+  it("forwards CHKSZ_APIKEY on search", async () => {
+    process.env.CHKSZ_APIKEY = "test-key";
+    let seen: Record<string, string | number> | undefined;
+    chksz.setHttpTransport(async (_m, _url, init) => {
+      seen = init?.params;
+      return { status: 200, json: async () => ({ code: 200, data: [] }) };
+    });
+    await chksz.search("x", 1);
+    expect(seen?.apikey).toBe("test-key");
+  });
+
+  it("search without configured key omits apikey (transport)", async () => {
     let seenParams: any = null;
     let seenUrl = "";
     chksz.setHttpTransport(async (_m, url, init) => {
