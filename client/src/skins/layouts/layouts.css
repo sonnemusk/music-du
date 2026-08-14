@@ -1501,9 +1501,15 @@ button.badge,
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .skin-host[data-idle="1"] .np-badges,
-  .skin-host[data-idle="1"] .vol-row,
-  .skin-host[data-idle="1"] .seek-row {
+  .skin-host[data-idle="1"] .side-player .np-badges,
+  .skin-host[data-idle="1"] .imm-now .np-badges,
+  .skin-host[data-idle="1"] .layout-compact .np-badges,
+  .skin-host[data-idle="1"] .side-player .vol-row,
+  .skin-host[data-idle="1"] .imm-now .vol-row,
+  .skin-host[data-idle="1"] .layout-compact .vol-row,
+  .skin-host[data-idle="1"] .side-player .seek-row,
+  .skin-host[data-idle="1"] .imm-now .seek-row,
+  .skin-host[data-idle="1"] .layout-compact .seek-row {
     display: none;
   }
   .skin-host[data-idle="1"] .side-player .transport,
@@ -1516,16 +1522,20 @@ button.badge,
     padding: 6px 6px;
     gap: 6px;
   }
-  .skin-host[data-idle="1"] .t-btn.ghost:not(.fav),
-  .skin-host[data-idle="1"] .quality-wrap {
+  .skin-host[data-idle="1"] .side-player .t-btn.ghost:not(.fav),
+  .skin-host[data-idle="1"] .imm-now .t-btn.ghost:not(.fav),
+  .skin-host[data-idle="1"] .side-player .quality-wrap,
+  .skin-host[data-idle="1"] .imm-now .quality-wrap {
     display: none;
   }
-  .skin-host[data-idle="1"] .t-btn:not(.ghost):not(.play) {
+  .skin-host[data-idle="1"] .side-player .t-btn:not(.ghost):not(.play),
+  .skin-host[data-idle="1"] .imm-now .t-btn:not(.ghost):not(.play) {
     width: 36px;
     height: 36px;
     min-width: 36px;
   }
-  .skin-host[data-idle="1"] .t-btn.play {
+  .skin-host[data-idle="1"] .side-player .t-btn.play,
+  .skin-host[data-idle="1"] .imm-now .t-btn.play {
     width: 42px;
     height: 42px;
     min-width: 42px;
@@ -1581,8 +1591,12 @@ button.badge,
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .skin-host:not([data-idle="1"]) .np-badges,
-  .skin-host:not([data-idle="1"]) .vol-row {
+  .skin-host:not([data-idle="1"]) .side-player .np-badges,
+  .skin-host:not([data-idle="1"]) .imm-now .np-badges,
+  .skin-host:not([data-idle="1"]) .layout-compact .np-badges,
+  .skin-host:not([data-idle="1"]) .side-player .vol-row,
+  .skin-host:not([data-idle="1"]) .imm-now .vol-row,
+  .skin-host:not([data-idle="1"]) .layout-compact .vol-row {
     display: none;
   }
   .skin-host:not([data-idle="1"]) .side-player .transport,

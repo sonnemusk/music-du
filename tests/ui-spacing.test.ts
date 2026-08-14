@@ -31,6 +31,18 @@ describe("cross-layout chrome consistency", () => {
     expect(app).not.toMatch(/SkinSwitcher/);
   });
 
+  it("narrow-window compress does not hide volume on experience skins", () => {
+    const css = fs.readFileSync(
+      path.join(root, "client/src/skins/layouts/layouts.css"),
+      "utf8"
+    );
+    const block = css.split("M-3: idle compress")[1] || "";
+    expect(block).toMatch(/\.side-player \.vol-row/);
+    expect(block).toMatch(/\.imm-now \.vol-row/);
+    expect(block).not.toMatch(/\[data-idle="1"\] \.vol-row,/);
+    expect(block).not.toMatch(/:not\(\[data-idle="1"\]\) \.vol-row \{/);
+  });
+
   it("demo banner is dismissible and does not force 100dvh children off-screen", () => {
     const css = fs.readFileSync(
       path.join(root, "client/src/styles/global.css"),
