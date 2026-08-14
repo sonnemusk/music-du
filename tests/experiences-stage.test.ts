@@ -56,7 +56,9 @@ describe("stage experience", () => {
     expect(css.includes("720px"), "720px").toBe(true);
     expect(css).toMatch(/min-width:\s*721px/);
     expect(css).toMatch(/max-width:\s*720px/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
+    expect(css).toMatch(/max-height:\s*100%/);
+    expect(css).toMatch(/--stage-art:[\s\S]*dvh/);
     expect(css).toMatch(/safe-area-inset/);
   });
 

@@ -80,6 +80,9 @@
 .skin-host .np-title {
   font-family: var(--display-font, var(--font));
   color: var(--fg);
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .skin-host .np-artist {
   color: var(--muted);

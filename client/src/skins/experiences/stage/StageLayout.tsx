@@ -253,8 +253,12 @@ export function StageLayout({ brand }: { brand: string }) {
               )}
             </div>
           </div>
-          <h1 className="stage-title">{curTrack?.name || tr("nowPlaying.pick")}</h1>
-          <p className="stage-artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
+          <h1 className="stage-title" title={curTrack?.name || undefined}>
+            {curTrack?.name || tr("nowPlaying.pick")}
+          </h1>
+          <p className="stage-artist" title={curTrack?.artist || undefined}>
+            {curTrack?.artist || tr("nowPlaying.pick")}
+          </p>
         </div>
 
         <div ref={footsRef} className="stage-foots">

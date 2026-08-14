@@ -578,8 +578,10 @@
 }
 
 .likes-sheet__art {
-  width: min(220px, 56vw);
+  width: min(220px, 56vw, 36dvh);
   aspect-ratio: 1;
+  height: auto;
+  max-width: 100%;
   border-radius: 12px;
   overflow: hidden;
   background: color-mix(in srgb, var(--fg) 8%, transparent);
@@ -598,8 +600,13 @@
   text-align: center;
   line-height: 1.2;
   max-width: 100%;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .likes-sheet__artist {

@@ -160,10 +160,11 @@
 }
 
 .split-cover {
-  width: min(220px, 72%);
+  width: min(220px, 72%, 36vh);
   aspect-ratio: 1;
+  height: auto;
   max-width: 100%;
-  max-height: min(220px, 36vh);
+  max-height: none;
   display: grid;
   place-items: center;
   overflow: hidden;

@@ -5,6 +5,7 @@
   --stage-foots: 72px;
   --stage-sheet-z: 80;
   --stage-reserve: 220px;
+  --stage-art: min(72vw, 46dvh, 420px);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -12,7 +13,6 @@
   width: 100%;
   max-width: 100%;
   height: 100%;
-  height: 100dvh;
   max-height: 100%;
   min-height: 0;
   min-width: 0;
@@ -218,21 +218,40 @@
   overflow: hidden;
 }
 
-.stage-now {
+.layout-stage .stage-now.now-playing {
+  --stage-meta: 8rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   flex: 1 1 auto;
+  min-height: 0;
   justify-content: center;
+  gap: 0;
   overflow: hidden;
+  container-type: size;
+}
+
+/* Square lead: leftover now-playing box, not 100dvh (maximized chrome). */
+.layout-stage .stage-now.now-playing > .stage-proscenium,
+.layout-stage .stage-now.now-playing > .stage-title,
+.layout-stage .stage-now.now-playing > .stage-artist {
+  width: min(var(--stage-art), 100cqi, calc(100cqh - var(--stage-meta)));
+  max-width: 100%;
 }
 
 .stage-proscenium {
   position: relative;
+  box-sizing: border-box;
   padding: 14px;
-  max-width: 100%;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stage-proscenium::before {
@@ -254,10 +273,11 @@
 }
 
 .stage-art {
-  width: min(72vw, 46dvh, 420px);
+  width: 100%;
+  height: 100%;
   max-width: 100%;
+  max-height: 100%;
   aspect-ratio: 1;
-  max-height: min(46dvh, 420px);
   border-radius: 6px;
   overflow: hidden;
   background: var(--card);
@@ -287,22 +307,26 @@
   opacity: 0.35;
 }
 
-.stage-title {
+.layout-stage .stage-now .stage-title {
+  flex: 0 0 auto;
   margin: 14px 0 0;
-  max-width: min(92vw, 520px);
+  min-width: 0;
   font-family: var(--display-font, var(--font));
-  font-size: clamp(22px, 4.4vw, 36px);
+  font-size: clamp(18px, 3.4vw, 32px);
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   text-align: center;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
+  max-height: 2.4em;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .stage-artist {
+  flex: 0 0 auto;
   margin: 6px 0 0;
-  max-width: min(92vw, 520px);
+  min-width: 0;
   color: var(--muted);
   font-size: 15px;
   text-align: center;
@@ -600,9 +624,8 @@
     animation: stage-wing-in 0.22s ease-out;
   }
 
-  .stage-art {
-    width: min(56vw, 52dvh, 440px);
-    max-height: min(52dvh, 440px);
+  .layout-stage {
+    --stage-art: min(56vw, 52dvh, 440px);
   }
 }
 
@@ -611,16 +634,14 @@
     width: min(420px, 36vw);
   }
 
-  .stage-art {
-    width: min(48vw, 54dvh, 460px);
-    max-height: min(54dvh, 460px);
+  .layout-stage {
+    --stage-art: min(48vw, 54dvh, 460px);
   }
 }
 
 @media (min-width: 1280px) {
-  .stage-art {
-    width: min(42vw, 56dvh, 480px);
-    max-height: min(56dvh, 480px);
+  .layout-stage {
+    --stage-art: min(42vw, 56dvh, 480px);
   }
 
   .stage-wings {
@@ -661,13 +682,12 @@
     gap: 8px;
   }
 
-  .stage-art {
-    width: min(78vw, 38dvh, 320px);
-    max-height: min(38dvh, 320px);
+  .layout-stage {
+    --stage-art: min(78vw, 38dvh, 320px);
   }
 
   .stage-title {
-    font-size: clamp(18px, 5.4vw, 26px);
+    font-size: clamp(17px, 5vw, 24px);
     margin-top: 10px;
   }
 
@@ -744,9 +764,8 @@
 }
 
 @media (max-height: 700px) {
-  .stage-art {
-    width: min(52vw, 28dvh, 260px);
-    max-height: min(28dvh, 260px);
+  .layout-stage {
+    --stage-art: min(48vw, 40dvh, 300px);
   }
 
   .stage-proscenium {
@@ -755,7 +774,7 @@
 
   .stage-title {
     margin-top: 8px;
-    font-size: clamp(16px, 4vw, 22px);
+    font-size: clamp(16px, 3.6vw, 22px);
   }
 
   .stage-art__rest {

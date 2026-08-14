@@ -86,6 +86,23 @@ describe("stage e2e layout polish", () => {
     expect(cell).toBeGreaterThanOrEqual(44);
   });
 
+  it("now-playing title stays inside the art column when the window is short", () => {
+    expect(css).toMatch(/--stage-art:/);
+    const now = block(css, ".layout-stage .stage-now.now-playing");
+    expect(now).toMatch(/container-type:\s*size/);
+    expect(now).toMatch(/gap:\s*0/);
+    expect(now).not.toMatch(/width:\s*var\(--stage-art\)/);
+    expect(now).toMatch(/--stage-meta:/);
+    expect(css).toMatch(/100cqh - var\(--stage-meta\)/);
+    const proc = block(css, "\n.stage-proscenium");
+    expect(proc).toMatch(/aspect-ratio:\s*1/);
+    expect(proc).toMatch(/flex:\s*0 0 auto/);
+    const title = block(css, ".layout-stage .stage-now .stage-title") || block(css, ".stage-title");
+    expect(title).toMatch(/max-height:\s*2\.4em/);
+    expect(title).not.toMatch(/white-space:\s*nowrap/);
+    expect(title).not.toMatch(/520px/);
+  });
+
   it("sheet close is 44 and pit does not sit on the footlights", () => {
     const close = block(css, ".stage-sheet__close");
     expect(px(decl(close, "min-width"))).toBeGreaterThanOrEqual(44);
