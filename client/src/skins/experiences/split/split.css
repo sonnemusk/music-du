@@ -353,6 +353,12 @@
   line-height: 1.15;
 }
 
+.split-root[data-locale="zh"] .split-spine__label {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  letter-spacing: 0.02em;
+}
+
 .split-spine__btn.on {
   color: var(--accent-fg);
   background: linear-gradient(180deg, var(--accent), var(--accent2, var(--accent)));
@@ -464,6 +470,10 @@
   .split-root {
     --split-player-w: minmax(220px, 32%);
     --split-spine-w: 48px;
+  }
+
+  .split-root[data-locale="zh"] {
+    --split-spine-w: 56px;
   }
 
   .split-player {

@@ -152,6 +152,21 @@ describe("split spine + title alignment", () => {
     );
   });
 
+  it("zh desktop spine labels are 横排; en stays 竖排; phone is horizontal for both", () => {
+    const base = stripMedia(css);
+    expect(tsx).toMatch(/className="split-root"/);
+    expect(tsx).toMatch(/data-locale=\{locale\}/);
+    expect(base).toMatch(
+      /\.split-spine__label\s*\{[^}]*writing-mode:\s*vertical-rl/s
+    );
+    expect(base).toMatch(
+      /\.split-root\[data-locale="zh"\]\s+\.split-spine__label\s*\{[^}]*writing-mode:\s*horizontal-tb/s
+    );
+    expect(phone).toMatch(
+      /\.split-spine__label\s*\{[^}]*writing-mode:\s*horizontal-tb/s
+    );
+  });
+
   it("phone spine tabs share 44px height and wrap without overflow-x", () => {
     expect(phone).toMatch(/\.split-spine\s*\{[^}]*flex-wrap:\s*wrap/s);
     expect(phone).toMatch(/\.split-spine\s*\{[^}]*overflow-x:\s*hidden/s);

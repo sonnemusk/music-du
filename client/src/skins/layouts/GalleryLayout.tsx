@@ -5,6 +5,7 @@ import { useT } from "../../i18n";
 import { isMobileSearchUi } from "../../lib/mobile-ui";
 import type { PanelTab } from "../../lib/types";
 import { usePlayer } from "../../store/player";
+import { getTheme } from "../theme-catalog";
 import { SkinHead, useTabs, usePanelBody } from "./shared";
 import "./gallery.css";
 
@@ -164,13 +165,15 @@ export function GalleryLayout({ brand }: { brand: string }) {
   const body = usePanelBody();
   const tab = usePlayer((s) => s.tab);
   const locale = usePlayer((s) => s.locale);
+  const skin = usePlayer((s) => s.skin);
   const tr = useT(locale);
   const tabs = useTabs();
   const count = useTabCount(tab);
   const title = tabs.find((t) => t.id === tab)?.label || "";
+  const galleryId = getTheme(skin).id;
 
   return (
-    <div className="layout layout-gallery">
+    <div className="layout layout-gallery" data-gallery={galleryId}>
       <SkinHead brand={brand} tabs="none" />
       {/* One dock in the DOM; CSS turns it into a docked column, a tablet bar,
           or a phone mini bar. */}

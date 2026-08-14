@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   SKINS,
@@ -10,6 +10,47 @@ import { LAYOUT_IDS, LAYOUT_META, type SkinLayout } from "../skins/layouts/layou
 import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 import { isMobileSearchUi } from "../lib/mobile-ui";
+
+/** Keep the portaled theme list on-screen for header-right and other anchors. */
+function themePanelStyle(anchor: DOMRect): CSSProperties {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const gap = 8;
+  const panelW = Math.min(460, vw - 24);
+  const cap = Math.min(vh * 0.78, 640);
+  const spaceBelow = vh - anchor.bottom - gap;
+  const spaceAbove = anchor.top - gap;
+  const openAbove = spaceBelow < Math.min(280, cap) && spaceAbove > spaceBelow;
+
+  let top: number;
+  let maxHeight: number;
+  if (openAbove) {
+    maxHeight = Math.min(cap, Math.max(160, spaceAbove));
+    top = Math.max(gap, anchor.top - maxHeight - gap);
+  } else {
+    top = anchor.bottom + gap;
+    maxHeight = Math.min(cap, Math.max(160, vh - top - gap));
+    if (top + maxHeight > vh - gap) {
+      top = Math.max(gap, vh - maxHeight - gap);
+    }
+  }
+
+  const preferLeft = anchor.left < vw / 2;
+  const left = preferLeft
+    ? Math.max(gap, Math.min(anchor.left, vw - panelW - gap))
+    : Math.max(gap, Math.min(anchor.right - panelW, vw - panelW - gap));
+
+  return {
+    position: "fixed",
+    top,
+    left,
+    right: "auto",
+    zIndex: 2000,
+    maxHeight,
+    overflow: "auto",
+    width: panelW,
+  };
+}
 
 /**
  * Theme switcher — sits in .skin-head__tools.
@@ -218,21 +259,7 @@ export function SkinSwitcher() {
             aria-label={tr("skin.dialogAria")}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            style={
-              mobile
-                ? undefined
-                : anchor
-                  ? {
-                      position: "fixed",
-                      top: Math.min(anchor.bottom + 8, window.innerHeight - 120),
-                      right: Math.max(8, window.innerWidth - anchor.right),
-                      left: "auto",
-                      zIndex: 2000,
-                      maxHeight: "min(78vh, 640px)",
-                      overflow: "auto",
-                    }
-                  : undefined
-            }
+            style={mobile ? undefined : anchor ? themePanelStyle(anchor) : undefined}
           >
             {panelBody}
           </div>,

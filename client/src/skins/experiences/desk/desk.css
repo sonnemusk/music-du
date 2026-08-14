@@ -150,14 +150,12 @@
 }
 
 .desk-tools {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   align-items: center;
   min-width: 0;
-  padding-top: 10px;
-  margin-top: auto;
 }
 
 .desk-tools .skin-switcher,
@@ -166,8 +164,9 @@
 }
 
 .desk-tools .skin-switcher__bar {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-start;
+  align-items: center;
 }
 
 .layout-desk .desk-tools .skin-switcher__btn,
@@ -175,7 +174,6 @@
   height: 44px;
   min-height: 44px;
   min-width: 44px;
-  max-width: 100%;
 }
 
 .desk-top {
@@ -196,7 +194,7 @@
 .desk-top .desk-tools {
   margin-top: 0;
   padding-top: 0;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   flex-wrap: nowrap;
 }
 
@@ -605,14 +603,6 @@
 
   .layout-desk .desk-dock .transport-row {
     flex-wrap: nowrap;
-  }
-
-  .desk-rail .desk-tools .skin-switcher__label-full {
-    display: inline;
-  }
-
-  .desk-rail .desk-tools .skin-switcher__label-short {
-    display: none;
   }
 }
 

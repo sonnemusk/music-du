@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SKIN, SKINS } from "../client/src/lib/types.js";
 import { LAYOUT_IDS } from "../client/src/skins/layouts/layout-ids.js";
-import { THEME_CATALOG, themeToCssVars } from "../client/src/skins/theme-catalog.js";
+import { getTheme, THEME_CATALOG, themeToCssVars } from "../client/src/skins/theme-catalog.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -69,22 +69,28 @@ describe("theme catalog", () => {
     }
   });
 
-  it("gallery layout ships with exactly one theme and its stylesheet", () => {
+  it("gallery layout ships with pale + deep palettes and its stylesheet", () => {
     expect(LAYOUT_IDS).toContain("gallery");
     const onGallery = THEME_CATALOG.filter((t) => t.layout === "gallery");
-    expect(onGallery.map((t) => t.id)).toEqual(["atrium"]);
+    expect(onGallery.map((t) => t.id).sort()).toEqual(["gallery-deep", "gallery-pale"]);
+    expect(getTheme("atrium").id).toBe("gallery-pale");
 
-    const atrium = onGallery[0]!;
-    // The catalog is otherwise near-uniformly dark; this one is the light outlier.
+    const pale = onGallery.find((t) => t.id === "gallery-pale")!;
+    const deep = onGallery.find((t) => t.id === "gallery-deep")!;
     const lum = (hex: string) => {
       const r = parseInt(hex.slice(1, 3), 16);
       const g = parseInt(hex.slice(3, 5), 16);
       const b = parseInt(hex.slice(5, 7), 16);
       return (r * 299 + g * 587 + b * 114) / 1000;
     };
-    expect(lum(atrium.bg)).toBeGreaterThan(160);
-    expect(lum(atrium.fg)).toBeLessThan(80);
-    expect(atrium.displayFont).toBeTruthy();
+    expect(pale.bg).not.toBe(deep.bg);
+    expect(pale.accent).not.toBe(deep.accent);
+    expect(lum(pale.bg)).toBeGreaterThan(160);
+    expect(lum(pale.fg)).toBeLessThan(80);
+    expect(lum(deep.bg)).toBeLessThan(80);
+    expect(lum(deep.fg)).toBeGreaterThan(160);
+    expect(pale.displayFont).toBeTruthy();
+    expect(deep.displayFont).toBeTruthy();
 
     expect(
       fs.existsSync(path.join(root, "client/src/skins/layouts/GalleryLayout.tsx"))

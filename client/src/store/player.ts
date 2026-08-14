@@ -413,8 +413,18 @@ type State = {
 
 function loadSkin(): SkinId {
   try {
-    const s = localStorage.getItem(SKIN_KEY) as SkinId | null;
-    if (s && SKINS.some((x) => x.id === s)) return s;
+    const raw = localStorage.getItem(SKIN_KEY);
+    const s = raw === "atrium" ? "gallery-pale" : raw;
+    if (s && SKINS.some((x) => x.id === s)) {
+      if (s !== raw) {
+        try {
+          localStorage.setItem(SKIN_KEY, s);
+        } catch {
+          /* */
+        }
+      }
+      return s as SkinId;
+    }
   } catch {
     /* */
   }

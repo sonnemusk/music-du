@@ -204,6 +204,7 @@ export function SplitLayout({ brand }: { brand: string }) {
     <div
       className="split-root"
       data-layout="split"
+      data-locale={locale}
       data-split-theme={theme.id}
       data-split-mode={phone ? "stacked" : "two-pane"}
       data-phone={phone ? "1" : undefined}

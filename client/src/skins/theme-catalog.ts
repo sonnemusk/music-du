@@ -9,6 +9,7 @@ import { RECENT_THEMES } from "./experiences/recent/theme";
 import { SPLIT_THEMES } from "./experiences/split/theme";
 import { STAGE_THEMES } from "./experiences/stage/theme";
 import { VERSE_THEMES } from "./experiences/verse/theme";
+import { GALLERY_THEMES } from "./layouts/gallery-themes";
 
 export type { SkinLayout };
 export { LAYOUT_IDS };
@@ -1176,40 +1177,17 @@ export const THEME_CATALOG: ThemeTokens[] = [
     wallpaper:
       "radial-gradient(circle at 100% 0%, #134e4a 0%, transparent 45%), #042f2e",
   },
-  {
-    // Only skin on the gallery layout: warm paper instead of the catalog's
-    // near-universal dark glass, so the artwork carries the colour.
-    id: "atrium",
-    name: "中庭",
-    nameEn: "Atrium",
-    tagline: "暖白纸感 · 画廊三栏",
-    taglineEn: "Warm paper · three-pane gallery",
-    layout: "gallery",
-    themeColor: "#f6f2ea",
-    bg: "#f6f2ea",
-    bg2: "#efe8db",
-    fg: "#1f1b16",
-    muted: "#6d6255",
-    accent: "#b4531a",
-    accent2: "#d98324",
-    accentFg: "#fff8f0",
-    card: "rgba(255,253,249,0.82)",
-    line: "rgba(31,27,22,0.14)",
-    danger: "#a8321f",
-    font: '"DM Sans", "PingFang SC", system-ui, sans-serif',
-    displayFont: '"Instrument Serif", Georgia, serif',
-    radius: "soft",
-    density: "comfy",
-    surface: "raised",
-    wallpaper:
-      "radial-gradient(ellipse 70% 55% at 12% -5%, #fdf7ec 0%, transparent 60%), radial-gradient(ellipse 60% 45% at 95% 0%, #f2e4d0 0%, transparent 55%), #f6f2ea",
-  },
+  ...(GALLERY_THEMES as ThemeTokens[]),
 ];
 
 export type SkinId = (typeof THEME_CATALOG)[number]["id"];
 
+/** Retired gallery paper theme — keep existing users on 浅. */
+const LEGACY_THEME_IDS: Record<string, string> = { atrium: "gallery-pale" };
+
 export function getTheme(id: string): ThemeTokens {
-  return THEME_CATALOG.find((t) => t.id === id) || THEME_CATALOG[0];
+  const resolved = LEGACY_THEME_IDS[id] ?? id;
+  return THEME_CATALOG.find((t) => t.id === resolved) || THEME_CATALOG[0]!;
 }
 
 export function themeToCssVars(t: ThemeTokens): Record<string, string> {

@@ -352,7 +352,6 @@ function DeskMiniExtras() {
 
 export function DeskLayout({ brand }: { brand: string }) {
   const { mobile, compact } = useDeskViewport();
-  const toolsInTop = compact;
   const tab = usePlayer((s) => s.tab);
   const setTab = usePlayer((s) => s.setTab);
   const skin = usePlayer((s) => s.skin);
@@ -437,7 +436,6 @@ export function DeskLayout({ brand }: { brand: string }) {
             </button>
           ))}
         </nav>
-        {toolsInTop ? null : <DeskTools />}
       </aside>
 
       <header className="desk-top">
@@ -459,7 +457,7 @@ export function DeskLayout({ brand }: { brand: string }) {
         ) : (
           <SearchBar className="desk-search" />
         )}
-        {toolsInTop ? <DeskTools /> : null}
+        <DeskTools />
       </header>
 
       <main className="desk-stage" id="desk-stage">

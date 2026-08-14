@@ -51,6 +51,9 @@ describe("cross-layout chrome consistency", () => {
   it("theme panel is portaled (not clipped by layout overflow)", () => {
     expect(switcher).toMatch(/createPortal/);
     expect(switcher).toMatch(/document\.body/);
+    expect(switcher).toMatch(/function themePanelStyle/);
+    expect(switcher).toMatch(/openAbove/);
+    expect(switcher).toMatch(/preferLeft/);
   });
 
   it("search can shrink so tools never overflow head", () => {

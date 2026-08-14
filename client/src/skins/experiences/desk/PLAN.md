@@ -32,14 +32,14 @@ Shared craft:
 
 CSS grid: `rail 228px | stage`, dock spans full width.
 
-- **Rail**: brand mark + theme name, library nav (search, charts, favorites, playlist, history, lyrics), locale + `SkinSwitcher` pinned to the foot.
-- **Stage head**: always-on `SearchBar`. Search tab also shows recent-keyword chips (`loadRecentSearches` / `search()`).
+- **Rail**: brand mark + theme name + library nav only (search, charts, favorites, playlist, history, lyrics).
+- **Stage head**: always-on `SearchBar` on the left; locale + `SkinSwitcher` on the right (search shrinks, tools stay visible). Search tab also shows recent-keyword chips (`loadRecentSearches` / `search()`).
 - **Stage**: `TrackList` / `ChartsPanel` / `LyricsView` only. One scrollport (`min-height: 0`, `overflow: auto`).
 - **Dock** (`.player-bar`): now-playing (cover + title + quality chip, click → `locateCurrentInList`) + full `Transport` (prev / play / next / mode / quality / fav / seek / volume). Prev / play / next never leave the dock.
 
 ### Tablet (≤1024px)
 
-Rail collapses to 76px icon column (short labels under icons). Dock keeps prev / play / next; volume column compresses. Stage search still visible.
+Rail collapses to 76px icon column (short labels under icons). Dock keeps prev / play / next; volume column compresses. Stage header still holds search + locale/theme (short labels).
 
 ### Phone (≤720px)
 
@@ -61,7 +61,7 @@ Coarse pointer: nav, search launch, play trio, extras ≥44px. Mobile inputs in 
 | Quality / mode / volume / fav | `Transport` | Mini extras |
 | Search + recents | `SearchBar` + chips | Overlay via gesture |
 | Charts / playlist / likes / history / lyrics | Rail → stage | Foot nav → stage |
-| Locale / theme | Rail foot | Top tools |
+| Locale / theme | Stage header (top-right) | Same |
 
 No comments, social, daily mix, MV, VIP, notes, following, or profiles.
 

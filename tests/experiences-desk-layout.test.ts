@@ -51,8 +51,18 @@ describe("desk layout chrome", () => {
     expect(css).toMatch(/\.desk-top\s*\{[^}]*min-width:\s*0/s);
     expect(css).toMatch(/\.desk-tools\s*\{[^}]*min-width:\s*0/s);
     expect(tsx).toMatch(/SearchBar className="desk-search"/);
-    expect(tsx).toMatch(/toolsInTop/);
     expect(tsx).toMatch(/max-width: 1024px/);
+  });
+
+  it("locale and theme tools live in the stage header, never the rail", () => {
+    const rail = tsx.match(/<aside className="desk-rail">[\s\S]*?<\/aside>/)?.[0] ?? "";
+    const top = tsx.match(/<header className="desk-top">[\s\S]*?<\/header>/)?.[0] ?? "";
+    expect(top).toMatch(/<DeskTools \/>/);
+    expect(rail).not.toMatch(/DeskTools/);
+    expect(tsx).not.toMatch(/toolsInTop/);
+    expect(css).toMatch(/\.desk-top \.desk-tools\s*\{[^}]*flex-wrap:\s*nowrap/s);
+    expect(css).toMatch(/\.desk-tools \.skin-switcher__bar\s*\{[^}]*flex-wrap:\s*nowrap/s);
+    expect(css).not.toMatch(/\.desk-rail \.desk-tools/);
   });
 
   it("desktop dock aligns to the left rail column", () => {
