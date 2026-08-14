@@ -124,6 +124,16 @@ describe("stage e2e layout polish", () => {
     expect(css).toMatch(/\.stage-light:not\(\.stage-light--cycle\)/);
   });
 
+  it("paints dim/deep from the shared player skin so the catalog picker applies", () => {
+    expect(tsx).toMatch(/usePlayer\(\(s\) => s\.skin\)/);
+    expect(tsx).toMatch(/usePlayer\(\(s\) => s\.setSkin\)/);
+    expect(tsx).toMatch(/setSkin\(id\)/);
+    expect(tsx).toMatch(/setSkin\("stage-dim"\)|pickLighting\("stage-dim"\)/);
+    expect(tsx).toMatch(/setSkin\("stage-deep"\)|pickLighting\("stage-deep"\)/);
+    expect(tsx).not.toMatch(/STAGE_THEME_KEY|kazam\.v2\.stageTheme/);
+    expect(tsx).not.toMatch(/setThemeId/);
+  });
+
   it("both palettes stay distinct after css-var mapping", () => {
     expect(STAGE_THEME_IDS).toEqual(["stage-dim", "stage-deep"]);
     const dim = stageThemeToCssVars(getStageTheme("stage-dim"));

@@ -15,7 +15,6 @@ import { usePlayer } from "../../../store/player";
 import { stageText } from "./i18n";
 import "./stage.css";
 import {
-  STAGE_THEME_KEY,
   getStageTheme,
   isStageThemeId,
   stageThemeToCssVars,
@@ -32,24 +31,6 @@ const WING_I18N: Record<PanelTab, { full: string; short: string }> = {
   lyrics: { full: "tabs.lyrics", short: "tabs.lyricsShort" },
   playlist: { full: "tabs.playlist", short: "tabs.playlistShort" },
 };
-
-function readStageTheme(): StageThemeId {
-  try {
-    const raw = localStorage.getItem(STAGE_THEME_KEY);
-    if (isStageThemeId(raw)) return raw;
-  } catch {
-    /* */
-  }
-  return "stage-dim";
-}
-
-function persistStageTheme(id: StageThemeId) {
-  try {
-    localStorage.setItem(STAGE_THEME_KEY, id);
-  } catch {
-    /* */
-  }
-}
 
 function useNarrowStage() {
   const [narrow, setNarrow] = useState(() => isMobileSearchUi());
@@ -109,8 +90,10 @@ export function StageLayout({ brand }: { brand: string }) {
   const curTrack = usePlayer((s) => s.curTrack);
   const cover = usePlayer((s) => s.cover);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
+  const skin = usePlayer((s) => s.skin);
+  const setSkin = usePlayer((s) => s.setSkin);
 
-  const [themeId, setThemeId] = useState<StageThemeId>(readStageTheme);
+  const themeId: StageThemeId = isStageThemeId(skin) ? skin : "stage-dim";
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const hostRef = useRef<HTMLDivElement>(null);
@@ -180,10 +163,12 @@ export function StageLayout({ brand }: { brand: string }) {
     setSheetOpen(true);
   };
 
+  const pickLighting = (id: StageThemeId) => {
+    setSkin(id);
+  };
+
   const cycleLighting = () => {
-    const next: StageThemeId = themeId === "stage-dim" ? "stage-deep" : "stage-dim";
-    setThemeId(next);
-    persistStageTheme(next);
+    pickLighting(themeId === "stage-dim" ? "stage-deep" : "stage-dim");
   };
 
   const sheetTitle = tr(WING_I18N[tab].full);
@@ -222,10 +207,7 @@ export function StageLayout({ brand }: { brand: string }) {
               type="button"
               className={`stage-light ${themeId === "stage-dim" ? "on" : ""}`}
               aria-pressed={themeId === "stage-dim"}
-              onClick={() => {
-                setThemeId("stage-dim");
-                persistStageTheme("stage-dim");
-              }}
+              onClick={() => pickLighting("stage-dim")}
             >
               {stageText(locale, "themeDim")}
             </button>
@@ -233,10 +215,7 @@ export function StageLayout({ brand }: { brand: string }) {
               type="button"
               className={`stage-light ${themeId === "stage-deep" ? "on" : ""}`}
               aria-pressed={themeId === "stage-deep"}
-              onClick={() => {
-                setThemeId("stage-deep");
-                persistStageTheme("stage-deep");
-              }}
+              onClick={() => pickLighting("stage-deep")}
             >
               {stageText(locale, "themeDeep")}
             </button>

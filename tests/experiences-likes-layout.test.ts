@@ -39,6 +39,14 @@ describe("likes e2e layout polish", () => {
     expect(tsx).toMatch(/likes-deep/);
   });
 
+  it("applies dim/deep from the shared player skin so the catalog picker works", () => {
+    expect(tsx).toMatch(/usePlayer\(\(s\) => s\.skin\)/);
+    expect(tsx).toMatch(/usePlayer\(\(s\) => s\.setSkin\)/);
+    expect(tsx).toMatch(/setSkin\(id\)/);
+    expect(tsx).not.toMatch(/kazam\.v2\.likesPalette/);
+    expect(tsx).not.toMatch(/loadPalette|savePalette/);
+  });
+
   it("splits chrome at 720px and pins phone dest at 390", () => {
     expect(css).toMatch(/@media \(max-width:\s*720px\)/);
     expect(css).toMatch(/@media \(min-width:\s*721px\)/);

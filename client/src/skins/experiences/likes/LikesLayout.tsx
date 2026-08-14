@@ -23,8 +23,6 @@ import {
 } from "./theme";
 import "./likes.css";
 
-const PALETTE_KEY = "kazam.v2.likesPalette";
-
 const DEST: PanelTab[] = ["favorites", "search", "history", "charts", "lyrics", "playlist"];
 
 type IconProps = { className?: string };
@@ -65,24 +63,6 @@ const ICONS: Record<PanelTab, (p: IconProps) => JSX.Element> = {
     </svg>
   ),
 };
-
-function loadPalette(): LikesThemeId {
-  try {
-    const raw = localStorage.getItem(PALETTE_KEY) || "";
-    if (isLikesThemeId(raw)) return raw;
-  } catch {
-    /* */
-  }
-  return DEFAULT_LIKES_THEME;
-}
-
-function savePalette(id: LikesThemeId) {
-  try {
-    localStorage.setItem(PALETTE_KEY, id);
-  } catch {
-    /* */
-  }
-}
 
 function ensureLikesFonts() {
   if (typeof document === "undefined") return;
@@ -338,7 +318,9 @@ export function LikesLayout({ brand }: { brand: string }) {
   const locale = usePlayer((s) => s.locale);
   const narrow = useNarrow();
   const count = useTabCount(tab);
-  const [palette, setPalette] = useState<LikesThemeId>(DEFAULT_LIKES_THEME);
+  const skin = usePlayer((s) => s.skin);
+  const setSkin = usePlayer((s) => s.setSkin);
+  const palette: LikesThemeId = isLikesThemeId(skin) ? skin : DEFAULT_LIKES_THEME;
   const [sheet, setSheet] = useState(false);
 
   useEffect(() => {
@@ -346,7 +328,6 @@ export function LikesLayout({ brand }: { brand: string }) {
   }, [setTab]);
 
   useEffect(() => {
-    setPalette(loadPalette());
     ensureLikesFonts();
   }, []);
 
@@ -374,8 +355,7 @@ export function LikesLayout({ brand }: { brand: string }) {
   const vars = useMemo(() => likesThemeToCssVars(theme) as CSSProperties, [theme]);
 
   const pickPalette = (id: LikesThemeId) => {
-    setPalette(id);
-    savePalette(id);
+    setSkin(id);
   };
 
   const title =

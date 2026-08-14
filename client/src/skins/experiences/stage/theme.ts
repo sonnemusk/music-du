@@ -4,8 +4,6 @@ export const STAGE_THEME_IDS = ["stage-dim", "stage-deep"] as const;
 
 export type StageThemeId = (typeof STAGE_THEME_IDS)[number];
 
-export const STAGE_THEME_KEY = "kazam.v2.stageTheme";
-
 export type StageTheme = {
   id: StageThemeId;
   name: string;

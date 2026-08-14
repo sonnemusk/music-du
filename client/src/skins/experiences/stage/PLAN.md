@@ -32,7 +32,7 @@ Opening a cue calls `setTab`. Closing the sheet leaves the stage floor as the ho
 | `stage-dim` | House lights down. Warm muted charcoal, dusty gold footlight. | `#16130f` | `#c4a574` |
 | `stage-deep` | Mid-show gels. Saturated ink-violet, hot magenta + gold spot. | `#120018` | `#ff2d6a` |
 
-Tokens live in `theme.ts`. Layout applies CSS vars locally (`data-theme`). Dim/deep toggle persists to `kazam.v2.stageTheme`. Backgrounds must stay different.
+Tokens live in `theme.ts`. Layout applies CSS vars locally (`data-theme`). Dim/deep chips and the catalog `SkinSwitcher` both call `setSkin` so 暗场 / 深场 stay one source of truth. Backgrounds must stay different.
 
 ## Files (only these)
 
