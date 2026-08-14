@@ -61,6 +61,12 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+          secrets: |
+            CHKSZ_APIKEY
+            CHKSZ_FALLBACK_APIKEYS
+        env:
+          CHKSZ_APIKEY: ${{ secrets.CHKSZ_APIKEY }}
+          CHKSZ_FALLBACK_APIKEYS: ${{ secrets.CHKSZ_FALLBACK_APIKEYS }}
       - name: Smoke primary
         env:
           # Override with repo secret SMOKE_BASE if set
@@ -80,6 +86,12 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env demo
+          secrets: |
+            CHKSZ_APIKEY
+            CHKSZ_FALLBACK_APIKEYS
+        env:
+          CHKSZ_APIKEY: ${{ secrets.CHKSZ_APIKEY }}
+          CHKSZ_FALLBACK_APIKEYS: ${{ secrets.CHKSZ_FALLBACK_APIKEYS }}
       - name: Smoke demo (public read-only)
         env:
           SMOKE_BASE: ${{ secrets.SMOKE_DEMO_BASE }}

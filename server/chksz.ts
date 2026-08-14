@@ -1,8 +1,5 @@
 /**
- * ChKSz NetEase adapter.
- *
- * Primary: https://api.chksz.com — apikey required (api.chksz.top shut down 2026-08).
- * Optional CHKSZ_FALLBACK_BASE for a second host.
+ * ChKSz gateway: NetEase + QQ + Kugou on api.chksz.com (apikey required).
  */
 import {
   CHKSZ_APIKEY,
@@ -12,6 +9,12 @@ import {
   chkszPrimaryBase,
   qualityLevels,
 } from "./config.js";
+import {
+  NATIVE_SIZE_LADDER,
+  nativeSizeToLevel,
+  parseSongId,
+  qualityToNativeSize,
+} from "./song-id.js";
 import type { Track } from "./types.js";
 
 export class ChkszError extends Error {
@@ -299,6 +302,161 @@ export function normalizeSong(s: any): Track {
   };
 }
 
+function foldTrackKey(name: string, artist: string): string {
+  const n = String(name || "")
+    .toLowerCase()
+    .replace(/\(.*?\)|（.*?）|\[.*?\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const a = String(artist || "")
+    .toLowerCase()
+    .split(/[/,&、]/)[0]
+    ?.replace(/[^a-z0-9\u4e00-\u9fff]+$/g, "")
+    .trim() || "";
+  return n ? `${n}|${a}` : "";
+}
+
+function qqRows(body: any): Track[] {
+  const list = Array.isArray(body?.list) ? body.list : [];
+  const out: Track[] = [];
+  for (const t of list) {
+    const mid = String(t?.mid || t?.songmid || "").trim();
+    if (!mid) continue;
+    out.push({
+      id: `qq:${mid}`,
+      name: String(t.name || t.songname || ""),
+      artist: String(t.singer || t.artist || ""),
+      album: String(t.album || ""),
+      cover: tryHttps(String(t.cover || t.pic || "")),
+      duration: 0,
+    });
+  }
+  return out;
+}
+
+function kugouRows(body: any): Track[] {
+  const list = Array.isArray(body?.list) ? body.list : [];
+  const out: Track[] = [];
+  for (const t of list) {
+    const id = String(t?.id || t?.hash || "").trim();
+    if (!id) continue;
+    out.push({
+      id: `kg:${id}`,
+      name: String(t.name || t.songname || ""),
+      artist: String(t.singer || t.artist || ""),
+      album: String(t.album || ""),
+      cover: tryHttps(String(t.cover || t.pic || "")),
+      duration: Number(t.duration || 0) || 0,
+    });
+  }
+  return out;
+}
+
+export async function searchQq(
+  keyword: string,
+  limit = 10,
+  opts?: { apikey?: string }
+): Promise<Track[]> {
+  const kw = (keyword || "").trim();
+  if (!kw) return [];
+  try {
+    const { status, body } = await apiGet(
+      "/api/qq_music",
+      { msg: kw, num: Math.max(1, Math.min(50, limit)), type: "json" },
+      { ...opts, timeout: 12000 }
+    );
+    if ([401, 402, 403, 429].includes(status)) checkAuth(status, body);
+    if (status >= 500) return [];
+    return qqRows(body);
+  } catch (e) {
+    if (e instanceof ChkszError) throw e;
+    return [];
+  }
+}
+
+export async function searchKugou(
+  keyword: string,
+  limit = 10,
+  opts?: { apikey?: string }
+): Promise<Track[]> {
+  const kw = (keyword || "").trim();
+  if (!kw) return [];
+  try {
+    const { status, body } = await apiGet(
+      "/api/kugou_music",
+      { msg: kw, type: "json" },
+      { ...opts, timeout: 12000 }
+    );
+    if ([401, 402, 403, 429].includes(status)) checkAuth(status, body);
+    if (status >= 500) return [];
+    return kugouRows(body).slice(0, Math.max(1, Math.min(50, limit)));
+  } catch (e) {
+    if (e instanceof ChkszError) throw e;
+    return [];
+  }
+}
+
+/** NetEase first, then unique QQ / Kugou hits (same title+artist collapsed). */
+export async function searchAll(
+  keyword: string,
+  limit = 30,
+  opts?: { apikey?: string }
+): Promise<Track[]> {
+  const cap = Math.max(5, Math.min(40, limit || 30));
+  const extra = Math.min(12, cap);
+  const settled = await Promise.allSettled([
+    search(keyword, cap, opts),
+    searchQq(keyword, extra, opts),
+    searchKugou(keyword, extra, opts),
+  ]);
+  const lists = settled.map((r) => (r.status === "fulfilled" ? r.value : []));
+  if (settled.every((r) => r.status === "rejected")) {
+    throw settled[0]!.reason;
+  }
+  const seen = new Set<string>();
+  const out: Track[] = [];
+  for (const t of lists.flat()) {
+    const k = foldTrackKey(t.name, t.artist);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+async function fetchNativePlay(
+  path: string,
+  params: Record<string, string | number>,
+  opts?: { apikey?: string }
+): Promise<Record<string, any> | null> {
+  try {
+    const { status, body } = await apiGet(path, params, { ...opts, timeout: 12000 });
+    if ([401, 402, 403, 429].includes(status)) checkAuth(status, body);
+    if (status >= 500) return null;
+    const code = body?.code;
+    if (code != null && code !== 200 && code !== 0) return null;
+    const raw = body?.data && typeof body.data === "object" && body.data.url ? body.data : body;
+    const url = tryHttps(String(raw?.url || body?.url || "").trim());
+    if (!url.startsWith("http")) return null;
+    const size = String(params.size || raw.bitrate || raw.format || "flac");
+    return {
+      ...raw,
+      url,
+      level: nativeSizeToLevel(size),
+      _requested_level: String(params.size || ""),
+      name: raw.name || raw.songname || raw.title || body?.name || "",
+      artist: raw.singer || raw.artist || body?.singer || "",
+      picUrl: tryHttps(String(raw.cover || raw.picUrl || body?.cover || "")),
+      cover: tryHttps(String(raw.cover || raw.picUrl || body?.cover || "")),
+      lrc: raw.lrc || body?.lrc || "",
+    };
+  } catch (e) {
+    if (e instanceof ChkszError) throw e;
+    return null;
+  }
+}
+
 export async function search(
   keyword: string,
   limit = 30,
@@ -370,14 +528,44 @@ export async function fetchMusicExact(
   }
 }
 
+function nativeSizeWalk(level?: string | null): string[] {
+  const want = qualityToNativeSize(level);
+  return [want, ...NATIVE_SIZE_LADDER.filter((s) => s !== want)].slice(0, 4);
+}
+
 export async function fetchMusic(
   sid: string | number,
   level?: string | null,
   opts?: { apikey?: string }
 ): Promise<Record<string, any>> {
+  const parsed = parseSongId(sid);
+  if (parsed?.provider === "qq") {
+    for (const size of nativeSizeWalk(level)) {
+      const hit = await fetchNativePlay(
+        "/api/qq_music",
+        { mid: parsed.nativeId, size, type: "json" },
+        opts
+      );
+      if (hit) return { ...hit, id: `qq:${parsed.nativeId}` };
+    }
+    return {};
+  }
+  if (parsed?.provider === "kugou") {
+    for (const size of nativeSizeWalk(level)) {
+      const hit = await fetchNativePlay(
+        "/api/kugou_music",
+        { id: parsed.nativeId, size, type: "json" },
+        opts
+      );
+      if (hit) return { ...hit, id: `kg:${parsed.nativeId}` };
+    }
+    return {};
+  }
+  const neId = parsed?.provider === "netease" ? parsed.nativeId : String(sid);
+  if (!/^\d+$/.test(neId)) return {};
   // Cap ladder walk: requested + next 3. Full 8-level walk is 8+ subrequests.
   for (const lv of qualityLevels(level).slice(0, 4)) {
-    const hit = await fetchMusicExact(sid, lv, opts);
+    const hit = await fetchMusicExact(neId, lv, opts);
     if (hit) return hit;
   }
   return {};
@@ -404,6 +592,31 @@ export async function probeTopQualities(
   opts?: { apikey?: string }
 ): Promise<ProbedQuality[]> {
   const max = Math.max(1, Math.min(5, limit || 3));
+  const parsed = parseSongId(sid);
+  if (parsed?.provider === "qq" || parsed?.provider === "kugou") {
+    const out: ProbedQuality[] = [];
+    const path = parsed.provider === "qq" ? "/api/qq_music" : "/api/kugou_music";
+    const idKey = parsed.provider === "qq" ? "mid" : "id";
+    for (const size of NATIVE_SIZE_LADDER) {
+      if (out.length >= max) break;
+      const hit = await fetchNativePlay(path, { [idKey]: parsed.nativeId, size, type: "json" }, opts);
+      if (!hit?.url) continue;
+      const level = String(hit.level || nativeSizeToLevel(size));
+      if (out.some((x) => x.level === level)) continue;
+      out.push({
+        level,
+        br: Number(hit.br || 0),
+        size: Number(hit.size || 0),
+        url: String(hit.url),
+        name: hit.name ? String(hit.name) : undefined,
+        artist: hit.artist ? String(hit.artist) : undefined,
+        cover: hit.picUrl || hit.cover ? tryHttps(String(hit.picUrl || hit.cover)) : undefined,
+      });
+    }
+    return out;
+  }
+  const neId = parsed?.provider === "netease" ? parsed.nativeId : String(sid);
+  if (!/^\d+$/.test(neId)) return [];
   const ladder = qualityLevels(null);
   const out: ProbedQuality[] = [];
   const batchSize = 3;
@@ -411,7 +624,7 @@ export async function probeTopQualities(
     const batch = ladder.slice(i, i + batchSize);
     const hits = await Promise.all(
       batch.map(async (lv) => {
-        const hit = await fetchMusicExact(sid, lv, opts);
+        const hit = await fetchMusicExact(neId, lv, opts);
         return hit?.url
           ? ({
               level: String(hit.level || lv),
@@ -454,10 +667,22 @@ export async function fetchLyric(
   sid: string | number,
   opts?: { apikey?: string }
 ): Promise<{ lrc: string; tlrc: string; romalrc: string; klyric: string }> {
+  const parsed = parseSongId(sid);
+  if (parsed?.provider === "qq" || parsed?.provider === "kugou") {
+    try {
+      const hit = await fetchMusic(sid, "flac", opts);
+      const lrc = String(hit?.lrc || "");
+      return { lrc, tlrc: "", romalrc: "", klyric: "" };
+    } catch (e) {
+      if (e instanceof ChkszError) throw e;
+      return { lrc: "", tlrc: "", romalrc: "", klyric: "" };
+    }
+  }
+  const neId = parsed?.provider === "netease" ? parsed.nativeId : String(sid);
   try {
     const { status, body } = await apiGet(
       "/api/163_lyric",
-      { id: String(sid) },
+      { id: neId },
       { ...opts, timeout: 8000 }
     );
     checkAuth(status, body);

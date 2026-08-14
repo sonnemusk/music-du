@@ -1,9 +1,11 @@
 import { getLocale, t, type Locale } from "../i18n";
 import type { LyricLine, PlayMode, Track } from "./types";
 
-/** NetEase ids are digits. Chart placeholders look like `ext:qq:…`. */
+/** Playable: NetEase digits, `qq:mid`, `kg:hash`. `ext:` still needs rematch. */
 export function isResolvedSongId(id: string | number | null | undefined): boolean {
-  return /^\d+$/.test(String(id ?? "").trim());
+  const s = String(id ?? "").trim();
+  if (/^\d+$/.test(s)) return true;
+  return /^(qq|kg|kugou):.+/i.test(s);
 }
 
 function foldName(s: string): string {

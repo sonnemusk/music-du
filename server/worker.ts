@@ -523,7 +523,7 @@ app.get("/api/search", async (c) => {
   if (denied) return denied;
   const q = c.req.query("q") || c.req.query("keyword") || "";
   try {
-    const songs = await chksz.search(q, clampSearchLimit(c.req.query("limit")), {
+    const songs = await chksz.searchAll(q, clampSearchLimit(c.req.query("limit")), {
       apikey: withKey(c.env),
     });
     return c.json({ ok: true, data: songs });

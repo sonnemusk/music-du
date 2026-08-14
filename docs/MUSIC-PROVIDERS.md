@@ -40,9 +40,9 @@ Env: [`.env.example`](../.env.example)
 
 Typical gateway paths used by the adapter (provider-specific; may change):
 
-- Search: `/cloudsearch` or equivalent  
-- Song URL: `/song/url/v1`  
-- Lyric: `/lyric`  
+- NetEase search / URL / lyric: `/api/163_search`, `/api/163_music`, `/api/163_lyric`
+- QQ search / URL: `/api/qq_music` (`msg` or `mid`, `size=128k|320k|flac|hires|master`)
+- Kugou search / URL: `/api/kugou_music` (`msg` or `id`, same `size` values)  
 
 **Important:** These community mirrors are **not** official NetEase Cloud Music APIs. Availability, rate limits, and legality vary by region and over time. Prefer a source you control or have a license for in production.
 

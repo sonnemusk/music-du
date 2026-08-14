@@ -19,7 +19,10 @@
  * - 酷狗 / 酷我: 见 SOURCE_MAP
  */
 import * as chksz from "./chksz.js";
+import { parseSongId } from "./song-id.js";
 import type { Track } from "./types.js";
+
+export { isResolvedSongId } from "./song-id.js";
 
 /**
  * Optional durable backends — Node wires disk + cover warm via attach*().
@@ -256,14 +259,9 @@ export function chartEdgeMaxAgeSec(board: ChartBoardId): number {
   return 8 * 3600;
 }
 
-/** True when the id can be sent to /api/song (NetEase numeric). */
-export function isResolvedSongId(id: string | number | null | undefined): boolean {
-  return /^\d+$/.test(String(id ?? "").trim());
-}
-
 /**
- * Display id for a chart row. NetEase playlists already have a playable id.
- * QQ/酷狗/酷我 rows keep an `ext:` placeholder — the client searches on click.
+ * Display id for a chart row.
+ * NetEase / QQ mid / Kugou hash are playable; Kuwo and unknown stay `ext:`.
  */
 export function chartTrackFromRaw(
   row: {
@@ -286,7 +284,8 @@ export function chartTrackFromRaw(
     id = /^\d+$/.test(raw) ? Number(raw) : raw;
   } else {
     const key = String(row.sourceKey || `${name}|${artist}`).slice(0, 180);
-    id = `ext:${key}`;
+    const parsed = parseSongId(key);
+    id = parsed && parsed.provider !== "ext" ? key : `ext:${key}`;
   }
   return {
     id,
@@ -454,13 +453,14 @@ export async function fetchQqToplist(topid: number, limit = MAX_TRACKS): Promise
     const cover = albummid
       ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg`
       : "";
+    const mid = String(d.songmid || d.mid || "").trim();
     out.push({
       name,
       artist,
       album: String(d.albumname || d.albumName || ""),
       cover,
       duration: Number(d.interval || 0) * 1000 || 0,
-      sourceKey: `qq:${d.songmid || d.songid || name}`,
+      sourceKey: mid ? `qq:${mid}` : `qqname:${name}`,
     });
     if (out.length >= limit) break;
   }
@@ -496,13 +496,14 @@ export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise
     let cover = String(t.album_sizable_cover || t.sizable_cover || t.imgUrl || "");
     cover = cover.replace(/\{size\}/g, "240");
     cover = chksz.tryHttps(cover);
+    const hash = String(t.hash || t.album_audio_id || "").trim();
     out.push({
       name: cleanName(name),
       artist: cleanName(artist),
       album: String(t.remark || t.album_name || ""),
       cover,
       duration: Number(t.duration || 0) * 1000 || 0,
-      sourceKey: `kg:${t.hash || t.album_audio_id || filename}`,
+      sourceKey: hash ? `kg:${hash}` : `kgname:${filename}`,
     });
     if (out.length >= limit) break;
   }
@@ -610,8 +611,7 @@ async function buildChart(
   const meta = metaOf(platform);
   const boardMeta = CHART_BOARDS.find((b) => b.id === board);
   const { rows, sourceLabel } = await fetchRaw(platform, board, limit);
-  // Show every row immediately. Playable NetEase ids are used when present;
-  // others get an ext: placeholder and the client searches on click.
+  // Show every row immediately. Native NetEase / QQ / Kugou ids play directly.
   const tracks: ChartTrack[] = [];
   const seen = new Set<string>();
   for (const row of rows) {

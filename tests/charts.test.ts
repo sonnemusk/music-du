@@ -56,13 +56,25 @@ describe("charts catalog", () => {
     expect(true).toBe(true);
   });
 
-  it("QQ-style rows keep a placeholder id and do not need a search", () => {
-    const tracks = Array.from({ length: 40 }, (_, i) =>
-      chartTrackFromRaw({ name: `t${i}`, artist: "a", sourceKey: `qq:${i}` }, i + 1)
+  it("QQ mid and Kugou hash rows are playable without rematch", () => {
+    const qq = chartTrackFromRaw(
+      { name: "晴天", artist: "周杰伦", sourceKey: "qq:0039MnYb0qxYhV" },
+      1
     );
-    expect(tracks.every(Boolean)).toBe(true);
-    expect(tracks.every((t) => t && String(t.id).startsWith("ext:"))).toBe(true);
-    expect(tracks.every((t) => t && !isResolvedSongId(t.id))).toBe(true);
+    const kg = chartTrackFromRaw(
+      { name: "晴天", artist: "周杰伦", sourceKey: "kg:48C685F679FFC7CF08B8A8341CA9DB44" },
+      2
+    );
+    const kw = chartTrackFromRaw(
+      { name: "晴天", artist: "周杰伦", sourceKey: "kw:12345" },
+      3
+    );
+    expect(qq?.id).toBe("qq:0039MnYb0qxYhV");
+    expect(isResolvedSongId(qq?.id)).toBe(true);
+    expect(kg?.id).toBe("kg:48C685F679FFC7CF08B8A8341CA9DB44");
+    expect(isResolvedSongId(kg?.id)).toBe(true);
+    expect(String(kw?.id).startsWith("ext:")).toBe(true);
+    expect(isResolvedSongId(kw?.id)).toBe(false);
   });
 
   it("NetEase rows stay playable numeric ids", () => {

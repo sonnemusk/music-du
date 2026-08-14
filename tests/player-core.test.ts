@@ -90,6 +90,8 @@ describe("player-core", () => {
   it("resolved vs placeholder chart ids", () => {
     expect(isResolvedSongId(1901371647)).toBe(true);
     expect(isResolvedSongId("1901371647")).toBe(true);
+    expect(isResolvedSongId("qq:0039MnYb0qxYhV")).toBe(true);
+    expect(isResolvedSongId("kg:48C685F679FFC7CF08B8A8341CA9DB44")).toBe(true);
     expect(isResolvedSongId("ext:qq:abc")).toBe(false);
     expect(isResolvedSongId("")).toBe(false);
   });

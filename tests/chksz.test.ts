@@ -185,6 +185,72 @@ describe("chksz adapter", () => {
     expect(d.tlrc).toContain("hi");
   });
 
+  it("searchAll merges NetEase then unique QQ / Kugou", async () => {
+    chksz.setHttpTransport(async (_m, url) => {
+      const u = String(url);
+      if (u.includes("163_search")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            data: [{ id: 1, name: "晴天", ar: [{ name: "周杰伦" }], al: { name: "叶惠美" } }],
+          }),
+        };
+      }
+      if (u.includes("qq_music")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            count: 2,
+            list: [
+              { n: 1, name: "晴天", singer: "周杰伦", mid: "0039MnYb0qxYhV" },
+              { n: 2, name: "七里香", singer: "周杰伦", mid: "qqmid2" },
+            ],
+          }),
+        };
+      }
+      if (u.includes("kugou_music")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            list: [{ n: 1, id: "KG1", name: "东风破", singer: "周杰伦" }],
+          }),
+        };
+      }
+      return { status: 404, json: async () => ({}) };
+    });
+    const rows = await chksz.searchAll("周杰伦", 10);
+    expect(rows.map((r) => r.name)).toEqual(["晴天", "七里香", "东风破"]);
+    expect(rows[0]!.id).toBe(1);
+    expect(rows[1]!.id).toBe("qq:qqmid2");
+    expect(rows[2]!.id).toBe("kg:KG1");
+  });
+
+  it("fetchMusic routes qq: ids to qq_music", async () => {
+    let seen = "";
+    chksz.setHttpTransport(async (_m, url) => {
+      seen = String(url);
+      return {
+        status: 200,
+        json: async () => ({
+          code: 200,
+          url: "https://dl.example/a.flac",
+          name: "晴天",
+          singer: "周杰伦",
+          bitrate: "flac",
+        }),
+      };
+    });
+    const raw = await chksz.fetchMusic("qq:0039MnYb0qxYhV", "sky");
+    expect(seen).toContain("qq_music");
+    expect(seen).toContain("mid=0039MnYb0qxYhV");
+    expect(raw.url).toContain("https://");
+    expect(raw.level).toBe("jymaster");
+    expect(raw.artist).toBe("周杰伦");
+  });
+
   it("primary free failure surfaces when transport is single-host", async () => {
     chksz.setHttpTransport(async () => ({
       status: 429,

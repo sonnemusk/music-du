@@ -63,7 +63,7 @@ export function createApp(opts?: {
     const q = c.req.query("q") || c.req.query("keyword") || "";
     const limit = Number(c.req.query("limit") || 30) || 30;
     try {
-      const songs = await chksz.search(q, limit, { apikey: keyOf() });
+      const songs = await chksz.searchAll(q, limit, { apikey: keyOf() });
       return c.json({ ok: true, data: songs });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 500;
