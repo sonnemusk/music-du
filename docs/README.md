@@ -6,6 +6,7 @@ Technical docs are in **English** (commands and paths are language-neutral). Sta
 
 | Doc | Audience | Contents |
 |-----|----------|----------|
+| **[STATUS.md](./STATUS.md)** | Humans & agents | **Current facts** — read this first |
 | [DEPLOY.md](./DEPLOY.md) | Humans & agents | Cloudflare · Node VPS · Fly · Docker · Vercel |
 | [API.md](./API.md) | Integrators | Full HTTP API reference |
 | [MUSIC-PROVIDERS.md](./MUSIC-PROVIDERS.md) | Operators | Lawful APIs, copyright, plug-in guide |
@@ -14,6 +15,8 @@ Technical docs are in **English** (commands and paths are language-neutral). Sta
 | [FEATURES.md](./FEATURES.md) | Product | Feature checklist |
 | [../SECURITY.md](../SECURITY.md) | Everyone | Secrets & reporting |
 | [screenshots/](./screenshots/) | README | UI stills + `skins-cycle.gif` |
+
+Closed 2026-08-12 construction notes (do not execute): [OPTIMIZATION-PLAN.md](./OPTIMIZATION-PLAN.md) · [GROK-RUNBOOK.md](./GROK-RUNBOOK.md) · [EXECUTION-TRACKER.md](./EXECUTION-TRACKER.md)
 
 ## Deploy reminder
 

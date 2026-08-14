@@ -21,13 +21,15 @@ SPA ──same-origin /api/*──► BFF
 
 - Optional **Cloudflare Access** on private hostnames — [ACCESS.md](./ACCESS.md)  
 - Optional **`LIBRARY_READONLY`** (demo/showcase only — default installs leave unset)  
+- Node only: optional **`LIBRARY_TOKEN`** / `MUSIC_LIBRARY_TOKEN`. Empty = local open. When set, library / `/favs` / `/import` need `Authorization: Bearer …`.  
+- Node CORS does **not** reflect arbitrary `Origin` (localhost + `MUSIC_ALLOWED_ORIGINS`). Same-origin SPA needs no CORS.  
 
 ## Library multi-device
 
-- Meta key `revision` (monotone).  
+- Meta key `revision` (monotone) on **Worker and Node**.  
 - `PUT` / `DELETE` with client `revision` → mismatch **409** + current snapshot.  
 - Bootstrap **unions** `localStorage` ∪ server by id (writable installs only).  
-- List writes: upsert then delete stale rows (never wipe-then-insert).  
+- List writes: upsert then delete stale rows (never wipe-then-insert), inside one SQLite transaction / one D1 statement group. Revision is bumped last.  
 
 ## Playback
 
@@ -45,6 +47,6 @@ SPA ──same-origin /api/*──► BFF
 | URL | Behavior |
 |-----|----------|
 | `GET /favs` | Favorites JSON download (**403** if read-only) |
-| `GET/POST /import` | JSON by id or name lines; dedupe; (**403** if read-only) |
+| `GET/POST /import` | JSON by id or name lines; dedupe; 2MB cap; Worker + Node; (**403** if read-only) |
 
 See [API.md](./API.md).

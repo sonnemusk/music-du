@@ -20,8 +20,9 @@ Status codes: `200` success · `4xx` client · `5xx` upstream/server.
 | **None (demo)** | Public demo: search, play, charts, `GET /api/library` | — |
 | **Cloudflare Access (private only)** | Private hostname: whole site including library writes | Access JWT / CI service token |
 | **`LIBRARY_READONLY=true` (demo only)** | Demo writes, `/favs`, `/import` | Always **403** |
+| **`LIBRARY_TOKEN` (Node only, optional)** | `/api/library`, `/favs`, `/import` when the env var is set | `Authorization: Bearer …` or `X-Library-Token` |
 
-Demo must not sit behind Access. Private site uses Access only — no `X-Music-Token`.
+Demo must not sit behind Access. Private Worker uses Access only — no `X-Music-Token`. Node leaves `LIBRARY_TOKEN` empty for local dev.
 
 ---
 
@@ -39,15 +40,16 @@ Liveness + feature flags.
 | `service` | string | `"music"` |
 | `runtime` | string | `cloudflare-workers` or `node-hono` |
 | `provider` | string | Upstream adapter id (`chksz`) |
-| `has_apikey` | boolean | Fallback keys configured |
+| `has_apikey` | boolean | Gateway key configured |
 | `has_d1` | boolean | D1 bound (Worker) |
-| `library_auth` | boolean | Always false (no app token) |
+| `library_auth` | boolean | Worker: always `false` (Access is at the hostname) |
+| `library_token_required` | boolean | Node: `true` when `LIBRARY_TOKEN` is set |
 | `readOnly` | boolean | Demo public read-only Worker |
 | `project` | string | `music-du` / `music-du-demo` |
-| `policy` | object | Free-tier / library policy hints |
+| `policy` | object | Free-tier / library policy hints (Worker) |
 | `version` | number | API version |
 
-**Node** returns a smaller subset (`has_apikey`, `runtime`, …).
+**Node** returns a smaller subset (`has_apikey`, `runtime`, `library_token_required`, …). Do not treat `has_apikey` as a secret leak of the key itself.
 
 ---
 
@@ -58,7 +60,7 @@ Liveness + feature flags.
 | Query | Default | Description |
 |-------|---------|-------------|
 | `q` or `keyword` | `""` | Search string |
-| `limit` | `30` | Max results |
+| `limit` | `20` | Max results (clamped 1–20 on Worker and Node) |
 
 **Response:** `{ ok, data: Track[] }`
 
@@ -294,7 +296,7 @@ Stored in **browser `localStorage`** (not D1):
 - Theme / skin  
 - Volume, mute, play mode  
 - Optional resolve / lyric caches  
-- Optional `music.accessToken`
+- Optional Node `kazam.v2.libraryToken` (only if the operator set `LIBRARY_TOKEN`)
 
 ---
 
@@ -302,7 +304,9 @@ Stored in **browser `localStorage`** (not D1):
 
 | Status | Meaning |
 |--------|---------|
+| 401 | Node `LIBRARY_TOKEN` missing or wrong |
 | 403 | Read-only demo / export disabled |
+| 413 | Import body larger than 2MB |
 | 404 | Song resolve miss |
 | 409 | Library revision conflict |
 | 429 | Upstream rate limit |
@@ -329,4 +333,4 @@ Stored in **browser `localStorage`** (not D1):
 | GET | `/favs` `/export` |
 | GET/POST | `/import` |
 
-> Note: `/api/library/import` (and HTML import UI) are **Worker-only**; Node `createApp` does not expose them.
+> `/import` is on **Worker and Node**. Worker still does name-match search (capped). Node accepts exact-id `/favs` JSON. Body limit **2MB** (413 if larger).

@@ -1,8 +1,10 @@
 # 移动端搜索信息架构方案
 
-状态：**已选型并实现方案 B（产品默认）** · 方案 A 仅保留设计稿  
-更新：2026-08-12  
+状态：**已实现方案 B（产品默认）** · 方案 A 仅保留设计稿  
+更新：2026-08-14（实现已在 `main`；下文 §2「现状」是 8 月 12 日选型时的代码，不要当现在的 SkinHead 行为）  
 依据：Cursor 计划 M-2 · 用户反馈 · 执行侧评审 · 用户确认「按执行建议：B」
+
+现行行为：`≤720px` 头部是 brand · 🔍 · 主题；点 🔍 打开 `SearchOverlay`（焦点陷阱、`visualViewport`、草稿与已提交 query 不一致时不展示旧结果）。桌面仍是常驻 `SearchBar`。详见 [STATUS.md](./STATUS.md)。
 
 **可点对比原型（并排 A / B，A 作对照）**  
 → [`docs/mockups/m2-search-compare.html`](./mockups/m2-search-compare.html)

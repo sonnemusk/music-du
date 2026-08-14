@@ -58,7 +58,7 @@ SPA ── /api/* ──► Worker / Node ──► 音乐网关 + 曲库（D1 �
 - 曲库 — 列表、喜欢、历史、多端同步  
 - 搜索与榜单 — 飙升 / 热歌 / 新歌  
 - 歌词 — 多源、缓存、跟滚  
-- 皮肤 — 多主题 × 侧栏 / 沉浸 / 紧凑  
+- 皮肤 — 71 套主题 × 14 套布局（默认 **暗场 stage-dim**）；手机搜索层  
 - 导入导出 — `/favs`、`/import`  
 - 默认**中文**，顶栏可切 **English**  
 - 快捷键 — `空格`、`N` / `P` …
@@ -105,6 +105,7 @@ npm run deploy:cf
 |------|------|
 | `CHKSZ_API_BASE` / `CHKSZ_FALLBACK_*` | 音乐网关（仅服务端） |
 | `LIBRARY_READONLY` | 仅 Demo — 自建不要设 |
+| `LIBRARY_TOKEN` | Node 可选 — 给曲库接口加 Bearer |
 | `HOST` / `PORT` / `MUSIC_DATA_DIR` | Node |
 
 ---
@@ -116,6 +117,7 @@ npm run deploy:cf
 | [docs/DEPLOY.md](./docs/DEPLOY.md) | 部署说明 |
 | [docs/API.md](./docs/API.md) | HTTP API |
 | [docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md) | 音乐 API 与版权 |
+| [docs/STATUS.md](./docs/STATUS.md) | 当前事实（agent 先读这个） |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 架构 |
 | [SECURITY.md](./SECURITY.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) | |
 

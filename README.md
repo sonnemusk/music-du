@@ -58,7 +58,7 @@ Top-right: **language** (中文 / English) and **theme** (主题 · 一键切换
 - Library — queue, likes, history, multi-device sync  
 - Search & charts — rising / hot / new  
 - Lyrics — multi-source, cached, follow-scroll  
-- Skins — many themes × side / immersive / compact  
+- Skins — 71 themes × 14 layouts (default **stage-dim**); phone search overlay  
 - Import / export — `/favs`, `/import`  
 - **中文** UI by default; switch to **English** in the header  
 - Shortcuts — `Space`, `N` / `P`, …
@@ -105,6 +105,7 @@ npm run deploy:cf
 |----------|------|
 | `CHKSZ_API_BASE` / `CHKSZ_FALLBACK_*` | Music gateway (server only) |
 | `LIBRARY_READONLY` | Demo only — leave unset for your site |
+| `LIBRARY_TOKEN` | Node optional — require a Bearer token on library routes |
 | `HOST` / `PORT` / `MUSIC_DATA_DIR` | Node |
 
 ---
@@ -116,6 +117,7 @@ npm run deploy:cf
 | [docs/DEPLOY.md](./docs/DEPLOY.md) | Deploy CF / VPS / Fly / Docker |
 | [docs/API.md](./docs/API.md) | HTTP API |
 | [docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md) | Music APIs & copyright |
+| [docs/STATUS.md](./docs/STATUS.md) | Current facts (agents: start here) |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Design |
 | [SECURITY.md](./SECURITY.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) | |
 
