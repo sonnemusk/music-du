@@ -42,8 +42,9 @@ describe("feed e2e layout polish", () => {
     expect(tsx).toMatch(/closest\("\[data-no-swipe\]"\)/);
     expect(tsx).toMatch(/next\(\s*dy\s*<\s*0\s*\?\s*1\s*:\s*-1\s*\)/);
     expect(tsx).toMatch(/className="feed-chrome"[\s\S]*data-no-swipe/);
-    expect(tsx).toMatch(/className="feed-skips"[\s\S]*data-no-swipe/);
-    expect(tsx).toMatch(/className="feed-transport"[\s\S]*data-no-swipe/);
+    expect(tsx).toMatch(/className="feed-deck"[\s\S]*data-no-swipe/);
+    expect(tsx).toMatch(/className="feed-skips"/);
+    expect(tsx).toMatch(/className="feed-transport"/);
     expect(tsx).toMatch(/className="feed-dock"[\s\S]*data-no-swipe/);
     expect(tsx).toMatch(/className="feed-caption"[\s\S]*data-no-swipe/);
   });
@@ -143,12 +144,15 @@ describe("feed e2e layout polish", () => {
     expect(rule(".layout-feed .transport-row")).toMatch(/flex-wrap:\s*nowrap/);
   });
 
-  it("cover is centered and caption sits above the skip dock", () => {
+  it("cover is centered and play hits sit under the poster, not on the art", () => {
     expect(css).toMatch(/object-position:\s*center/);
     expect(rule(".feed-stage")).toMatch(/align-items:\s*center/);
     expect(rule(".feed-reel")).toMatch(/max-width:\s*560px/);
-    expect(rule(".feed-card__meta")).toMatch(/bottom:\s*calc\(var\(--feed-skip\)/);
-    expect(rule(".feed-skips")).toMatch(/bottom:\s*10px/);
+    expect(tsx).toMatch(/className="feed-deck"/);
+    expect(rule(".feed-deck")).toMatch(/flex-direction:\s*column/);
+    expect(rule(".feed-skips")).toMatch(/position:\s*static/);
     expect(rule(".feed-skips")).toMatch(/justify-content:\s*center/);
+    expect(rule(".feed-card__meta")).toMatch(/bottom:\s*20px/);
+    expect(rule(".feed-card__meta")).not.toMatch(/--feed-skip/);
   });
 });

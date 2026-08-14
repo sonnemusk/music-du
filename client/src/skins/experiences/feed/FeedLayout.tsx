@@ -412,7 +412,20 @@ export function FeedLayout({ brand }: { brand: string }) {
               </article>
             </div>
 
-            <div className="feed-skips" data-no-swipe role="group" aria-label={ft("navAria")}>
+            <div
+              className="feed-index"
+              role="meter"
+              aria-label={ft("indexAria")}
+              aria-valuemin={1}
+              aria-valuemax={Math.max(1, queueTracks.length)}
+              aria-valuenow={qIdx >= 0 ? qIdx + 1 : 0}
+            >
+              <span className="feed-index__fill" style={{ height: `${Math.round(indexRatio * 100)}%` }} />
+            </div>
+          </div>
+
+          <div className="feed-deck" data-no-swipe>
+            <div className="feed-skips" role="group" aria-label={ft("navAria")}>
               <button
                 type="button"
                 className="feed-skip"
@@ -441,21 +454,9 @@ export function FeedLayout({ brand }: { brand: string }) {
                 <span aria-hidden>▼</span>
               </button>
             </div>
-
-            <div
-              className="feed-index"
-              role="meter"
-              aria-label={ft("indexAria")}
-              aria-valuemin={1}
-              aria-valuemax={Math.max(1, queueTracks.length)}
-              aria-valuenow={qIdx >= 0 ? qIdx + 1 : 0}
-            >
-              <span className="feed-index__fill" style={{ height: `${Math.round(indexRatio * 100)}%` }} />
+            <div className="feed-transport">
+              <Transport />
             </div>
-          </div>
-
-          <div className="feed-transport" data-no-swipe>
-            <Transport />
           </div>
         </section>
 

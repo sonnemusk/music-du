@@ -16,7 +16,7 @@ Unwired on purpose: SkinHost / theme-catalog / layout-ids stay untouched. This f
 
 Cinema reel, not a player chrome clone and not a tabbed list.
 
-- Cover is the product. Film-edge notches, grain, vignette. Title sits in a bottom gradient in the display face. Prev / play / next sit in a 44×44 dock row under the caption so they never overlap.
+- Cover is the product. Film-edge notches, grain, vignette. Title sits in a bottom gradient on the poster. Prev / play / next, mode, quality and favorite live in a 44×44 deck **under** the card so they never cover the art.
 - Queue sources are a short glass chip row — four site lists, not a six-tab nav.
 - Right edge: a thin **index rail** (position in the active queue).
 - Current lyric line can sit on the cover as a caption; full lyrics open in the dock.

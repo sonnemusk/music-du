@@ -359,7 +359,7 @@
   position: absolute;
   left: 22px;
   right: 22px;
-  bottom: calc(var(--feed-skip) + 22px);
+  bottom: 20px;
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -419,13 +419,7 @@
 }
 
 .feed-skips {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 10px;
-  top: auto;
-  transform: none;
-  z-index: 6;
+  position: static;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -433,7 +427,7 @@
   justify-content: center;
   gap: 10px;
   height: var(--feed-skip);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .feed-skip {
@@ -468,7 +462,7 @@
   position: absolute;
   left: 12px;
   top: 16%;
-  bottom: calc(var(--feed-skip) + 18px);
+  bottom: 18px;
   width: 3px;
   min-width: 3px;
   border-radius: 99px;
@@ -476,6 +470,17 @@
   overflow: hidden;
   z-index: 6;
   pointer-events: none;
+}
+
+.feed-deck {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .feed-index__fill {
@@ -489,9 +494,9 @@
 .feed-transport {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 560px;
+  max-width: 100%;
   min-width: 0;
-  padding: 4px 4px 0;
+  padding: 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -703,30 +708,34 @@
 
   .feed-stage {
     height: 100%;
+    min-height: 0;
     max-width: none;
     padding: 0 8px;
     box-sizing: border-box;
     align-items: stretch;
+    overflow: hidden;
   }
 
   .feed-reel,
+  .feed-deck,
   .feed-transport {
     max-width: none;
   }
 
   .feed-reel {
+    flex: 1 1 0;
+    min-height: 0;
     border-radius: 18px;
   }
 
   .feed-skips {
-    bottom: 8px;
-    gap: 10px;
+    gap: 8px;
   }
 
   .feed-card__meta {
     left: 16px;
     right: 16px;
-    bottom: calc(var(--feed-skip) + 18px);
+    bottom: 16px;
     max-width: calc(100% - 32px);
   }
 
