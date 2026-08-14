@@ -128,7 +128,9 @@ describe("verse e2e layout — overflow + header + palettes", () => {
     expect(css).toMatch(/@media \(min-width:\s*720px\)/);
     expect(decl(".verse-mast")).toMatch(/overflow:\s*hidden/);
     expect(decl(".verse-tools")).toMatch(/max-width:\s*min\(68%,\s*22rem\)/);
-    expect(css).toMatch(/\.verse \.skin-switcher__label-full\s*\{[^}]*display:\s*none/s);
+    expect(css).toMatch(
+      /\.verse \.skin-switcher__btn\.primary \.skin-switcher__label-full\s*\{[^}]*display:\s*none/s,
+    );
   });
 
   it("keeps theme + locale in the mast", () => {

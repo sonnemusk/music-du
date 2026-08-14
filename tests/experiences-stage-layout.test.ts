@@ -139,6 +139,10 @@ describe("stage e2e layout polish", () => {
     expect(css).toMatch(/\.stage-tools/);
     expect(css).toMatch(/stage-light--cycle/);
     expect(css).toMatch(/\.stage-light:not\(\.stage-light--cycle\)/);
+    expect(css).toMatch(
+      /\.layout-stage \.skin-switcher__btn\.primary \.skin-switcher__label-full\s*\{[^}]*display:\s*none/s,
+    );
+    expect(css).not.toMatch(/\.layout-stage \.skin-switcher__label-full\s*\{/);
   });
 
   it("paints dim/deep from the shared player skin so the catalog picker applies", () => {

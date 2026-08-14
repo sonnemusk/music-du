@@ -643,11 +643,11 @@
     width: 2px;
   }
 
-  .layout-desk .desk-tools .skin-switcher__label-full {
+  .layout-desk .desk-tools .skin-switcher__btn.primary .skin-switcher__label-full {
     display: none;
   }
 
-  .layout-desk .desk-tools .skin-switcher__label-short {
+  .layout-desk .desk-tools .skin-switcher__btn.primary .skin-switcher__label-short {
     display: inline;
   }
 

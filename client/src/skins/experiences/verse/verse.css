@@ -86,11 +86,11 @@
   min-width: 0;
 }
 
-.verse .skin-switcher__label-full {
+.verse .skin-switcher__btn.primary .skin-switcher__label-full {
   display: none;
 }
 
-.verse .skin-switcher__label-short {
+.verse .skin-switcher__btn.primary .skin-switcher__label-short {
   display: inline;
 }
 

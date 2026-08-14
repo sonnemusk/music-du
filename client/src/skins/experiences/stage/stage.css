@@ -137,11 +137,11 @@
   flex-wrap: nowrap;
 }
 
-.layout-stage .skin-switcher__label-full {
+.layout-stage .skin-switcher__btn.primary .skin-switcher__label-full {
   display: none;
 }
 
-.layout-stage .skin-switcher__label-short {
+.layout-stage .skin-switcher__btn.primary .skin-switcher__label-short {
   display: inline;
   max-width: 5.5em;
   overflow: hidden;
