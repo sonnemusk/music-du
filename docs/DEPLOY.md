@@ -48,6 +48,8 @@ Fill `.env` (names only — see [`.env.example`](../.env.example)):
 | `HOST` / `PORT` | Node | Default `127.0.0.1:8787` |
 | `MUSIC_DATA_DIR` | Node | Default `./data` |
 | `LIBRARY_READONLY` | **Demo only — leave unset for your site** | `true` = no library writes / no export |
+| `LIBRARY_TOKEN` | Node, optional | If set, library / `/favs` / `/import` require `Authorization: Bearer …` |
+| `MUSIC_ALLOWED_ORIGINS` | Node, optional | Extra CORS origins. Same-origin SPA does not need this. |
 
 Local:
 
@@ -108,7 +110,8 @@ npm run deploy:cf:demo   # wrangler deploy --env demo
 LIBRARY_READONLY = "true"
 ```
 
-- `GET /api/library` public (no token)  
+- Uses a **separate D1** (`music-du-demo`), never the production library  
+- `GET /api/library` public; response **omits `history` / `curIdx`**  
 - `PUT` / `DELETE` / `/favs` / `/import` → 403  
 - SPA shows read-only banner  
 - Self-hosters: **ignore this subsection**
@@ -122,6 +125,7 @@ LIBRARY_READONLY = "true"
 ```bash
 cp .env.example .env
 # edit .env — set gateway keys, HOST=0.0.0.0, PORT=8787
+# If the port is on the public internet, also set LIBRARY_TOKEN=
 npm ci
 npm run build
 NODE_ENV=production node dist/server/node.js
@@ -134,6 +138,8 @@ npm run start:prod
 ```
 
 Persist `MUSIC_DATA_DIR` (SQLite + caches) across deploys.
+
+`HOST=0.0.0.0` without a reverse-proxy login exposes `/api/library`. Set `LIBRARY_TOKEN` (and put the same value in the browser `localStorage` key `kazam.v2.libraryToken`) or keep the process behind Caddy/nginx + your own auth. Local `127.0.0.1` can leave the token unset.
 
 ### 2.2 systemd sketch
 
@@ -235,7 +241,7 @@ Would need a rewrite to serverless handlers + external Postgres/Turso for librar
 | Library | D1 | SQLite file |
 | Audio | 302 to CDN | 302 or optional byte proxy |
 | Charts cache | Cache API | Disk under `data/` |
-| Import/export | Worker HTML + JSON | Node: export routes; import mainly Worker-oriented |
+| Import/export | Worker HTML + JSON (2MB cap) | Same `/favs` + `/import` on Node (exact-id JSON) |
 
 ---
 

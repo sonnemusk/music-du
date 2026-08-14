@@ -7,7 +7,9 @@ Two hostnames, two rules:
 | **Private** | `music.dubin.cc` | **Required** (email OTP / IdP) | Read + write. Access login **is** permission. |
 | **Demo** | `music.du.dev` | **None** — must stay public | Read favorites only. Writes / `/favs` / `/import` → **403**. |
 
-There is no app-level library token. Do **not** add the demo hostname to the private Access application.
+There is no app-level library token on the **Worker**. Do **not** add the demo hostname to the private Access application.
+
+Node / Docker installs that bind `0.0.0.0` without a reverse-proxy login should set **`LIBRARY_TOKEN`** (see [DEPLOY.md](./DEPLOY.md) §2). The SPA can send it from `localStorage["kazam.v2.libraryToken"]`. Leave it unset for local `127.0.0.1` dev.
 
 ## Suggested Access app
 
