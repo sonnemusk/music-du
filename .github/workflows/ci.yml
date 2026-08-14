@@ -86,6 +86,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env demo
+          environment: demo
           secrets: |
             CHKSZ_APIKEY
             CHKSZ_FALLBACK_APIKEYS
