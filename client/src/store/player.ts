@@ -643,12 +643,16 @@ export const usePlayer = create<State>((set, get) => ({
     // bootstrap lands on 收藏, but it only resolves after the library round-trip.
     // Remember that navigation already happened so it cannot yank the user back.
     tabTouched = true;
+    const qs = asQueueSource(t);
+    // If the user opened a list tab before playTrack, keep next/prev on that list
+    // instead of letting bootstrap force favorites/charts.
+    const queuePatch = qs && !queueTouched ? { queueSource: qs } : {};
     // Keep searchResults when leaving 搜索; clear the query string so the
     // header input does not still show the old keyword on other tabs.
     if (t !== "search") {
-      set({ tab: t, searchQuery: "" });
+      set({ tab: t, searchQuery: "", ...queuePatch });
     } else {
-      set({ tab: t });
+      set({ tab: t, ...queuePatch });
     }
     if (t === "charts") void get().loadCharts();
     // Switching tabs → pre-resolve visible list so click/play hits cache
@@ -810,7 +814,7 @@ export const usePlayer = create<State>((set, get) => ({
       libraryReadOnly,
       isDemoSite,
       ...(tabTouched ? {} : { tab: homeTab }),
-      queueSource: homeQueue,
+      ...(queueTouched ? {} : { queueSource: homeQueue }),
     });
 
     // Pick a random favorite + pre-warm — do NOT autoplay.
@@ -895,6 +899,7 @@ export const usePlayer = create<State>((set, get) => ({
 
   search: async (q) => {
     const query = q.trim();
+    const gen = ++searchGen;
 
     // Empty submit → random track from 抖音热榜 (discovery, no keyword needed)
     if (!query) {
@@ -907,6 +912,7 @@ export const usePlayer = create<State>((set, get) => ({
         let tracks = await ensureDouyin("soar");
         if (!tracks.length) tracks = await ensureDouyin("hot", true);
         if (!tracks.length) tracks = await ensureDouyin("new", true);
+        if (gen !== searchGen) return;
         if (!tracks.length) {
           set({ searching: false, searchResults: [] });
           get().showToast(i18n("toast.chartEmptyKw"));
@@ -927,6 +933,7 @@ export const usePlayer = create<State>((set, get) => ({
         get().showToast(i18n("toast.random", { name: pick.name || "Douyin" }));
         void get().playTrack(pick, { from: "search" });
       } catch (e: any) {
+        if (gen !== searchGen) return;
         set({ searching: false });
         get().showToast(e?.message || i18n("toast.randomFail"));
       }
@@ -936,6 +943,7 @@ export const usePlayer = create<State>((set, get) => ({
     set({ searching: true, searchQuery: query, tab: "search" });
     try {
       const data = await api.searchSongs(query);
+      if (gen !== searchGen) return;
       const list = data.map(norm).filter(Boolean) as Track[];
       set({
         searchResults: list,
@@ -952,6 +960,7 @@ export const usePlayer = create<State>((set, get) => ({
         });
       }
     } catch (e: any) {
+      if (gen !== searchGen) return;
       set({ searching: false, searchResults: [] });
       const msg = e?.message || i18n("toast.searchFail");
       get().showToast(msg);
@@ -1231,6 +1240,7 @@ export const usePlayer = create<State>((set, get) => ({
 
     // Queue source follows the list the user clicked (favorites ↔ playlist etc.)
     const qs = asQueueSource(opts?.from) || asQueueSource(get().tab) || get().queueSource;
+    queueTouched = true;
     set({ queueSource: qs });
 
     // Index inside active queue; also keep playlist membership for library
@@ -2459,6 +2469,10 @@ function applyLib(set: (p: Partial<State>) => void) {
 /** Prevents double-fetch when setTab + ChartsPanel mount both call loadCharts */
 /** Set once any tab navigation happens, so async bootstrap won't override it. */
 let tabTouched = false;
+/** Set once the user picks a queue (tab or play). Bootstrap must not rewind it. */
+let queueTouched = false;
+/** Ignore stale search() completions when a newer query is already in flight. */
+let searchGen = 0;
 
 let chartsInflight: string | null = null;
 

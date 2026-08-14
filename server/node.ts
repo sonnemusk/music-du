@@ -146,13 +146,19 @@ async function main() {
     });
   }
 
+  let stopChartWarm: (() => void) | undefined;
   const server = http.createServer(async (req, res) => {
     try {
       const url = req.url || "/";
       const apiPath = (url.split("?")[0] || "/").replace(/\/+$/, "") || "/";
       // Hono also owns /favs and /export (not only /api/*). Vite would otherwise
       // serve the SPA HTML for those short URLs.
-      if (url.startsWith("/api/") || apiPath === "/favs" || apiPath === "/export") {
+      if (
+        url.startsWith("/api/") ||
+        apiPath === "/favs" ||
+        apiPath === "/export" ||
+        apiPath === "/import"
+      ) {
         await handleApi(api, req, res);
         return;
       }
@@ -201,12 +207,13 @@ async function main() {
       `Music (${isProd ? "prod" : "dev"}) http://${HOST}:${PORT}`
     );
     // Free .top needs no key — always warm charts on Node
-    startChartWarmLoop({ apikey: CHKSZ_APIKEY || undefined });
+    stopChartWarm = startChartWarmLoop({ apikey: CHKSZ_APIKEY || undefined });
     console.log("chart warm loop started (12h fresh / 24h ttl, disk cache)");
   });
 
   const shutdown = () => {
     console.log("shutting down…");
+    stopChartWarm?.();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(1), 8000).unref();
   };

@@ -55,12 +55,12 @@ export const verseI18n: Record<Locale, VerseDict> = {
     leafFavorites: "Liked",
     leafHistory: "History",
     leafLyrics: "Lyrics",
-    glyphLyrics: "词",
-    glyphSearch: "搜",
-    glyphCharts: "榜",
-    glyphPlaylist: "列",
-    glyphFavorites: "藏",
-    glyphHistory: "史",
+    glyphLyrics: "Ly",
+    glyphSearch: "S",
+    glyphCharts: "♪",
+    glyphPlaylist: "Q",
+    glyphFavorites: "♥",
+    glyphHistory: "H",
   },
 };
 

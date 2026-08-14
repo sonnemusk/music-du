@@ -44,11 +44,12 @@ export const zh: Dict = {
     emptyHint: "换个关键词试试，或从热榜挑一首",
     loading: "搜索中…",
     overlayAria: "搜索",
+    draftHint: "按搜索查看结果",
   },
   nowPlaying: {
     pick: "点选一首歌开始",
     switching: "切换中…",
-    qualityTitle: "当前音质（在下方音质按钮切换）",
+    qualityTitle: "当前音质（点此切换）",
     remote: "直链",
     proxy: "代理",
   },

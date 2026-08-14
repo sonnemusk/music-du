@@ -27,6 +27,7 @@ export function SearchOverlay() {
   const inputRef = useRef<HTMLInputElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const pushedRef = useRef(false);
+  const prevFocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 720px)");
@@ -53,7 +54,40 @@ export function SearchOverlay() {
   // Focus on open — layout effect stays in the open-gesture frame more often than useEffect
   useLayoutEffect(() => {
     if (!open || !mobile) return;
+    prevFocus.current = document.activeElement as HTMLElement | null;
     inputRef.current?.focus({ preventScroll: true });
+  }, [open, mobile]);
+
+  useEffect(() => {
+    if (!open || !mobile) return;
+    return () => {
+      const back =
+        prevFocus.current ||
+        document.querySelector<HTMLElement>(".skin-search-launch");
+      back?.focus?.({ preventScroll: true });
+    };
+  }, [open, mobile]);
+
+  useEffect(() => {
+    if (!open || !mobile) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !layerRef.current) return;
+      const focusables = layerRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [open, mobile]);
 
   // history stack for Android back
@@ -120,11 +154,17 @@ export function SearchOverlay() {
 
   if (!open || !mobile || typeof document === "undefined") return null;
 
+  const draftDirty = q.trim() !== searchQuery.trim();
   const showRecent = !q.trim() && !searching && !searchResults.length;
-  const showResults = searchResults.length > 0 && !searching;
+  const showResults = searchResults.length > 0 && !searching && !draftDirty;
   const showEmpty =
-    !searching && q.trim().length > 0 && searchResults.length === 0 && Boolean(searchQuery);
+    !searching &&
+    q.trim().length > 0 &&
+    !draftDirty &&
+    searchResults.length === 0 &&
+    Boolean(searchQuery);
   const showSkeleton = searching;
+  const showDraftHint = !showSkeleton && draftDirty && q.trim().length > 0;
 
   const body = (
     <div
@@ -213,7 +253,10 @@ export function SearchOverlay() {
             <p className="search-overlay__hint">{tr("search.emptyHint")}</p>
           </div>
         ) : null}
-        {!showSkeleton && !showRecent && !showResults && !showEmpty ? (
+        {showDraftHint ? (
+          <p className="search-overlay__hint">{tr("search.draftHint")}</p>
+        ) : null}
+        {!showSkeleton && !showRecent && !showResults && !showEmpty && !showDraftHint ? (
           <p className="search-overlay__hint">{tr("empty.search")}</p>
         ) : null}
       </div>

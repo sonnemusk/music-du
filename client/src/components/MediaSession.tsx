@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { coverProxyUrl } from "../lib/player-core";
+import { usePlaybackClock } from "../store/playback-clock";
 import { usePlayer } from "../store/player";
 
 /**
@@ -13,7 +14,7 @@ import { usePlayer } from "../store/player";
  */
 export function MediaSession() {
   const curTrack = usePlayer((s) => s.curTrack);
-  const playing = usePlayer((s) => s.playing);
+  const playing = usePlaybackClock((c) => c.playing);
   // F-1: do not subscribe to per-tick currentTime — throttle position from audio
 
   // Document title (separate from Media Session)

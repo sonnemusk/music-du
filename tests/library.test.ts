@@ -84,4 +84,33 @@ describe("SqliteLibrary", () => {
     expect(lib.load().playlist).toHaveLength(0);
     expect(lib.load().favorites).toHaveLength(1);
   });
+
+  it("bumps revision and rejects a stale PUT", () => {
+    const lib = new SqliteLibrary(tmpDb());
+    const first = lib.save({
+      playlist: [track(1)],
+      favorites: [],
+      history: [],
+      curIdx: 0,
+    });
+    expect(first.revision).toBeGreaterThanOrEqual(1);
+    const second = lib.mergePut({
+      playlist: [track(1), track(2)],
+      favorites: [],
+      history: [],
+      curIdx: 0,
+      revision: first.revision,
+    });
+    expect(second.revision).toBe((first.revision || 0) + 1);
+    expect(() =>
+      lib.save({
+        playlist: [track(9)],
+        favorites: [],
+        history: [],
+        curIdx: 0,
+        revision: first.revision,
+      })
+    ).toThrow(/revision conflict/);
+    expect(lib.load().playlist).toHaveLength(2);
+  });
 });

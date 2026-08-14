@@ -1,7 +1,8 @@
 import { Transport } from "../../components/Transport";
-import { NowPlaying, SkinHead, usePanelBody } from "./shared";
+import { NowPlaying, SkinHead, usePanelBody, useSearchOverlayBottom } from "./shared";
 
 export function SideLayout({ brand }: { brand: string }) {
+  useSearchOverlayBottom("calc(148px + env(safe-area-inset-bottom, 0px))");
   const body = usePanelBody();
   return (
     <div className="layout layout-side">

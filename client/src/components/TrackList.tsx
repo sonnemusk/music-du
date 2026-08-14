@@ -1,7 +1,13 @@
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import * as api from "../lib/api";
 import { warmTrackCovers } from "../lib/cover-browser-cache";
+import {
+  VIRTUAL_LIST_MIN,
+  VIRTUAL_OVERSCAN,
+  VIRTUAL_ROW_H,
+  visibleWindow,
+} from "../lib/list-window";
 import type { CoverSize } from "../lib/player-core";
 import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
@@ -122,7 +128,7 @@ const TrackRow = memo(function TrackRow({
       }}
       onMouseEnter={() => onWarm(t)}
       onFocus={() => onWarm(t)}
-      role="button"
+      role="group"
       tabIndex={0}
       aria-current={active ? "true" : undefined}
       aria-label={tr("track.rowAria", { name: t.name || "", artist: t.artist || "" })}
@@ -252,6 +258,10 @@ export function TrackList({
   const listRef = useRef<HTMLDivElement>(null);
   const prevModeRef = useRef<string | null>(null);
   const prevLocateCurIdRef = useRef<string | null>(null);
+  const rowHRef = useRef(VIRTUAL_ROW_H);
+  const [win, setWin] = useState({ start: 0, end: 40, padTop: 0, padBottom: 0 });
+  // Grid covers (gallery) have uneven card heights — keep those fully rendered.
+  const virtual = tracks.length >= VIRTUAL_LIST_MIN && coverSize === "thumb";
 
   const setRowRef = useCallback((id: string, node: HTMLDivElement | null) => {
     if (node) rowRefs.current.set(id, node);
@@ -274,12 +284,40 @@ export function TrackList({
     [preferredQuality]
   );
 
+  useEffect(() => {
+    if (!virtual) return;
+    const root = listRef.current;
+    if (!root) return;
+    const scroller = findListScroller(root) || root;
+    const update = () => {
+      const first = root.querySelector<HTMLElement>(".track-row");
+      if (first?.offsetHeight) rowHRef.current = first.offsetHeight;
+      setWin(
+        visibleWindow({
+          length: tracks.length,
+          scrollTop: scroller.scrollTop,
+          viewportH: scroller.clientHeight || 480,
+          rowH: rowHRef.current,
+          overscan: VIRTUAL_OVERSCAN,
+        })
+      );
+    };
+    update();
+    scroller.addEventListener("scroll", update, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(scroller);
+    return () => {
+      scroller.removeEventListener("scroll", update);
+      ro?.disconnect();
+    };
+  }, [virtual, tracks.length, mode]);
+
   // F-3: warm covers near viewport only
   useEffect(() => {
     const root = listRef.current;
     if (!root || !tracks.length) return;
-    const visible = tracks.slice(0, 24);
-    warmTrackCovers(visible, 24);
+    const slice = virtual ? tracks.slice(win.start, win.end) : tracks.slice(0, 24);
+    warmTrackCovers(slice, 24);
     const io = new IntersectionObserver(
       (entries) => {
         const need: Track[] = [];
@@ -295,7 +333,7 @@ export function TrackList({
     );
     root.querySelectorAll<HTMLElement>("[data-track-id]").forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, [tracks, mode]);
+  }, [tracks, mode, virtual, win.start, win.end]);
 
   useEffect(() => {
     const prev = prevModeRef.current;
@@ -320,12 +358,25 @@ export function TrackList({
     }
     if (curId) prevLocateCurIdRef.current = curId;
     if (!wantId) return;
-    const el = rowRefs.current.get(wantId);
-    if (el) {
-      scrollRowIntoList(el);
-      flashRow(el);
+    const idx = tracks.findIndex((t) => String(t.id) === wantId);
+    if (virtual && idx >= 0) {
+      const root = listRef.current;
+      const scroller = root ? findListScroller(root) : null;
+      if (scroller) {
+        const h = rowHRef.current || VIRTUAL_ROW_H;
+        scroller.scrollTop = Math.max(0, idx * h - scroller.clientHeight / 2 + h / 2);
+      }
     }
-  }, [mode, curTrack, locateRequest, tracks]);
+    const reveal = () => {
+      const el = rowRefs.current.get(wantId);
+      if (el) {
+        scrollRowIntoList(el);
+        flashRow(el);
+      }
+    };
+    reveal();
+    requestAnimationFrame(reveal);
+  }, [mode, curTrack, locateRequest, tracks, virtual]);
 
   if (loading) {
     return (
@@ -347,34 +398,38 @@ export function TrackList({
     );
   }
 
-  // F-2: window virtualization for long lists
-  const VIRTUAL = tracks.length > 100;
-  // Keep simple window without external lib: render all but memo rows still help
-  // Full virtual scroll needs measured heights — memo is the high-ROI half of F-2.
+  const start = virtual ? win.start : 0;
+  const end = virtual ? win.end : tracks.length;
+  const slice = tracks.slice(start, end);
 
   return (
-    <div className={className || "track-list"} ref={listRef} data-virtual={VIRTUAL ? "1" : undefined}>
-      {tracks.map((t, i) => (
-        <TrackRow
-          key={mode === "charts" && t.rank ? `${String(t.id)}-${t.rank}` : String(t.id)}
-          t={t}
-          i={i}
-          mode={mode}
-          active={Boolean(curTrack && String(curTrack.id) === String(t.id))}
-          loading={Boolean(loadingPlay && curTrack && String(curTrack.id) === String(t.id))}
-          fav={isFavorite(t.id)}
-          libraryReadOnly={libraryReadOnly}
-          tr={tr}
-          onPlay={play}
-          onToggleFav={toggleFavorite}
-          onAdd={addToPlaylist}
-          onRemovePl={removeFromPlaylist}
-          onRemoveHi={removeFromHistory}
-          onWarm={warmRow}
-          setRowRef={setRowRef}
-          coverSize={coverSize}
-        />
-      ))}
+    <div className={className || "track-list"} ref={listRef} data-virtual={virtual ? "1" : undefined}>
+      {virtual ? <div className="track-list__pad" style={{ height: win.padTop }} aria-hidden /> : null}
+      {slice.map((t, offset) => {
+        const i = start + offset;
+        return (
+          <TrackRow
+            key={mode === "charts" && t.rank ? `${String(t.id)}-${t.rank}` : String(t.id)}
+            t={t}
+            i={i}
+            mode={mode}
+            active={Boolean(curTrack && String(curTrack.id) === String(t.id))}
+            loading={Boolean(loadingPlay && curTrack && String(curTrack.id) === String(t.id))}
+            fav={isFavorite(t.id)}
+            libraryReadOnly={libraryReadOnly}
+            tr={tr}
+            onPlay={play}
+            onToggleFav={toggleFavorite}
+            onAdd={addToPlaylist}
+            onRemovePl={removeFromPlaylist}
+            onRemoveHi={removeFromHistory}
+            onWarm={warmRow}
+            setRowRef={setRowRef}
+            coverSize={coverSize}
+          />
+        );
+      })}
+      {virtual ? <div className="track-list__pad" style={{ height: win.padBottom }} aria-hidden /> : null}
     </div>
   );
 }

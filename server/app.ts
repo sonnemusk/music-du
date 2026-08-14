@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { parseImportPayload, type ExactImportRow } from "./favs-import.js";
+import { isSafeUpstreamUrl } from "./safe-url.js";
 import {
   getChart,
   isChartPlatform,
@@ -19,28 +21,70 @@ import {
   publicReadonlyLibraryData,
 } from "./site-mode.js";
 
+function envLibraryToken(): string {
+  return (process.env.LIBRARY_TOKEN || process.env.MUSIC_LIBRARY_TOKEN || "").trim();
+}
+
+function requestToken(c: { req: { header: (n: string) => string | undefined } }): string {
+  const raw = c.req.header("authorization") || c.req.header("x-library-token") || "";
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  return (m?.[1] || raw).trim();
+}
+
+function corsOrigin(origin: string): string | undefined {
+  if (!origin) return "*";
+  const extra = (process.env.MUSIC_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+  if (extra.includes("*") || extra.includes(origin)) return origin;
+  try {
+    const u = new URL(origin);
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return origin;
+  } catch {
+    /* */
+  }
+  return undefined;
+}
+
+function clampSearchLimit(raw: string | undefined): number {
+  const n = Number(raw || 20);
+  if (!Number.isFinite(n)) return 20;
+  return Math.min(20, Math.max(1, Math.floor(n)));
+}
+
+function publicUpstreamError(e: unknown): string {
+  if (e instanceof chksz.ChkszError && e.status === 429) return "rate limited";
+  return "upstream error";
+}
+
 export function createApp(opts?: {
   library?: ReturnType<typeof getLibrary>;
   apikey?: string;
   readonly?: boolean;
+  libraryToken?: string;
 }) {
   const app = new Hono();
   const lib = opts?.library || getLibrary();
   const keyOf = () => opts?.apikey ?? CHKSZ_APIKEY;
   const readonlyOf = () =>
     opts?.readonly !== undefined ? opts.readonly : envLibraryReadonly();
+  const tokenOf = () =>
+    opts?.libraryToken !== undefined ? opts.libraryToken : envLibraryToken();
 
-  const checkLib = (c: { req: { method: string } }) =>
+  const checkLib = (c: { req: { method: string; header: (n: string) => string | undefined } }) =>
     libraryGate({
       method: c.req.method,
       readonly: readonlyOf(),
+      expectedToken: tokenOf(),
+      gotToken: requestToken(c),
     });
 
   app.use(
     "/api/*",
     cors({
-      origin: (origin) => origin || "*",
-      allowHeaders: ["Content-Type", "Authorization"],
+      origin: (origin) => corsOrigin(origin || ""),
+      allowHeaders: ["Content-Type", "Authorization", "X-Library-Token"],
     })
   );
 
@@ -54,6 +98,7 @@ export function createApp(opts?: {
       primary_needs_key: true,
       demo: false,
       readOnly: readonlyOf(),
+      library_token_required: Boolean(tokenOf()),
       project: "music-du",
       version: 2,
     })
@@ -61,13 +106,13 @@ export function createApp(opts?: {
 
   app.get("/api/search", async (c) => {
     const q = c.req.query("q") || c.req.query("keyword") || "";
-    const limit = Number(c.req.query("limit") || 30) || 30;
+    const limit = clampSearchLimit(c.req.query("limit"));
     try {
       const songs = await chksz.searchAll(q, limit, { apikey: keyOf() });
       return c.json({ ok: true, data: songs });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 500;
-      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+      return c.json({ ok: false, error: publicUpstreamError(e) }, status as any);
     }
   });
 
@@ -126,7 +171,7 @@ export function createApp(opts?: {
       });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 502;
-      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+      return c.json({ ok: false, error: publicUpstreamError(e) }, status as any);
     }
   });
 
@@ -164,7 +209,7 @@ export function createApp(opts?: {
       });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 500;
-      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+      return c.json({ ok: false, error: publicUpstreamError(e) }, status as any);
     }
   });
 
@@ -177,7 +222,7 @@ export function createApp(opts?: {
       return c.json({ ok: true, data: { id: sid, qualities } });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 500;
-      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+      return c.json({ ok: false, error: publicUpstreamError(e) }, status as any);
     }
   });
 
@@ -194,7 +239,7 @@ export function createApp(opts?: {
       return c.json({ ok: true, data: d });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 500;
-      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+      return c.json({ ok: false, error: publicUpstreamError(e) }, status as any);
     }
   });
 
@@ -204,7 +249,7 @@ export function createApp(opts?: {
         apikey: keyOf(),
       });
       const audioUrl = raw?.url || "";
-      if (!chksz.isRemoteUrl(audioUrl)) return c.body(null, 404);
+      if (!chksz.isRemoteUrl(audioUrl) || !isSafeUpstreamUrl(audioUrl)) return c.body(null, 404);
       const headers: Record<string, string> = {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -229,7 +274,7 @@ export function createApp(opts?: {
       return new Response(up.body, { status: up.status, headers: out });
     } catch (e: any) {
       const status = e instanceof chksz.ChkszError ? e.status : 502;
-      return c.json({ ok: false, error: e?.message || String(e) }, status as any);
+      return c.json({ ok: false, error: publicUpstreamError(e) }, status as any);
     }
   });
 
@@ -354,6 +399,7 @@ export function createApp(opts?: {
       });
       return c.json({ ok: true, data });
     } catch (e: any) {
+      if (e?.conflict) return c.json({ ok: false, error: "conflict", data: e.data }, 409);
       console.error(e);
       return c.json({ ok: false, error: "library save failed" }, 500);
     }
@@ -372,6 +418,53 @@ export function createApp(opts?: {
     } catch (e: any) {
       console.error(e);
       return c.json({ ok: false, error: "library delete failed" }, 500);
+    }
+  });
+
+  const importPage = (msg?: string, ok = true) =>
+    `<!doctype html><meta charset="utf-8"><title>Import</title>
+     <p>${msg || "Upload a /favs JSON export."}</p>
+     ${ok ? `<form method="post" action="/import" enctype="multipart/form-data">
+       <input type="file" name="file" required>
+       <button type="submit">Import</button>
+     </form>` : ""}`;
+
+  app.get("/import", (c) => {
+    if (readonlyOf()) return c.html(importPage("read-only demo", false), 403);
+    return c.html(importPage());
+  });
+
+  app.post("/import", async (c) => {
+    const gate = checkLib(c);
+    if (!gate.ok) return c.html(importPage(gate.error, false), gate.status as any);
+    try {
+      const ct = c.req.header("content-type") || "";
+      let text = "";
+      if (ct.includes("multipart/form-data")) {
+        const body = await c.req.parseBody();
+        const file = body.file;
+        if (file && typeof file === "object" && "text" in file) {
+          text = await (file as File).text();
+        } else if (typeof file === "string") {
+          text = file;
+        }
+      } else {
+        text = await c.req.text();
+      }
+      if (text.length > 2 * 1024 * 1024) return c.html(importPage("file too large", false), 413);
+      const parsed = parseImportPayload(text);
+      if (!parsed.ok) return c.html(importPage(parsed.error, false), 400);
+      const tracks = parsed.rows.filter((r): r is ExactImportRow => r.kind === "exact");
+      if (!tracks.length) return c.html(importPage("no exact ids in file", false), 400);
+      const data = lib.mergePut(
+        { favorites: tracks },
+        { forceClearFavorites: false }
+      );
+      return c.html(importPage(`imported ${tracks.length} · library ${data.favorites.length}`));
+    } catch (e: any) {
+      if (e?.conflict) return c.html(importPage("revision conflict", false), 409);
+      console.error(e);
+      return c.html(importPage("import failed", false), 500);
     }
   });
 

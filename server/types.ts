@@ -15,6 +15,7 @@ export type Library = {
   favorites: Track[];
   history: Track[];
   curIdx: number;
+  revision?: number;
 };
 
 export type PlaySource = {

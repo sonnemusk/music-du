@@ -1,8 +1,9 @@
 import { Transport } from "../../components/Transport";
 import { usePlayer } from "../../store/player";
-import { NowPlaying, SkinHead, TabNav, usePanelBody } from "./shared";
+import { NowPlaying, SkinHead, TabNav, usePanelBody, useSearchOverlayBottom } from "./shared";
 
 export function ImmersiveLayout({ brand }: { brand: string }) {
+  useSearchOverlayBottom("calc(148px + env(safe-area-inset-bottom, 0px))");
   const body = usePanelBody();
   const curTrack = usePlayer((s) => s.curTrack);
   const cover = usePlayer((s) => s.cover);
