@@ -118,7 +118,6 @@ export function DockLayout({ brand }: { brand: string }) {
   const togglePlay = usePlayer((s) => s.togglePlay);
   const next = usePlayer((s) => s.next);
   const locateCurrentInList = usePlayer((s) => s.locateCurrentInList);
-  const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
   const isDemoSite = usePlayer((s) => s.isDemoSite);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
   const playing = usePlaybackClock((c) => c.playing);
