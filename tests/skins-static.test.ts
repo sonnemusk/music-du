@@ -46,6 +46,10 @@ describe("theme catalog", () => {
       expect(vars["--bg"]).toBeTruthy();
       expect(vars["--accent"]).toBeTruthy();
       expect(vars["--radius"]).toBeTruthy();
+      expect(vars["--font"]).toMatch(/PingFang SC/);
+      expect(vars["--font"]).toMatch(/Microsoft YaHei/);
+      expect(vars["--font"]).not.toMatch(/Songti|SimSun|FangSong|KaiTi/);
+      expect(vars["--display-font"]).not.toMatch(/Songti|SimSun|FangSong|KaiTi/);
     }
   });
 

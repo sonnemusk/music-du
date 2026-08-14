@@ -1,3 +1,5 @@
+import { fontCssVars } from "../../../lib/fonts";
+
 export const STAGE_LAYOUT = "stage" as const;
 
 export const STAGE_THEME_IDS = ["stage-dim", "stage-deep"] as const;
@@ -51,7 +53,7 @@ export const STAGE_THEMES: StageTheme[] = [
     line: "rgba(196, 165, 116, 0.2)",
     danger: "#e07a5f",
     font: '"DM Sans", "PingFang SC", system-ui, sans-serif',
-    displayFont: '"Instrument Serif", "Songti SC", Georgia, serif',
+    displayFont: '"Instrument Serif", "PingFang SC", Georgia, serif',
     radius: "soft",
     density: "comfy",
     surface: "glass",
@@ -77,7 +79,7 @@ export const STAGE_THEMES: StageTheme[] = [
     line: "rgba(255, 45, 106, 0.32)",
     danger: "#fb7185",
     font: '"Syne", "PingFang SC", system-ui, sans-serif',
-    displayFont: '"Playfair Display", "Songti SC", Georgia, serif',
+    displayFont: '"Playfair Display", "PingFang SC", Georgia, serif',
     radius: "round",
     density: "comfy",
     surface: "raised",
@@ -106,9 +108,7 @@ export function stageThemeToCssVars(t: StageTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius": t.radius === "sharp" ? "2px" : t.radius === "soft" ? "12px" : t.radius === "round" ? "18px" : "16px",
     "--radius-sm": t.radius === "sharp" ? "0px" : t.radius === "soft" ? "8px" : "12px",
     "--radius-lg": t.radius === "sharp" ? "4px" : t.radius === "soft" ? "20px" : t.radius === "round" ? "28px" : "24px",

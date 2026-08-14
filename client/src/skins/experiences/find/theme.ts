@@ -1,3 +1,5 @@
+import { fontCssVars } from "../../../lib/fonts";
+
 export const FIND_LAYOUT = "find" as const;
 
 export type FindThemeId = "find-dim" | "find-deep";
@@ -102,9 +104,7 @@ export function findThemeToCssVars(t: FindThemeTokens): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius":
       t.radius === "sharp" ? "2px" : t.radius === "soft" ? "12px" : t.radius === "round" ? "18px" : "16px",
     "--radius-sm":

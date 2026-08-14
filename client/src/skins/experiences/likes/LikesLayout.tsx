@@ -64,29 +64,6 @@ const ICONS: Record<PanelTab, (p: IconProps) => JSX.Element> = {
   ),
 };
 
-function ensureLikesFonts() {
-  if (typeof document === "undefined") return;
-  const fonts: Array<[string, string]> = [
-    ["font-DM-Sans", "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,800&display=swap"],
-    [
-      "font-Instrument-Serif",
-      "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap",
-    ],
-  ];
-  for (const [id, href] of fonts) {
-    if (document.getElementById(id)) continue;
-    const link = document.createElement("link");
-    link.id = id;
-    link.rel = "stylesheet";
-    link.href = href;
-    link.media = "print";
-    link.onload = () => {
-      link.media = "all";
-    };
-    document.head.appendChild(link);
-  }
-}
-
 function useNarrow() {
   const [narrow, setNarrow] = useState(() => isMobileSearchUi());
   useEffect(() => {
@@ -326,10 +303,6 @@ export function LikesLayout({ brand }: { brand: string }) {
   useEffect(() => {
     setTab("favorites");
   }, [setTab]);
-
-  useEffect(() => {
-    ensureLikesFonts();
-  }, []);
 
   useEffect(() => {
     const root = document.documentElement;

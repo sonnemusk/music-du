@@ -1,3 +1,5 @@
+import { fontCssVars } from "../../../lib/fonts";
+
 export const LIKES_LAYOUT = "likes" as const;
 
 export type LikesThemeId = "likes-dim" | "likes-deep";
@@ -31,7 +33,7 @@ export type LikesTheme = {
 
 const FACE =
   '"DM Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif';
-const DISPLAY = '"Instrument Serif", "Songti SC", Georgia, serif';
+const DISPLAY = '"Instrument Serif", "PingFang SC", Georgia, serif';
 
 /** Muted dark — dusty rose on graphite velvet. */
 export const likesDim: LikesTheme = {
@@ -115,9 +117,7 @@ export function likesThemeToCssVars(t: LikesTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius": t.radius === "sharp" ? "2px" : t.radius === "soft" ? "12px" : t.radius === "round" ? "18px" : "16px",
     "--radius-sm": t.radius === "sharp" ? "0px" : t.radius === "soft" ? "8px" : "12px",
     "--radius-lg": t.radius === "sharp" ? "4px" : t.radius === "soft" ? "20px" : t.radius === "round" ? "28px" : "24px",

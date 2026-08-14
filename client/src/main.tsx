@@ -2,6 +2,14 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles/global.css";
+// Bundled Latin faces (same origin). CJK stays on system sans — Google Fonts
+// is often unreachable from mainland China, and CJK webfonts are too large.
+import "@fontsource/dm-sans/latin-400.css";
+import "@fontsource/dm-sans/latin-600.css";
+import "@fontsource/dm-sans/latin-800.css";
+import "@fontsource/outfit/latin-400.css";
+import "@fontsource/outfit/latin-600.css";
+import "@fontsource/outfit/latin-800.css";
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

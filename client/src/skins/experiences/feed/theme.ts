@@ -1,3 +1,4 @@
+import { fontCssVars } from "../../../lib/fonts";
 import type { ThemeTokens } from "../../theme-catalog";
 
 export const LAYOUT_ID = "feed" as const;
@@ -33,7 +34,7 @@ export const THEMES: FeedTheme[] = [
     line: "rgba(201, 162, 122, 0.22)",
     danger: "#e07a5f",
     font: '"DM Sans", "PingFang SC", system-ui, sans-serif',
-    displayFont: '"Instrument Serif", "Songti SC", Georgia, serif',
+    displayFont: '"Instrument Serif", "PingFang SC", Georgia, serif',
     radius: "soft",
     density: "comfy",
     surface: "glass",
@@ -86,9 +87,7 @@ export function feedThemeToCssVars(t: FeedTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius": t.radius === "round" ? "18px" : "12px",
     "--radius-sm": t.radius === "round" ? "12px" : "8px",
     "--radius-lg": t.radius === "round" ? "28px" : "20px",

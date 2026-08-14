@@ -17,27 +17,6 @@ import { verseT } from "./i18n";
 import { getVerseTheme, verseThemeToCssVars } from "./theme";
 import "./verse.css";
 
-const FONT_HREF: Record<string, string> = {
-  "Instrument Serif": "Instrument+Serif:ital@0;1",
-  "Playfair Display": "Playfair+Display:wght@600;700",
-  Syne: "Syne:wght@600;700;800",
-};
-
-function ensureDisplayFont(family: string | undefined) {
-  if (!family || typeof document === "undefined") return;
-  const name = family.split(",")[0]?.replace(/["']/g, "").trim();
-  if (!name) return;
-  const q = FONT_HREF[name];
-  if (!q) return;
-  const id = `verse-font-${name.replace(/\s+/g, "-")}`;
-  if (document.getElementById(id)) return;
-  const link = document.createElement("link");
-  link.id = id;
-  link.rel = "stylesheet";
-  link.href = `https://fonts.googleapis.com/css2?family=${q}&display=swap`;
-  document.head.appendChild(link);
-}
-
 function useNarrow() {
   const [narrow, setNarrow] = useState(() => isMobileSearchUi());
   useEffect(() => {
@@ -119,11 +98,6 @@ export function VerseLayout({ brand }: { brand: string }) {
     const current = usePlayer.getState().tab;
     if (current !== "lyrics") usePlayer.getState().setTab("lyrics");
   }, []);
-
-  useEffect(() => {
-    ensureDisplayFont(verseTheme?.displayFont);
-    ensureDisplayFont(verseTheme?.font);
-  }, [verseTheme]);
 
   useLayoutEffect(() => {
     const root = document.documentElement;

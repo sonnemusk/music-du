@@ -1,3 +1,4 @@
+import { fontCssVars } from "../../../lib/fonts";
 import type { ThemeTokens } from "../../theme-catalog";
 
 export const RECENT_LAYOUT = "recent" as const;
@@ -93,9 +94,7 @@ export function recentThemeToCssVars(t: RecentTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius": t.radius === "sharp" ? "2px" : t.radius === "round" ? "18px" : "12px",
     "--wallpaper": t.wallpaper || t.bg,
   };

@@ -1,3 +1,4 @@
+import { fontCssVars } from "../../../lib/fonts";
 import type { ThemeTokens } from "../../theme-catalog";
 
 export const VERSE_LAYOUT = "verse" as const;
@@ -27,7 +28,7 @@ export const verseDim: VerseTheme = {
   line: "rgba(184, 154, 106, 0.18)",
   danger: "#d98980",
   font: '"DM Sans", "PingFang SC", system-ui, sans-serif',
-  displayFont: '"Instrument Serif", "Songti SC", Georgia, serif',
+  displayFont: '"Instrument Serif", "PingFang SC", Georgia, serif',
   radius: "soft",
   density: "comfy",
   surface: "flat",
@@ -55,7 +56,7 @@ export const verseDeep: VerseTheme = {
   line: "rgba(232, 184, 109, 0.28)",
   danger: "#fb7185",
   font: '"Syne", "DM Sans", "PingFang SC", system-ui, sans-serif',
-  displayFont: '"Playfair Display", "Songti SC", Georgia, serif',
+  displayFont: '"Playfair Display", "PingFang SC", Georgia, serif',
   radius: "soft",
   density: "comfy",
   surface: "glass",
@@ -85,9 +86,7 @@ export function verseThemeToCssVars(t: VerseTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius": t.radius === "sharp" ? "2px" : t.radius === "round" ? "18px" : "12px",
     "--radius-sm": t.radius === "sharp" ? "0px" : t.radius === "round" ? "12px" : "8px",
     "--radius-lg": t.radius === "sharp" ? "4px" : t.radius === "round" ? "28px" : "20px",

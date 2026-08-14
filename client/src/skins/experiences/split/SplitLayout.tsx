@@ -13,12 +13,9 @@ import { isMobileSearchUi } from "../../../lib/mobile-ui";
 import { qualityShortLabel } from "../../../lib/quality";
 import type { PanelTab } from "../../../lib/types";
 import { usePlayer } from "../../../store/player";
+import { ensureThemeFonts } from "../../../lib/fonts";
 import { splitT } from "./i18n";
-import {
-  ensureSplitFonts,
-  getSplitTheme,
-  splitThemeToCssVars,
-} from "./theme";
+import { getSplitTheme, splitThemeToCssVars } from "./theme";
 import "./split.css";
 
 const SECTIONS: PanelTab[] = [
@@ -183,7 +180,7 @@ export function SplitLayout({ brand }: { brand: string }) {
   const themeName = parts.length > 1 ? parts.slice(1).join(" · ") : theme.nameEn;
 
   useEffect(() => {
-    ensureSplitFonts(theme);
+    ensureThemeFonts(theme.font, theme.displayFont, theme.monoFont);
   }, [theme]);
 
   useEffect(() => {

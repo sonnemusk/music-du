@@ -1,3 +1,5 @@
+import { fontCssVars } from "../../../lib/fonts";
+
 export const SPLIT_LAYOUT = "split" as const;
 
 export type SplitThemeId = "split-dim" | "split-deep";
@@ -51,7 +53,7 @@ export const splitDim: SplitTheme = {
   line: "rgba(154, 139, 115, 0.22)",
   danger: "#c47a74",
   font: '"DM Sans", "PingFang SC", system-ui, sans-serif',
-  displayFont: '"Instrument Serif", "Songti SC", Georgia, serif',
+  displayFont: '"Instrument Serif", "PingFang SC", Georgia, serif',
   monoFont: '"IBM Plex Mono", ui-monospace, monospace',
   radius: "soft",
   density: "comfy",
@@ -111,9 +113,7 @@ export function splitThemeToCssVars(t: SplitTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont,
-    "--mono-font": t.monoFont,
+    ...fontCssVars(t),
     "--radius": t.radius === "sharp" ? "2px" : "12px",
     "--radius-sm": t.radius === "sharp" ? "0px" : "8px",
     "--radius-lg": t.radius === "sharp" ? "4px" : "20px",
@@ -123,28 +123,4 @@ export function splitThemeToCssVars(t: SplitTheme): Record<string, string> {
   };
 }
 
-const FONT_LINKS: Record<string, string> = {
-  "DM Sans": "DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,800",
-  "Instrument Serif": "Instrument+Serif:ital@0;1",
-  Outfit: "Outfit:wght@400;600;800",
-  Syne: "Syne:wght@600;700;800",
-};
 
-export function ensureSplitFonts(t: SplitTheme) {
-  if (typeof document === "undefined") return;
-  for (const family of [t.font, t.displayFont]) {
-    const name = family.split(",")[0]?.replace(/["']/g, "").trim();
-    if (!name || !FONT_LINKS[name]) continue;
-    const id = `split-font-${name.replace(/\s+/g, "-")}`;
-    if (document.getElementById(id)) continue;
-    const link = document.createElement("link");
-    link.id = id;
-    link.rel = "stylesheet";
-    link.href = `https://fonts.googleapis.com/css2?family=${FONT_LINKS[name]}&display=swap`;
-    link.media = "print";
-    link.onload = () => {
-      link.media = "all";
-    };
-    document.head.appendChild(link);
-  }
-}

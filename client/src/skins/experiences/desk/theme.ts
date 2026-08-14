@@ -1,3 +1,4 @@
+import { fontCssVars } from "../../../lib/fonts";
 import type { ThemeTokens } from "../../theme-catalog";
 
 export const LAYOUT_ID = "desk" as const;
@@ -87,9 +88,7 @@ export function deskThemeVars(t: DeskTheme): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     "--radius": t.radius === "sharp" ? "2px" : t.radius === "round" ? "18px" : "12px",
     "--radius-sm": t.radius === "sharp" ? "0px" : "8px",
     "--radius-lg": t.radius === "sharp" ? "4px" : "20px",

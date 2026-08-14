@@ -1,3 +1,4 @@
+import { fontCssVars } from "../lib/fonts";
 import { LAYOUT_IDS, type SkinLayout } from "./layouts/layout-ids";
 import { BOARDS_THEMES } from "./experiences/boards/theme";
 import { THEMES as DESK_THEMES } from "./experiences/desk/theme";
@@ -748,7 +749,7 @@ export const THEME_CATALOG: ThemeTokens[] = [
     card: "rgba(57,85,71,0.78)",
     line: "rgba(212,175,55,0.35)",
     danger: "#fb7185",
-    font: '"Playfair Display", "Songti SC", Georgia, serif',
+    font: '"Playfair Display", "PingFang SC", Georgia, serif',
     displayFont: '"Playfair Display", Georgia, serif',
     radius: "soft",
     density: "comfy",
@@ -1202,9 +1203,7 @@ export function themeToCssVars(t: ThemeTokens): Record<string, string> {
     "--card": t.card,
     "--line": t.line,
     "--danger": t.danger,
-    "--font": t.font,
-    "--display-font": t.displayFont || t.font,
-    "--mono-font": t.monoFont || t.font,
+    ...fontCssVars(t),
     // pill = rounded controls (search/tabs still 999 via CSS); panels must NOT be 999
     // or side/imm cards become giant soap-bubbles (樱花/糖果 etc.).
     "--radius":
