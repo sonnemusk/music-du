@@ -31,6 +31,19 @@ describe("cross-layout chrome consistency", () => {
     expect(app).not.toMatch(/SkinSwitcher/);
   });
 
+  it("demo banner is dismissible and does not force 100dvh children off-screen", () => {
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    expect(app).toMatch(/demo-readonly-banner__close/);
+    expect(app).toMatch(/data-demo-banner/);
+    expect(app).toMatch(/kazam\.v2\.demoBannerDismissed/);
+    expect(css).toMatch(/\.app-shell \.skin-host > \*\s*\{[^}]*max-height:\s*100%/s);
+    expect(css).toMatch(/\.app-shell \.skin-host > \*\s*\{[^}]*min-height:\s*0/s);
+    expect(css).toMatch(/\.app-shell \.skin-host\s*\{[^}]*overflow:\s*hidden/s);
+  });
+
   it("SkinHead owns brand + search + tools for shared layouts", () => {
     expect(shared).toMatch(/skin-head__main/);
     expect(shared).toMatch(/skin-head__tools/);

@@ -238,6 +238,7 @@ export const zh: Dict = {
   },
   demo: {
     banner: "Demo · 只读分享 · 可听不可改收藏",
+    bannerClose: "关闭提示",
   },
   access: {
     reLogin: "重新登录",

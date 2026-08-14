@@ -237,6 +237,7 @@ export const en: Dict = {
   },
   demo: {
     banner: "Demo · read-only · listen only, no library edits",
+    bannerClose: "Dismiss notice",
   },
   access: {
     reLogin: "Sign in again",

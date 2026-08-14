@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AudioEngine } from "./components/AudioEngine";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { MediaSession } from "./components/MediaSession";
@@ -20,6 +20,8 @@ export default function App() {
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);
   const shellRef = useRef<HTMLDivElement>(null);
+  const [demoBanner, setDemoBanner] = useState(readDemoBannerOpen);
+  const showDemoBanner = libraryReadOnly && demoBanner;
 
   const showToast = usePlayer((s) => s.showToast);
   const reloadLibrary = usePlayer((s) => s.reloadLibrary);
@@ -121,10 +123,27 @@ export default function App() {
   }, [skinOpen, setSkinOpen]);
 
   return (
-    <div className="app-shell" ref={shellRef} data-readonly={libraryReadOnly ? "1" : undefined}>
-      {libraryReadOnly ? (
+    <div
+      className="app-shell"
+      ref={shellRef}
+      data-readonly={libraryReadOnly ? "1" : undefined}
+      data-demo-banner={showDemoBanner ? "1" : undefined}
+    >
+      {showDemoBanner ? (
         <div className="demo-readonly-banner" role="status">
-          {tr("demo.banner")}
+          <span className="demo-readonly-banner__msg">{tr("demo.banner")}</span>
+          <button
+            type="button"
+            className="demo-readonly-banner__close"
+            aria-label={tr("demo.bannerClose")}
+            title={tr("demo.bannerClose")}
+            onClick={() => {
+              persistDemoBannerClosed();
+              setDemoBanner(false);
+            }}
+          >
+            ×
+          </button>
         </div>
       ) : null}
       <SkinHost skin={skin} />
@@ -135,6 +154,24 @@ export default function App() {
       <Toast />
     </div>
   );
+}
+
+const DEMO_BANNER_KEY = "kazam.v2.demoBannerDismissed";
+
+function readDemoBannerOpen() {
+  try {
+    return localStorage.getItem(DEMO_BANNER_KEY) !== "1";
+  } catch {
+    return true;
+  }
+}
+
+function persistDemoBannerClosed() {
+  try {
+    localStorage.setItem(DEMO_BANNER_KEY, "1");
+  } catch {
+    /* */
+  }
 }
 
 function isLightTheme(bg: string): boolean {
