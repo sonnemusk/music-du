@@ -38,6 +38,7 @@ import {
   stopPausedBufferPump,
 } from "../lib/buffer-pump";
 import { recordRecentSearch } from "../lib/recent-searches";
+import { setLyricIdx } from "./lyric-clock";
 import { setPlaybackClock } from "./playback-clock";
 import {
   getLocale,
@@ -340,7 +341,6 @@ type State = {
   availableQualities: QualityChoice[];
   playSource: string;
   lyrics: LyricLine[];
-  lyricIdx: number;
   toast: string;
   audioEl: HTMLAudioElement | null;
   playToken: number;
@@ -551,7 +551,6 @@ export const usePlayer = create<State>((set, get) => ({
   preferredQuality: DEFAULT_QUALITY,
   playSource: "",
   lyrics: [],
-  lyricIdx: -1,
   toast: "",
   audioEl: null,
   playToken: 0,
@@ -851,13 +850,13 @@ export const usePlayer = create<State>((set, get) => ({
           ? parseLyric(cachedLyrics.lrc || "", cachedLyrics.tlrc || "")
           : [];
 
+      setLyricIdx(-1);
       set({
         curTrack: start,
         curIdx: startIdx,
         playing: false,
         loadingPlay: false,
         lyrics: instantLyrics,
-        lyricIdx: -1,
         currentTime: 0,
         duration: 0,
         predictedNextId: null,
@@ -1245,6 +1244,7 @@ export const usePlayer = create<State>((set, get) => ({
 
     // UI first — search click must highlight immediately (before any await)
     stopPausedBufferPump();
+    setLyricIdx(instantIdx);
     set({
       playToken: token,
       playing: false,
@@ -1258,7 +1258,6 @@ export const usePlayer = create<State>((set, get) => ({
       preferredQuality: stickyLevel,
       playSource: "",
       lyrics: instantLyrics,
-      lyricIdx: instantIdx,
       predictedNextId: null,
       curTrack: t,
       ...(followFavorites
@@ -1622,9 +1621,9 @@ export const usePlayer = create<State>((set, get) => ({
             const lines = parseLyric(lrc, tlrc);
             const a = get().audioEl;
             const pos = (a?.currentTime || 0) * 1000;
+            setLyricIdx(lyricIndexAt(lines, pos));
             set({
               lyrics: lines,
-              lyricIdx: lyricIndexAt(lines, pos),
             });
             setCachedLyric(t.id, {
               lrc,
@@ -1643,11 +1642,13 @@ export const usePlayer = create<State>((set, get) => ({
               });
             }
           } else {
-            set({ lyrics: [], lyricIdx: -1 });
+            setLyricIdx(-1);
+            set({ lyrics: [] });
           }
         } catch {
           if (get().playToken === token && !get().lyrics.length) {
-            set({ lyrics: [], lyricIdx: -1 });
+            setLyricIdx(-1);
+            set({ lyrics: [] });
           }
         }
       })();
@@ -1842,9 +1843,9 @@ export const usePlayer = create<State>((set, get) => ({
         const hit =
           getCachedLyric(t.id) || getCachedLyricByMeta(t.name, t.artist);
         if (hit && (hit.lrc || hit.tlrc)) {
+          setLyricIdx(-1);
           set({
             lyrics: parseLyric(hit.lrc || "", hit.tlrc || ""),
-            lyricIdx: -1,
           });
         }
       };
@@ -1981,8 +1982,7 @@ export const usePlayer = create<State>((set, get) => ({
       set({ buffered: buf });
       setPlaybackClock({ buffered: buf });
     }
-    const idx = lyricIndexAt(get().lyrics, currentTime * 1000);
-    if (idx !== get().lyricIdx) set({ lyricIdx: idx });
+    setLyricIdx(lyricIndexAt(get().lyrics, currentTime * 1000));
   },
 
   reportBuffered: (ratio) => {

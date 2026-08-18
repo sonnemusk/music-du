@@ -20,6 +20,7 @@ import { Transport } from "../../../components/Transport";
 import { useT } from "../../../i18n";
 import { isMobileSearchUi } from "../../../lib/mobile-ui";
 import type { Track } from "../../../lib/types";
+import { useLyricIdx } from "../../../store/lyric-clock";
 import { usePlaybackClock } from "../../../store/playback-clock";
 import { usePlayer } from "../../../store/player";
 import { feedT } from "./i18n";
@@ -114,7 +115,7 @@ export function FeedLayout({ brand }: { brand: string }) {
   const chartTracks = usePlayer((s) => s.chartTracks);
   const searchResults = usePlayer((s) => s.searchResults);
   const lyrics = usePlayer((s) => s.lyrics);
-  const lyricIdx = usePlayer((s) => s.lyricIdx);
+  const lyricIdx = useLyricIdx();
   const next = usePlayer((s) => s.next);
   const togglePlay = usePlayer((s) => s.togglePlay);
   const playTrack = usePlayer((s) => s.playTrack);
