@@ -136,6 +136,17 @@ describe("cross-layout chrome consistency", () => {
     expect(layouts).not.toMatch(/\.search-overlay__go\s*\{[^}]*#1a1030/s);
   });
 
+  it("gallery phone chrome leaves room for the cover grid", () => {
+    const gallery = fs.readFileSync(
+      path.join(root, "client/src/skins/layouts/gallery.css"),
+      "utf8"
+    );
+    const phone = gallery.split("@media (max-width: 720px)")[1] || "";
+    expect(phone).toMatch(/--gal-bar-h:\s*72px/);
+    expect(phone).toMatch(/48px \+ 8px/);
+    expect(phone).not.toMatch(/--gal-bar-h:\s*96px/);
+  });
+
   it("gallery hides the page Charts heading at every width", () => {
     const gallery = fs.readFileSync(
       path.join(root, "client/src/skins/layouts/gallery.css"),
