@@ -31,6 +31,16 @@ describe("cross-layout chrome consistency", () => {
     expect(app).not.toMatch(/SkinSwitcher/);
   });
 
+  it("idle phones at 400px keep a play button on classic shells", () => {
+    const phone = layouts.split("@media (max-width: 400px)")[1] || "";
+    expect(phone).toMatch(/\.t-btn:not\(\.play\)/);
+    expect(phone).toMatch(/\.t-btn\.play/);
+    expect(phone).toMatch(/min-width:\s*44px/);
+    expect(phone).not.toMatch(
+      /\.side-player \.transport,\s*\n\s*\.skin-host\[data-idle="1"\] \.imm-now \.transport,\s*\n\s*\.skin-host\[data-idle="1"\] \.layout-compact \.player-bar__controls \{\s*display:\s*none/
+    );
+  });
+
   it("narrow-window compress does not hide volume on experience skins", () => {
     const css = fs.readFileSync(
       path.join(root, "client/src/skins/layouts/layouts.css"),
@@ -57,6 +67,12 @@ describe("cross-layout chrome consistency", () => {
     expect(css).toMatch(/\.app-shell \.skin-host\s*\{[^}]*overflow:\s*hidden/s);
   });
 
+  it("debounces swipe-nav rebind when the shell mutates", () => {
+    expect(app).toMatch(/MutationObserver/);
+    expect(app).toMatch(/setTimeout\(bind,\s*80\)/);
+    expect(app).toMatch(/if \(bindTimer\) clearTimeout\(bindTimer\)/);
+  });
+
   it("SkinHead owns brand + search + tools for shared layouts", () => {
     expect(shared).toMatch(/skin-head__main/);
     expect(shared).toMatch(/skin-head__tools/);
@@ -74,6 +90,13 @@ describe("cross-layout chrome consistency", () => {
     }
   });
 
+  it("theme drawer opens on the current layout and keeps recents", () => {
+    expect(switcher).toMatch(/loadSkinRecents/);
+    expect(switcher).toMatch(/pushSkinRecent/);
+    expect(switcher).toMatch(/skin-panel__recents/);
+    expect(switcher).toMatch(/setLayoutFilter\(lay\)/);
+  });
+
   it("theme panel is portaled (not clipped by layout overflow)", () => {
     expect(switcher).toMatch(/createPortal/);
     expect(switcher).toMatch(/document\.body/);
@@ -85,6 +108,88 @@ describe("cross-layout chrome consistency", () => {
   it("search can shrink so tools never overflow head", () => {
     expect(layouts).toMatch(/\.skin-search\s*\{[^}]*min-width:\s*0/s);
     expect(layouts).toMatch(/\.skin-head__main\s*\{[^}]*display:\s*flex/s);
+  });
+
+  it("list and failed covers show a note glyph instead of a blank box", () => {
+    const cover = fs.readFileSync(
+      path.join(root, "client/src/components/CoverImg.tsx"),
+      "utf8"
+    );
+    const list = fs.readFileSync(
+      path.join(root, "client/src/components/TrackList.tsx"),
+      "utf8"
+    );
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    expect(cover).toMatch(/cov--empty/);
+    expect(cover).toMatch(/♪/);
+    expect(list).toMatch(/<CoverImg src=\{t\.cover\}/);
+    expect(list).not.toMatch(/<div className="cov" \/>/);
+    expect(css).toMatch(/\.cov--empty\s*\{/);
+  });
+
+  it("chrome tokens follow the active skin instead of hardcoded dark", () => {
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    const toast = css.match(/\.toast\s*\{[^}]+\}/)?.[0] || "";
+    expect(toast).toMatch(/var\(--card/);
+    expect(toast).toMatch(/var\(--fg/);
+    expect(toast).toMatch(/var\(--line/);
+    expect(toast).not.toMatch(/background:\s*#111/);
+    expect(css).toMatch(/\.toast__action\s*\{[^}]*var\(--accent-fg/s);
+    expect(css).toMatch(/\.cov\s*\{[^}]*var\(--card/s);
+    expect(css).toMatch(/\.skin-panel__drawer-handle span\s*\{[^}]*var\(--fg/s);
+    expect(css).toMatch(/\.skin-panel__close\s*\{[^}]*var\(--fg/s);
+    expect(layouts).toMatch(/\.search-overlay__go\s*\{[^}]*var\(--accent-fg/s);
+    expect(layouts).toMatch(/\.seek-track\[data-tip\]::after\s*\{[^}]*var\(--card/s);
+    expect(layouts).not.toMatch(/\.search-overlay__go\s*\{[^}]*#1a1030/s);
+  });
+
+  it("gallery phone chrome leaves room for the cover grid", () => {
+    const gallery = fs.readFileSync(
+      path.join(root, "client/src/skins/layouts/gallery.css"),
+      "utf8"
+    );
+    const phone = gallery.split("@media (max-width: 720px)")[1] || "";
+    expect(phone).toMatch(/--gal-bar-h:\s*72px/);
+    expect(phone).toMatch(/48px \+ 8px/);
+    expect(phone).not.toMatch(/--gal-bar-h:\s*96px/);
+  });
+
+  it("gallery hides the page Charts heading at every width", () => {
+    const gallery = fs.readFileSync(
+      path.join(root, "client/src/skins/layouts/gallery.css"),
+      "utf8"
+    );
+    expect(gallery).toMatch(
+      /\.skin-host\[data-tab="charts"\] \.gal-main__head\s*\{[^}]*display:\s*none/s
+    );
+  });
+
+  it("reduced-motion does not nuke every transition with a global star rule", () => {
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    expect(css).not.toMatch(
+      /prefers-reduced-motion:\s*reduce\)\s*\{\s*\*\s*\{[^}]*animation:\s*none\s*!important/s
+    );
+  });
+
+  it("inactive lyric lines are muted by color, not stacked opacity", () => {
+    expect(layouts).toMatch(/\.lyrics-panel \.ly\s*\{[^}]*color-mix\(in srgb, var\(--fg\)/s);
+    expect(layouts).not.toMatch(/\.lyrics-panel \.ly\s*\{[^}]*opacity:\s*0\.4/s);
+  });
+
+  it("classic shells keep a single quality picker", () => {
+    expect(layouts).toMatch(
+      /\.side-player > \.transport \.quality-wrap,\s*\n\s*\.imm-now > \.transport \.quality-wrap,\s*\n\s*\.layout-compact \.player-bar__controls > \.transport \.quality-wrap \{\s*\n\s*display:\s*none/
+    );
+    expect(layouts).toMatch(/\.quality-wrap--keep/);
   });
 
   it("transport controls meet touch-friendly sizes", () => {

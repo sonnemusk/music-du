@@ -7,9 +7,6 @@ import "./styles/global.css";
 import "@fontsource/dm-sans/latin-400.css";
 import "@fontsource/dm-sans/latin-600.css";
 import "@fontsource/dm-sans/latin-800.css";
-import "@fontsource/outfit/latin-400.css";
-import "@fontsource/outfit/latin-600.css";
-import "@fontsource/outfit/latin-800.css";
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -2,6 +2,12 @@ import { create } from "zustand";
 import * as api from "../lib/api";
 import { unionTracksById } from "../lib/library-union";
 import {
+  applyLib,
+  bindLibraryPersistSet,
+  LIBRARY_LS_KEY,
+  persistSoon,
+} from "./library-persist";
+import {
   abortNeighborBlobCaches,
   cacheAudioFromStream,
   disposeAllWarmers,
@@ -32,6 +38,7 @@ import {
   stopPausedBufferPump,
 } from "../lib/buffer-pump";
 import { recordRecentSearch } from "../lib/recent-searches";
+import { setLyricIdx } from "./lyric-clock";
 import { setPlaybackClock } from "./playback-clock";
 import {
   getLocale,
@@ -81,7 +88,6 @@ import type {
   ChartBoardId,
   ChartPlatform,
   ChartPlatformId,
-  Library,
   LyricLine,
   PanelTab,
   PlayMode,
@@ -92,7 +98,7 @@ import type {
 import { DEFAULT_SKIN, SKINS } from "../lib/types";
 
 const SKIN_KEY = "kazam.v2.skin";
-const LS_KEY = "kazam.v2.library";
+const LS_KEY = LIBRARY_LS_KEY;
 const VOL_KEY = "kazam.v2.volume";
 const MUTE_KEY = "kazam.v2.muted";
 const MODE_KEY = "kazam.v2.playMode";
@@ -241,6 +247,23 @@ function loadChartBoard(): ChartBoardId {
 }
 
 /** Hard-stop current audio immediately (no network wait). */
+/** Warm must not write audio.src / store after playTrack has taken over. */
+export function isWarmTrackStale(
+  startedToken: number,
+  trackId: string,
+  s: {
+    playToken: number;
+    loadingPlay: boolean;
+    playing: boolean;
+    curTrack: { id?: string | number } | null | undefined;
+  },
+): boolean {
+  if (s.playToken !== startedToken) return true;
+  if (s.loadingPlay || s.playing) return true;
+  if (!s.curTrack || String(s.curTrack.id) !== String(trackId)) return true;
+  return false;
+}
+
 export function hardStopAudio(audio: HTMLAudioElement | null) {
   if (!audio) return;
   try {
@@ -318,7 +341,6 @@ type State = {
   availableQualities: QualityChoice[];
   playSource: string;
   lyrics: LyricLine[];
-  lyricIdx: number;
   toast: string;
   audioEl: HTMLAudioElement | null;
   playToken: number;
@@ -529,7 +551,6 @@ export const usePlayer = create<State>((set, get) => ({
   preferredQuality: DEFAULT_QUALITY,
   playSource: "",
   lyrics: [],
-  lyricIdx: -1,
   toast: "",
   audioEl: null,
   playToken: 0,
@@ -829,13 +850,13 @@ export const usePlayer = create<State>((set, get) => ({
           ? parseLyric(cachedLyrics.lrc || "", cachedLyrics.tlrc || "")
           : [];
 
+      setLyricIdx(-1);
       set({
         curTrack: start,
         curIdx: startIdx,
         playing: false,
         loadingPlay: false,
         lyrics: instantLyrics,
-        lyricIdx: -1,
         currentTime: 0,
         duration: 0,
         predictedNextId: null,
@@ -1039,6 +1060,7 @@ export const usePlayer = create<State>((set, get) => ({
         return;
       }
     }
+    const gen = ++chartGen;
     chartsInflight = flightKey;
     if (!get().chartTracks.length || get().chartPlatform !== p || get().chartBoard !== b) {
       set({ chartLoading: true, chartPlatform: p, chartBoard: b });
@@ -1051,6 +1073,7 @@ export const usePlayer = create<State>((set, get) => ({
         if (cachedPlats?.length) set({ chartPlatforms: cachedPlats });
         try {
           const meta = await api.listChartMeta();
+          if (gen !== chartGen) return;
           if (meta.platforms?.length) {
             set({ chartPlatforms: meta.platforms });
             setCachedPlatforms(meta.platforms);
@@ -1059,6 +1082,7 @@ export const usePlayer = create<State>((set, get) => ({
         } catch {
           try {
             const plats = await api.listChartPlatforms();
+            if (gen !== chartGen) return;
             if (plats?.length) {
               set({ chartPlatforms: plats });
               setCachedPlatforms(plats);
@@ -1069,6 +1093,7 @@ export const usePlayer = create<State>((set, get) => ({
         }
       }
       const data = await api.fetchChart(p, { limit: 40, force, board: b });
+      if (gen !== chartGen) return;
       const tracks = (data.tracks || []).map(norm).filter(Boolean) as Track[];
       const payload = {
         ...data,
@@ -1077,6 +1102,7 @@ export const usePlayer = create<State>((set, get) => ({
         updatedAt: data.updatedAt || Date.now(),
       };
       setCachedChart(payload);
+      if (gen !== chartGen) return;
       set({
         chartTracks: tracks,
         chartMetaName: data.name || "",
@@ -1095,6 +1121,7 @@ export const usePlayer = create<State>((set, get) => ({
       });
       if (!tracks.length) get().showToast(i18n("toast.chartEmpty"));
     } catch (e: any) {
+      if (gen !== chartGen) return;
       set({ chartLoading: false });
       if (!get().chartTracks.length) get().showToast(e?.message || i18n("toast.chartFail"));
     } finally {
@@ -1217,6 +1244,7 @@ export const usePlayer = create<State>((set, get) => ({
 
     // UI first — search click must highlight immediately (before any await)
     stopPausedBufferPump();
+    setLyricIdx(instantIdx);
     set({
       playToken: token,
       playing: false,
@@ -1230,7 +1258,6 @@ export const usePlayer = create<State>((set, get) => ({
       preferredQuality: stickyLevel,
       playSource: "",
       lyrics: instantLyrics,
-      lyricIdx: instantIdx,
       predictedNextId: null,
       curTrack: t,
       ...(followFavorites
@@ -1594,9 +1621,9 @@ export const usePlayer = create<State>((set, get) => ({
             const lines = parseLyric(lrc, tlrc);
             const a = get().audioEl;
             const pos = (a?.currentTime || 0) * 1000;
+            setLyricIdx(lyricIndexAt(lines, pos));
             set({
               lyrics: lines,
-              lyricIdx: lyricIndexAt(lines, pos),
             });
             setCachedLyric(t.id, {
               lrc,
@@ -1615,11 +1642,13 @@ export const usePlayer = create<State>((set, get) => ({
               });
             }
           } else {
-            set({ lyrics: [], lyricIdx: -1 });
+            setLyricIdx(-1);
+            set({ lyrics: [] });
           }
         } catch {
           if (get().playToken === token && !get().lyrics.length) {
-            set({ lyrics: [], lyricIdx: -1 });
+            setLyricIdx(-1);
+            set({ lyrics: [] });
           }
         }
       })();
@@ -1698,8 +1727,11 @@ export const usePlayer = create<State>((set, get) => ({
   warmTrack: (raw) => {
     const t = norm(raw);
     if (!t) return;
+    if (get().loadingPlay) return;
+    const startedToken = get().playToken;
 
     void (async () => {
+      const stale = () => isWarmTrackStale(startedToken, String(t.id), get());
       let remote = "";
       let level = "";
       // Warm uses best-effort preferred; full probe happens on real play
@@ -1709,7 +1741,7 @@ export const usePlayer = create<State>((set, get) => ({
       if (cached && (cached.url || cached.stream)) {
         remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
         level = cached.level || "";
-        if (get().curTrack && String(get().curTrack!.id) === String(t.id) && !get().playing) {
+        if (!stale()) {
           set({
             curTrack: {
               ...get().curTrack!,
@@ -1727,8 +1759,7 @@ export const usePlayer = create<State>((set, get) => ({
       } else {
         try {
           const meta = await api.resolveSong(t.id, { level: prefQ });
-          // Abort if user already switched away
-          if (get().curTrack && String(get().curTrack!.id) !== String(t.id)) return;
+          if (stale()) return;
           remote =
             meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
           level = String(meta.level || "");
@@ -1756,11 +1787,7 @@ export const usePlayer = create<State>((set, get) => ({
             source: String(meta.source || ""),
             play: meta.play,
           }, prefQ);
-          if (
-            get().curTrack &&
-            String(get().curTrack!.id) === String(t.id) &&
-            !get().playing
-          ) {
+          if (!stale()) {
             set({
               curTrack: updated,
               quality: level || "…",
@@ -1772,15 +1799,14 @@ export const usePlayer = create<State>((set, get) => ({
         }
       }
 
-      if (get().playing) return;
-      if (!get().curTrack || String(get().curTrack!.id) !== String(t.id)) return;
+      if (stale()) return;
 
       // Prefer durable blob (favorites re-visit) → CDN → stream proxy
       let playUrl = remote || stream;
       let fromBlob = false;
       try {
         const blobUrl = await getAudioObjectURL(t.id);
-        if (blobUrl && !get().playing && String(get().curTrack?.id) === String(t.id)) {
+        if (blobUrl && !stale()) {
           playUrl = blobUrl;
           fromBlob = true;
           set({ playSource: "cache", quality: level || "缓存" });
@@ -1789,9 +1815,11 @@ export const usePlayer = create<State>((set, get) => ({
         /* */
       }
 
+      if (stale()) return;
+
       // Load onto the actual player element (hidden warmer alone doesn't help Space)
       const audio = get().audioEl;
-      if (audio && !get().playing && String(get().curTrack?.id) === String(t.id)) {
+      if (audio) {
         try {
           if (audio.dataset.warmFor !== String(t.id) || !audio.src) {
             audio.preload = "auto";
@@ -1810,14 +1838,14 @@ export const usePlayer = create<State>((set, get) => ({
 
       // Lyrics into cache; apply to UI if still selected and empty
       const applyLyricsIfNeeded = () => {
-        if (!get().curTrack || String(get().curTrack!.id) !== String(t.id)) return;
+        if (stale()) return;
         if (get().lyrics.length) return;
         const hit =
           getCachedLyric(t.id) || getCachedLyricByMeta(t.name, t.artist);
         if (hit && (hit.lrc || hit.tlrc)) {
+          setLyricIdx(-1);
           set({
             lyrics: parseLyric(hit.lrc || "", hit.tlrc || ""),
-            lyricIdx: -1,
           });
         }
       };
@@ -1954,8 +1982,7 @@ export const usePlayer = create<State>((set, get) => ({
       set({ buffered: buf });
       setPlaybackClock({ buffered: buf });
     }
-    const idx = lyricIndexAt(get().lyrics, currentTime * 1000);
-    if (idx !== get().lyricIdx) set({ lyricIdx: idx });
+    setLyricIdx(lyricIndexAt(get().lyrics, currentTime * 1000));
   },
 
   reportBuffered: (ratio) => {
@@ -2454,17 +2481,7 @@ export const usePlayer = create<State>((set, get) => ({
   },
 }));
 
-function applyLib(set: (p: Partial<State>) => void) {
-  return (lib: Library) => {
-    set({
-      playlist: (lib.playlist || []).map(norm).filter(Boolean) as Track[],
-      favorites: (lib.favorites || []).map(norm).filter(Boolean) as Track[],
-      history: (lib.history || []).map(norm).filter(Boolean) as Track[],
-      curIdx: lib.curIdx ?? -1,
-      libraryRevision: Number(lib.revision ?? 0) || 0,
-    });
-  };
-}
+bindLibraryPersistSet((p) => usePlayer.setState(p));
 
 /** Prevents double-fetch when setTab + ChartsPanel mount both call loadCharts */
 /** Set once any tab navigation happens, so async bootstrap won't override it. */
@@ -2473,152 +2490,7 @@ let tabTouched = false;
 let queueTouched = false;
 /** Ignore stale search() completions when a newer query is already in flight. */
 let searchGen = 0;
+/** Ignore stale loadCharts() completions when the user already switched board. */
+let chartGen = 0;
 
 let chartsInflight: string | null = null;
-
-/**
- * Library persist: debounced + single-flight.
- * playTrack updates history/curIdx often; overlapping PUTs used to 409 and
- * falsely toast「其他设备更新」. Same-tab revision races retry silently.
- */
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-let saveInflight = false;
-let saveDirty = false;
-let saveForce: Record<string, boolean> = {};
-
-function trackIdSetEqual(
-  a: Track[] | null | undefined,
-  b: Track[] | null | undefined
-): boolean {
-  const A = new Set((a || []).map((t) => String(t.id)).filter(Boolean));
-  const B = new Set((b || []).map((t) => String(t.id)).filter(Boolean));
-  if (A.size !== B.size) return false;
-  for (const id of A) if (!B.has(id)) return false;
-  return true;
-}
-
-/** P1-4: localStorage mirror immediately on library mutation (before slow D1). */
-function mirrorLibraryLocal(get: () => State) {
-  if (get().libraryReadOnly) return;
-  try {
-    const s = get();
-    localStorage.setItem(
-      LS_KEY,
-      JSON.stringify({
-        playlist: s.playlist,
-        favorites: s.favorites,
-        history: s.history,
-        curIdx: s.curIdx,
-        revision: s.libraryRevision,
-      })
-    );
-  } catch {
-    /* */
-  }
-}
-
-let saveFlushBound = false;
-/** A pending fast save must not be pushed back by later history churn. */
-let savePendingFast = false;
-
-const SAVE_FAST_MS = 500;
-const SAVE_SLOW_MS = 20_000;
-
-/**
- * P1-4 two-speed save.
- * fast (500ms)  — deliberate library edits (fav / queue / import / clears)
- * slow (20s)    — playback churn only (history, curIdx); flushed on hide/unload
- * `force` keys alone can't imply "deliberate": most explicit edits pass none.
- */
-function persistSoon(
-  get: () => State,
-  force: Record<string, boolean> = {},
-  opts: { fast?: boolean } = {}
-) {
-  // Demo never touches D1 (or library localStorage merge path)
-  if (get().libraryReadOnly) return;
-  mirrorLibraryLocal(get);
-  saveDirty = true;
-  saveForce = { ...saveForce, ...force };
-  const fast = opts.fast === true || Object.keys(force).length > 0 || savePendingFast;
-  savePendingFast = fast;
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(
-    () => {
-      void flushLibrarySave(get);
-    },
-    fast ? SAVE_FAST_MS : SAVE_SLOW_MS
-  );
-  if (!saveFlushBound && typeof window !== "undefined") {
-    saveFlushBound = true;
-    const flush = () => {
-      if (saveTimer) clearTimeout(saveTimer);
-      void flushLibrarySave(get);
-    };
-    window.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") flush();
-    });
-    window.addEventListener("pagehide", flush);
-  }
-}
-
-async function flushLibrarySave(get: () => State) {
-  if (get().libraryReadOnly) {
-    saveDirty = false;
-    return;
-  }
-  if (saveInflight) return;
-  if (!saveDirty) return;
-  saveInflight = true;
-  saveDirty = false;
-  savePendingFast = false;
-  const force = { ...saveForce };
-  saveForce = {};
-  const s = get();
-  const payload = {
-    playlist: s.playlist,
-    favorites: s.favorites,
-    history: s.history,
-    curIdx: s.curIdx,
-    revision: s.libraryRevision,
-    ...force,
-  };
-  mirrorLibraryLocal(get);
-  try {
-    const lib = await api.saveLibrary(payload);
-    const rev = Number(lib.revision ?? 0) || 0;
-    if (saveDirty) {
-      // Local changed mid-flight — keep lists, take revision, chain another save
-      usePlayer.setState({ libraryRevision: rev });
-    } else {
-      applyLib(usePlayer.setState)(lib);
-    }
-  } catch (e) {
-    if (e instanceof api.LibraryConflictError) {
-      const server = e.data;
-      const rev = Number(server.revision ?? 0) || 0;
-      // Same favorites + playlist ids → our own overlapping save, not another device
-      const sameFavPl =
-        trackIdSetEqual(payload.favorites, server.favorites) &&
-        trackIdSetEqual(payload.playlist, server.playlist);
-      if (sameFavPl) {
-        // Keep local history/curIdx (newer skip), adopt server revision, re-push
-        usePlayer.setState({ libraryRevision: rev });
-        saveDirty = true;
-      } else {
-        // Real multi-device structural change — server wins
-        applyLib(usePlayer.setState)(server);
-        get().showToast(i18n("toast.libSynced"));
-      }
-    }
-    /* offline ok */
-  } finally {
-    saveInflight = false;
-    if (saveDirty) {
-      if (saveTimer) clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        void flushLibrarySave(get);
-      }, 100);
-    }
-  }
-}

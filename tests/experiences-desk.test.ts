@@ -53,7 +53,7 @@ describe("desk experience", () => {
     expect(css).toMatch(/\.desk-prev[\s\S]{0,220}min-width:\s*44px/);
     expect(css).toMatch(/\.desk-next[\s\S]{0,220}min-width:\s*44px/);
     expect(css).toMatch(/min-height:\s*44px/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/font-size:\s*16px/);
   });

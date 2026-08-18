@@ -82,7 +82,7 @@ describe("recent.css", () => {
       expect(css.includes(bp), bp).toBe(true);
     }
     expect(css).toMatch(/@media \(max-width:\s*720px\)/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
   });
 

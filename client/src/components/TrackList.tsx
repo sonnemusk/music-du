@@ -148,7 +148,7 @@ const TrackRow = memo(function TrackRow({
           {rank}
         </span>
       ) : null}
-      {t.cover ? <CoverImg src={t.cover} className="cov" size={coverSize} /> : <div className="cov" />}
+      <CoverImg src={t.cover} className="cov" size={coverSize} />
       <div className="track-meta">
         <div className="track-name">
           {t.name}

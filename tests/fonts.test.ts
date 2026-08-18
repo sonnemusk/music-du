@@ -91,6 +91,15 @@ describe("China-safe fonts", () => {
     expect(hits).toEqual([]);
   });
 
+  it("boot path loads DM Sans only; Outfit waits for a theme that uses it", () => {
+    const main = fs.readFileSync(path.join(root, "client/src/main.tsx"), "utf8");
+    const fonts = fs.readFileSync(path.join(root, "client/src/lib/fonts.ts"), "utf8");
+    expect(main).toMatch(/@fontsource\/dm-sans/);
+    expect(main).not.toMatch(/@fontsource\/outfit/);
+    expect(fonts).toMatch(/const loaded = new Set<string>\(\["DM Sans"\]\)/);
+    expect(fonts).toMatch(/export function ensureThemeFont[\s\S]*Promise<void>/);
+  });
+
   it("index.html has no Google Fonts preconnect / stylesheet", () => {
     const html = fs.readFileSync(path.join(root, "client/index.html"), "utf8");
     expect(html).not.toMatch(/fonts\.googleapis|fonts\.gstatic/);

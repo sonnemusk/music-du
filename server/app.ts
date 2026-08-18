@@ -413,9 +413,15 @@ export function createApp(opts?: {
       return c.json({ ok: false, error: "bad list" }, 400);
     }
     try {
-      const data = lib.deleteSid(listType, c.req.param("sid"));
+      const revRaw = c.req.query("revision");
+      const clientRev =
+        revRaw != null && revRaw !== "" ? Number(revRaw) : null;
+      const data = lib.deleteSid(listType, c.req.param("sid"), clientRev);
       return c.json({ ok: true, data });
     } catch (e: any) {
+      if (e?.conflict) {
+        return c.json({ ok: false, error: "conflict", conflict: true, data: e.data }, 409);
+      }
       console.error(e);
       return c.json({ ok: false, error: "library delete failed" }, 500);
     }

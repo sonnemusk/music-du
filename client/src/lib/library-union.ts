@@ -1,4 +1,6 @@
-import type { Track } from "./types";
+import type { Library, Track } from "./types";
+
+const HISTORY_CAP = 2000;
 
 /** Prefer primary order; append secondary-only ids. */
 export function unionTracksById(primary: Track[], secondary: Track[]): Track[] {
@@ -19,6 +21,41 @@ export function unionTracksById(primary: Track[], secondary: Track[]): Track[] {
     out.push(t);
   }
   return out;
+}
+
+export function trackIdSetEqual(
+  a: Track[] | null | undefined,
+  b: Track[] | null | undefined
+): boolean {
+  const A = new Set((a || []).map((t) => String(t.id)).filter(Boolean));
+  const B = new Set((b || []).map((t) => String(t.id)).filter(Boolean));
+  if (A.size !== B.size) return false;
+  for (const id of A) if (!B.has(id)) return false;
+  return true;
+}
+
+/**
+ * Structural 409: keep the server playlist/favorites/revision, union history
+ * so a play on this tab is not dropped, then the caller can re-PUT.
+ */
+export function resolveStructuralLibraryConflict(
+  local: Pick<Library, "history">,
+  server: Library
+): { next: Library; historyDiverged: boolean } {
+  const history = unionTracksById(server.history || [], local.history || []).slice(
+    0,
+    HISTORY_CAP
+  );
+  return {
+    next: {
+      playlist: server.playlist || [],
+      favorites: server.favorites || [],
+      history,
+      curIdx: server.curIdx ?? -1,
+      revision: server.revision,
+    },
+    historyDiverged: !trackIdSetEqual(history, server.history),
+  };
 }
 
 /**

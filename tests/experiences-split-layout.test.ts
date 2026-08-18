@@ -195,8 +195,8 @@ describe("split spine + title alignment", () => {
     expect(tsx).toMatch(/split-transport/);
   });
 
-  it("root keeps 100dvh and safe-area on every side", () => {
-    expect(css).toMatch(/100dvh/);
+  it("root fills the host and keeps safe-area on every side", () => {
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset-top/);
     expect(css).toMatch(/safe-area-inset-right/);
     expect(css).toMatch(/safe-area-inset-bottom/);

@@ -5,7 +5,7 @@ import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { QualityPicker } from "../../../components/QualityPicker";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
@@ -449,6 +449,7 @@ export function DeskLayout({ brand }: { brand: string }) {
               className="desk-search-launch"
               aria-label={tr("search.aria")}
               title={tr("search.aria")}
+              onPointerDown={() => void preloadSearchOverlay()}
               onClick={() => openMobileSearchFromGesture()}
             >
               <DeskNavIcon id="search" />

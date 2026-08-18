@@ -1,6 +1,6 @@
 # Current project status
 
-**Updated:** 2026-08-14 · `main` @ `f68efe8`  
+**Updated:** 2026-08-18 · display + persist/CI leftovers closed on `cursor/display-and-correctness-fixes-2fd6`  
 This is the living brief for humans and agents. Do **not** execute `OPTIMIZATION-PLAN.md` or `GROK-RUNBOOK.md` — those 2026-08-12 construction docs are closed.
 
 ## What this app is
@@ -12,9 +12,9 @@ Personal music SPA + BFF. Production for the maintainer is **Cloudflare Workers 
 | Default skin | `stage-dim`（暗场） |
 | Layouts | **14** — 10 experience shells (dock/desk/feed/stage/verse/likes/recent/find/boards/split) + side / immersive / compact / gallery |
 | Themes | **71** (classic palettes + dim/deep per experience + gallery pale/deep) |
-| Tests | 46 files / 344 tests (`npm test`) |
-| Main JS (prod) | ~194 KB / **gzip ~61 KB** after layout `React.lazy` |
-| CI | lint + typecheck + test + build; push to `main` deploys primary + demo Workers |
+| Tests | 52 files / 388 tests (`npm test`) |
+| Main JS (prod) | ~194 KB / **gzip ~60 KB** after layout + SearchOverlay `React.lazy` |
+| CI | lint + typecheck + test + build + `check:bundle`; CodeQL on PR/main; push to `main` deploys primary + demo Workers |
 
 ## Auth (do not re-introduce a baked SPA token)
 
@@ -28,15 +28,15 @@ Never bake a library token into the Vite bundle (`VITE_MUSIC_ACCESS_TOKEN` must 
 
 ## Already shipped (do not re-open)
 
-**Privacy / Worker cost:** separate demo D1; readonly GET strip; sparse D1 list writes; `ensureSchema` + resolve-cache DDL memoized; history `planHistoryWrites`; client 500ms/20s persist; saveLib batches list statements and bumps `revision` last; import 2MB cap; list/pos index in `ensureSchema`.
+**Privacy / Worker cost:** separate demo D1; readonly GET strip; sparse D1 list writes; `ensureSchema` + resolve-cache DDL memoized; history `planHistoryWrites`; client 500ms/20s persist in `library-persist.ts`; saveLib batches list statements and bumps `revision` last; import 2MB cap; list/pos index in `ensureSchema`.
 
-**Mobile / UX:** immersive breakpoints; scheme B search overlay + `visualViewport`; 44px coarse targets; theme drawer; quality menu portalled; SW build-stamped cache + `SKIP_WAITING`; no first-visit reload loop; `tabTouched` / `queueTouched`; search generation token; classic-layout `--search-overlay-bottom`; mobile quality chip (`quality-wrap--keep`).
+**Mobile / UX:** immersive breakpoints; scheme B search overlay + `visualViewport`; overlay is `React.lazy` (preload on pointerdown so iOS still focuses in-gesture); 44px coarse targets; theme drawer (current-layout filter + recents); quality menu portalled; SW build-stamped cache + `SKIP_WAITING`; no first-visit reload loop; `tabTouched` / `queueTouched`; search generation token; classic-layout `--search-overlay-bottom`; mobile quality chip (`quality-wrap--keep`); idle ≤400px classic shells keep a play button; idle stage compresses art/seek without hiding wings.
 
-**Frontend:** `playback-clock`; TrackList memo + **real window virtualization** (≥80 thumb rows); layout code-split; Latin `@fontsource` + system CJK; i18n zh/en aligned.
+**Frontend:** `playback-clock` + `lyric-clock`; TrackList memo + **real window virtualization** (64px row); layout code-split; Latin `@fontsource` (DM Sans at boot) + system CJK; display font waits for `ensureThemeFont`; i18n zh/en aligned; stage EN wing shorts; toast/drawer/Go/seek/empty-cover use theme tokens; missing art shows a note glyph; one quality picker on side/immersive/compact; charts heading not doubled on stage/verse/gallery; SkinHostFrame owns `data-idle` / `data-tab`; swipe-nav rebind is debounced.
 
-**Node / quality:** optional `LIBRARY_TOKEN`; tight CORS; stream SSRF block (`server/safe-url.ts`); generic upstream errors; SQLite transaction + upsert + revision 409; `/import` on Node; chart warm loop cleared on SIGTERM; Kugou/Kuwo charts over HTTPS.
+**Node / quality:** optional `LIBRARY_TOKEN`; tight CORS; stream SSRF block (`server/safe-url.ts`) on **Node and Worker** 302; generic upstream errors; SQLite transaction + upsert + revision 409; empty `writeList` deletes the list (same-second force-clear); Node `DELETE` honors `?revision=` like the Worker; `/import` on Node; chart warm loop cleared on SIGTERM; Kugou/Kuwo charts over HTTPS.
 
-**Play:** QQ/Kugou native resolve; ChKSz `api.chksz.com`; HTML error pages retryable.
+**Play:** QQ/Kugou native resolve; ChKSz `api.chksz.com`; HTML error pages retryable; `warmTrack` respects `playToken`/`loadingPlay`; `loadCharts` uses `chartGen`; structural library 409 unions history instead of dropping this tab's plays.
 
 ## Do not add
 
@@ -49,14 +49,11 @@ Never bake a library token into the Vite bundle (`VITE_MUSIC_ACCESS_TOKEN` must 
 
 | Item | Notes |
 |------|--------|
-| Split `player.ts` (~2600 lines) | Incremental slices only; `playback-clock` is the pattern |
-| SearchOverlay chunk size | Lazy layout helped the main pack; overlay still pulls TrackList |
-| Lighthouse a11y in CI | Not instrumented |
-| CodeQL | Not in workflows |
-| Multi-device history union on 409 | Server snapshot wins today |
+| Further `player.ts` slices | Persist + lyric clock are out; more slices only if a hot path still re-renders the tree |
+| Lighthouse a11y in CI | Flaky without a stable preview. `check:bundle` is the size gate (no SearchOverlay modulepreload; index gzip ≤ 70 KiB) |
 
 ## Verify
 
 ```bash
-npm test && npm run typecheck && npm run lint && npm run build
+npm test && npm run typecheck && npm run lint && npm run build && npm run check:bundle
 ```

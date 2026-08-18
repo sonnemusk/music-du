@@ -114,6 +114,58 @@ describe("Hono app API", () => {
     expect(again.data.history.map((t: any) => String(t.id))).not.toContain("502");
   });
 
+  it("library DELETE with a stale revision returns 409 and keeps the row", async () => {
+    const app = createApp({ library: tmpLib(), apikey: "x", readonly: false });
+    const put = await app.request("/api/library", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playlist: [],
+        favorites: [],
+        history: [
+          { id: 501, name: "H1", artist: "A" },
+          { id: 502, name: "H2", artist: "B" },
+        ],
+        curIdx: -1,
+        forceClearHistory: true,
+      }),
+    });
+    expect(put.status).toBe(200);
+    const saved = await put.json();
+    const rev = Number(saved.data.revision);
+    const again = await app.request("/api/library", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playlist: [],
+        favorites: [],
+        history: [
+          { id: 501, name: "H1", artist: "A" },
+          { id: 502, name: "H2", artist: "B" },
+          { id: 503, name: "H3", artist: "C" },
+        ],
+        curIdx: -1,
+        revision: rev,
+        forceClearHistory: true,
+      }),
+    });
+    expect(again.status).toBe(200);
+    const stale = await app.request(`/api/library/history/502?revision=${rev}`, {
+      method: "DELETE",
+    });
+    expect(stale.status).toBe(409);
+    const conflict = await stale.json();
+    expect(conflict.conflict).toBe(true);
+    expect(conflict.data.history.map((t: { id: number }) => String(t.id))).toContain("502");
+    const ok = await app.request(
+      `/api/library/history/502?revision=${Number((await again.json()).data.revision)}`,
+      { method: "DELETE" }
+    );
+    expect(ok.status).toBe(200);
+    const body = await ok.json();
+    expect(body.data.history.map((t: { id: number }) => String(t.id))).not.toContain("502");
+  });
+
   it("search via app with transport", async () => {
     chksz.setHttpTransport(async () => ({
       status: 200,

@@ -44,6 +44,7 @@ export const en: Dict = {
     loading: "Searching…",
     overlayAria: "Search",
     draftHint: "Press Search to see results",
+    resultsLive: "{n} results",
   },
   nowPlaying: {
     pick: "Pick a track to start",
@@ -120,6 +121,7 @@ export const en: Dict = {
     dialogAria: "Switch theme",
     hint: "{n} themes · {layouts} layouts · click to apply",
     filterAll: "All",
+    recents: "Recent",
     filterPh: "Filter themes…",
     layoutPrefix: "Layout·{name} · ",
     toast: "UI → {name}",

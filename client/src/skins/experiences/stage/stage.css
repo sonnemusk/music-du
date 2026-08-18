@@ -149,6 +149,13 @@
   white-space: nowrap;
 }
 
+.layout-stage .locale-switch .skin-switcher__label-full {
+  display: none;
+}
+.layout-stage .locale-switch .skin-switcher__label-short {
+  display: inline;
+}
+
 .stage-lights {
   display: inline-flex;
   align-items: center;
@@ -538,6 +545,11 @@
   font-weight: 600;
 }
 
+/* ChartsPanel already titles the board ("抖音 · 飙升"). */
+.layout-stage[data-sheet="charts"] .stage-sheet__title {
+  display: none;
+}
+
 .stage-sheet__close {
   box-sizing: border-box;
   width: 44px;
@@ -649,6 +661,17 @@
   }
 }
 
+@media (max-width: 1024px) {
+  .stage-light:not(.stage-light--cycle) {
+    display: none;
+  }
+
+  .stage-light--cycle {
+    display: grid;
+    place-items: center;
+  }
+}
+
 @media (max-width: 720px) {
   .stage-rail {
     padding: 6px 10px 2px;
@@ -662,15 +685,6 @@
   .stage-brand__name,
   .stage-brand__sep {
     display: none;
-  }
-
-  .stage-light:not(.stage-light--cycle) {
-    display: none;
-  }
-
-  .stage-light--cycle {
-    display: grid;
-    place-items: center;
   }
 
   .stage-tools .skin-switcher__label-short {
@@ -809,6 +823,38 @@
     min-height: 44px !important;
     height: 44px !important;
   }
+}
+
+/* Idle: shrink the empty hall so the cue rail stays on the first screen.
+   Keep wings (that is how you pick a track). Hide seek/vol; play stays ≥44. */
+.skin-host[data-idle="1"] .layout-stage {
+  --stage-art: min(48vw, 32dvh, 260px);
+}
+.skin-host[data-idle="1"] .layout-stage .stage-proscenium {
+  padding: 8px;
+}
+.skin-host[data-idle="1"] .layout-stage .stage-art__rest {
+  font-size: 40px;
+}
+.skin-host[data-idle="1"] .layout-stage .seek-row,
+.skin-host[data-idle="1"] .layout-stage .vol-row,
+.skin-host[data-idle="1"] .layout-stage .t-btn.ghost:not(.fav),
+.skin-host[data-idle="1"] .layout-stage .quality-wrap {
+  display: none;
+}
+.skin-host[data-idle="1"] .layout-stage .stage-foots .t-btn:not(.ghost):not(.play) {
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  font-size: 18px;
+}
+.skin-host[data-idle="1"] .layout-stage .stage-foots .t-btn.play {
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  font-size: 24px;
 }
 
 @media (prefers-reduced-motion: reduce) {

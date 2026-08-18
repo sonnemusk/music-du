@@ -4,13 +4,14 @@ import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
 import { useT } from "../../../i18n";
 import { isMobileSearchUi } from "../../../lib/mobile-ui";
 import type { PanelTab } from "../../../lib/types";
+import { useLyricIdx } from "../../../store/lyric-clock";
 import { usePlaybackClock } from "../../../store/playback-clock";
 import { usePlayer } from "../../../store/player";
 import { likesT } from "./i18n";
@@ -259,7 +260,7 @@ function LikesSheet({ onClose }: { onClose: () => void }) {
   const locale = usePlayer((s) => s.locale);
   const curTrack = usePlayer((s) => s.curTrack);
   const lyrics = usePlayer((s) => s.lyrics);
-  const lyricIdx = usePlayer((s) => s.lyricIdx);
+  const lyricIdx = useLyricIdx();
   const tr = useT(locale);
   const line = lyricIdx >= 0 ? lyrics[lyricIdx] : undefined;
 
@@ -369,6 +370,7 @@ export function LikesLayout({ brand }: { brand: string }) {
               type="button"
               className="likes-search-launch"
               aria-label={likesT(locale, "searchLaunch")}
+              onPointerDown={() => void preloadSearchOverlay()}
               onClick={() => openMobileSearchFromGesture()}
             >
               <span aria-hidden>🔍</span>

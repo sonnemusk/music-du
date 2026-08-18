@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useT } from "../i18n";
 import { lyricIndexAt } from "../lib/player-core";
+import { getLyricIdx, setLyricIdx, useLyricIdx } from "../store/lyric-clock";
 import { setPlaybackClock } from "../store/playback-clock";
 import { usePlayer } from "../store/player";
 
@@ -67,7 +68,7 @@ export function LyricsView({
   empty,
 }: Props) {
   const lyrics = usePlayer((s) => s.lyrics);
-  const lyricIdx = usePlayer((s) => s.lyricIdx);
+  const lyricIdx = useLyricIdx();
   const audioEl = usePlayer((s) => s.audioEl);
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);
@@ -118,9 +119,7 @@ export function LyricsView({
     const audio = audioEl || usePlayer.getState().audioEl;
     const t = audio?.currentTime ?? 0;
     const idx = lyricIndexAt(lyrics, t * 1000);
-    if (idx !== usePlayer.getState().lyricIdx) {
-      usePlayer.setState({ lyricIdx: idx });
-    }
+    setLyricIdx(idx);
   }, [songKey, lyrics, audioEl]);
 
   // Follow active line → center
@@ -162,7 +161,7 @@ export function LyricsView({
     if (!root || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       if (Date.now() < pauseUntilRef.current) return;
-      const line = lineRefs.current.get(usePlayer.getState().lyricIdx);
+      const line = lineRefs.current.get(getLyricIdx());
       if (!line) return;
       centerLine(pickScrollContainer(root), line, "auto");
     });
@@ -185,7 +184,8 @@ export function LyricsView({
       /* */
     }
     const idx = lyricIndexAt(lyrics, ms);
-    usePlayer.setState({ currentTime: t, lyricIdx: idx });
+    usePlayer.setState({ currentTime: t });
+    setLyricIdx(idx);
     setPlaybackClock({ currentTime: t });
     // Resume follow shortly after intentional seek
     pauseUntilRef.current = Date.now() + 300;

@@ -13,13 +13,14 @@ import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
 import { useT } from "../../../i18n";
 import { isMobileSearchUi } from "../../../lib/mobile-ui";
 import type { Track } from "../../../lib/types";
+import { useLyricIdx } from "../../../store/lyric-clock";
 import { usePlaybackClock } from "../../../store/playback-clock";
 import { usePlayer } from "../../../store/player";
 import { feedT } from "./i18n";
@@ -114,7 +115,7 @@ export function FeedLayout({ brand }: { brand: string }) {
   const chartTracks = usePlayer((s) => s.chartTracks);
   const searchResults = usePlayer((s) => s.searchResults);
   const lyrics = usePlayer((s) => s.lyrics);
-  const lyricIdx = usePlayer((s) => s.lyricIdx);
+  const lyricIdx = useLyricIdx();
   const next = usePlayer((s) => s.next);
   const togglePlay = usePlayer((s) => s.togglePlay);
   const playTrack = usePlayer((s) => s.playTrack);
@@ -319,6 +320,7 @@ export function FeedLayout({ brand }: { brand: string }) {
               className="feed-search-launch"
               aria-label={ft("searchLaunch")}
               title={ft("searchLaunch")}
+              onPointerDown={() => void preloadSearchOverlay()}
               onClick={() => openMobileSearchFromGesture()}
             >
               <span aria-hidden>🔍</span>

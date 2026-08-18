@@ -45,6 +45,7 @@ export const zh: Dict = {
     loading: "搜索中…",
     overlayAria: "搜索",
     draftHint: "按搜索查看结果",
+    resultsLive: "{n} 条结果",
   },
   nowPlaying: {
     pick: "点选一首歌开始",
@@ -121,6 +122,7 @@ export const zh: Dict = {
     dialogAria: "切换主题",
     hint: "共 {n} 套 · {layouts} 种布局 · 点选切换",
     filterAll: "全部",
+    recents: "最近用过",
     filterPh: "筛选主题名…",
     layoutPrefix: "布局·{name} · ",
     toast: "界面 → {name}",

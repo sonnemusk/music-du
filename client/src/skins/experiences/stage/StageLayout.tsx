@@ -4,7 +4,7 @@ import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
@@ -269,7 +269,8 @@ export function StageLayout({ brand }: { brand: string }) {
           {WINGS.map((id) => {
             const on = sheetOpen && tab === id;
             const full = tr(WING_I18N[id].full);
-            const label = full;
+            // 6-up rail truncates EN "History"/"Charts"; zh full is already 2 chars.
+            const label = locale === "en" ? tr(WING_I18N[id].short) : full;
             return (
               <button
                 key={id}
@@ -280,6 +281,9 @@ export function StageLayout({ brand }: { brand: string }) {
                 aria-label={full}
                 aria-expanded={id === "search" && narrow ? undefined : on}
                 aria-controls={id === "search" && narrow ? undefined : "stage-sheet"}
+                onPointerDown={() => {
+                  if (id === "search" && narrow) void preloadSearchOverlay();
+                }}
                 onClick={() => openWing(id)}
               >
                 {label}

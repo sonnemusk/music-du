@@ -4,7 +4,7 @@ import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
@@ -99,6 +99,9 @@ function SplitSpine({ phone }: { phone: boolean }) {
             className={`split-spine__btn ${on ? "on" : ""}`}
             aria-current={on ? "page" : undefined}
             aria-label={tr(`tabs.${id}`)}
+            onPointerDown={() => {
+              if (id === "search" && phone) void preloadSearchOverlay();
+            }}
             onClick={() => onSection(id)}
           >
             <span className="split-spine__label">{label}</span>
@@ -228,6 +231,7 @@ export function SplitLayout({ brand }: { brand: string }) {
                   className="split-search-launch"
                   aria-label={splitT(locale, "searchLaunch")}
                   title={splitT(locale, "searchLaunch")}
+                  onPointerDown={() => void preloadSearchOverlay()}
                   onClick={() => openMobileSearchFromGesture()}
                 >
                   <span aria-hidden>⌕</span>

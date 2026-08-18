@@ -189,6 +189,11 @@
   padding: 2px 2px 0;
 }
 
+/* ChartsPanel already titles the board ("抖音 · 飙升"). */
+.skin-host[data-tab="charts"] .gal-main__head {
+  display: none;
+}
+
 .gal-main__title {
   margin: 0;
   font-family: var(--display-font, var(--font));
@@ -600,22 +605,21 @@
 
 /* ── Phone: bottom nav + mini player ──────────────────────────────────── */
 @media (max-width: 720px) {
-  /* The search layer is portalled to <body>, so tell it how tall this layout's
-     bottom chrome is (mini bar 96 + tab bar 58) instead of the 72px default. */
+  /* Mini bar ~72 + tab bar ~48 instead of 96+58, so the cover grid keeps rows. */
   :root:has(.layout-gallery) {
-    --search-overlay-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+    --search-overlay-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
   }
   .layout-gallery {
     --gal-gutter: 12px;
-    --gal-card-min: 148px;
-    --gal-bar-h: 96px;
+    --gal-card-min: 140px;
+    --gal-bar-h: 72px;
   }
   .gal-shell {
     grid-template-columns: minmax(0, 1fr);
     padding: 0 var(--gal-gutter);
     /* mini bar + tab bar + home indicator */
     padding-bottom: calc(
-      var(--gal-bar-h) + 58px + 8px + env(safe-area-inset-bottom, 0px)
+      var(--gal-bar-h) + 48px + 8px + env(safe-area-inset-bottom, 0px)
     );
   }
   .gal-main__head {
@@ -623,11 +627,6 @@
   }
   .gal-main__title {
     font-size: 21px;
-  }
-  /* Charts brings its own heading ("抖音 · 飙升"), so the page title is a
-     duplicate that costs a third of the visible grid on a phone. */
-  .skin-host[data-tab="charts"] .gal-main__head {
-    display: none;
   }
   .gal-body {
     padding: 0 2px 4px;
@@ -672,8 +671,8 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
-    min-height: 50px;
-    padding: 4px 0;
+    min-height: 44px;
+    padding: 2px 0;
     font-size: 10px;
     font-weight: 700;
     background: transparent;
@@ -698,7 +697,7 @@
   .gal-dock {
     left: 8px;
     right: 8px;
-    bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px));
     gap: 12px;
     padding: 8px 10px;
     border-radius: var(--radius, 14px);
@@ -741,10 +740,16 @@
     height: 44px;
   }
   .gal-dock .transport .t-btn.play {
-    width: 48px;
-    min-width: 48px;
-    min-height: 48px;
-    height: 48px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+  }
+  .skin-host[data-idle="1"] .layout-gallery .gal-dock .seek-row {
+    display: none;
+  }
+  .skin-host[data-idle="1"] .layout-gallery {
+    --gal-bar-h: 56px;
   }
 
   /* Lyrics: keep the mini bar (play stays reachable); drop duplicated chrome. */

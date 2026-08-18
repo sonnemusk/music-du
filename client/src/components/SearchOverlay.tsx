@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { flushSync } from "react-dom";
 import { useT } from "../i18n";
 import { loadRecentSearches } from "../lib/recent-searches";
 import { isMobileSearchUi } from "../lib/mobile-ui";
@@ -213,6 +212,15 @@ export function SearchOverlay() {
         />
       </form>
       <div className="search-overlay__body">
+        <div className="search-overlay__live" aria-live="polite">
+          {showSkeleton
+            ? tr("search.loading")
+            : showEmpty
+              ? tr("toast.noResults")
+              : showResults
+                ? tr("search.resultsLive", { n: searchResults.length })
+                : ""}
+        </div>
         {showSkeleton ? (
           <div className="search-overlay__skel" aria-busy="true" aria-label={tr("search.loading")}>
             {Array.from({ length: 6 }, (_, i) => (
@@ -266,11 +274,4 @@ export function SearchOverlay() {
   return createPortal(body, document.body);
 }
 
-/** Call from 🔍 click: open + focus in the same user gesture (iOS keyboard). */
-export function openMobileSearchFromGesture() {
-  flushSync(() => {
-    usePlayer.getState().openSearchOverlay();
-  });
-  const el = document.querySelector<HTMLInputElement>(".search-overlay__input");
-  el?.focus({ preventScroll: true });
-}
+export { openMobileSearchFromGesture, preloadSearchOverlay } from "../lib/search-gesture";

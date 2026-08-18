@@ -191,7 +191,7 @@
 /* —— lyrics (all themes: highlight + readable center line) —— */
 .skin-host .lyrics-panel .ly,
 .skin-host .split-lyrics .ly {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--fg) 58%, var(--muted));
 }
 .skin-host .lyrics-panel .ly.on,
 .skin-host .split-lyrics .ly.on {

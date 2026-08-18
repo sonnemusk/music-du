@@ -5,6 +5,7 @@ import { Transport } from "../../components/Transport";
 import { useT } from "../../i18n";
 import { isMobileSearchUi } from "../../lib/mobile-ui";
 import type { PanelTab } from "../../lib/types";
+import { useLyricIdx } from "../../store/lyric-clock";
 import { usePlayer } from "../../store/player";
 import { getTheme } from "../theme-catalog";
 import { SkinHead, useTabs, usePanelBody } from "./shared";
@@ -125,7 +126,7 @@ function GalleryDock() {
   const curTrack = usePlayer((s) => s.curTrack);
   const loadingPlay = usePlayer((s) => s.loadingPlay);
   const lyrics = usePlayer((s) => s.lyrics);
-  const lyricIdx = usePlayer((s) => s.lyricIdx);
+  const lyricIdx = useLyricIdx();
   const setTab = usePlayer((s) => s.setTab);
   const locale = usePlayer((s) => s.locale);
   const tr = useT(locale);

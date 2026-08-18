@@ -64,7 +64,6 @@ html,
 body,
 #root {
   height: 100%;
-  height: 100dvh;
   margin: 0;
 }
 
@@ -114,7 +113,7 @@ img {
   flex-direction: column;
 }
 
-/* Experience roots often set height: 100dvh. Cap them to the host so a
+/* Experience roots fill the host. Cap them so a
    demo banner (or any sibling chrome) cannot push the player off-screen. */
 .app-shell .skin-host > * {
   flex: 1 1 auto;
@@ -273,6 +272,42 @@ img {
 .skin-panel__search::placeholder {
   color: color-mix(in srgb, var(--fg, #fff) 42%, transparent);
 }
+.skin-panel__recents {
+  margin: 0 0 10px;
+}
+.skin-panel__recents-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  margin-bottom: 6px;
+}
+.skin-panel__recents-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.skin-panel__recent {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--fg, #fff) 6%, transparent);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.skin-panel__recent.on {
+  border-color: var(--accent, currentColor);
+}
 .skin-panel__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -350,7 +385,7 @@ img {
 }
 .skin-fab button:focus-visible,
 .skin-switcher button:focus-visible {
-  outline: 2px solid #67e8f9;
+  outline: 2px solid var(--accent, #67e8f9);
   outline-offset: 2px;
 }
 
@@ -365,8 +400,9 @@ img {
   z-index: 1100;
   padding: 10px 16px;
   border-radius: 999px;
-  background: #111;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--card, #111) 92%, var(--fg, #fff));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.15));
+  color: var(--fg, #f5f5f7);
   font-weight: 700;
   font-size: 13px;
   opacity: 0;
@@ -392,8 +428,8 @@ img {
   font-weight: 800;
   font-size: 12px;
   cursor: pointer;
-  background: #a78bfa;
-  color: #1e1b4b;
+  background: var(--accent, #a78bfa);
+  color: var(--accent-fg, #1e1b4b);
 }
 
 /* shared bits */
@@ -402,13 +438,21 @@ img {
   height: 48px;
   border-radius: 8px;
   object-fit: cover;
-  background: #222;
+  background: color-mix(in srgb, var(--fg, #fff) 8%, var(--card, #222));
   flex-shrink: 0;
 }
 .cov.lg {
   width: 100%;
   aspect-ratio: 1;
   border-radius: 12px;
+}
+.cov--empty {
+  display: grid;
+  place-items: center;
+  opacity: 0.4;
+  font-size: 1.15em;
+  line-height: 1;
+  user-select: none;
 }
 .empty {
   opacity: 0.5;
@@ -418,9 +462,8 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -477,7 +520,7 @@ img {
   width: 40px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--fg, #fff) 25%, transparent);
 }
 .skin-panel__head {
   display: flex;
@@ -490,9 +533,9 @@ img {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--fg, #fff) 6%, transparent);
+  color: var(--fg, #fff);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;

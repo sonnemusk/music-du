@@ -10,6 +10,7 @@ import { LAYOUT_IDS, LAYOUT_META, type SkinLayout } from "../skins/layouts/layou
 import { useT } from "../i18n";
 import { usePlayer } from "../store/player";
 import { isMobileSearchUi } from "../lib/mobile-ui";
+import { loadSkinRecents, pushSkinRecent } from "../lib/skin-recents";
 
 /** Keep the portaled theme list on-screen for header-right and other anchors. */
 function themePanelStyle(anchor: DOMRect): CSSProperties {
@@ -66,7 +67,10 @@ export function SkinSwitcher() {
   const tr = useT(locale);
   const meta = SKINS.find((x) => x.id === skin) || SKINS[0];
   const [q, setQ] = useState("");
-  const [layoutFilter, setLayoutFilter] = useState<SkinLayout | "all">("all");
+  const [layoutFilter, setLayoutFilter] = useState<SkinLayout | "all">(
+    () => (SKINS.find((x) => x.id === skin)?.layout as SkinLayout) || "all"
+  );
+  const [recents, setRecents] = useState<string[]>(() => loadSkinRecents());
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [mobile, setMobile] = useState(() => isMobileSearchUi());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -154,10 +158,22 @@ export function SkinSwitcher() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const lay = SKINS.find((x) => x.id === skin)?.layout as SkinLayout | undefined;
+    if (lay) setLayoutFilter(lay);
+    setRecents(loadSkinRecents());
+  }, [open, skin]);
+
   const pick = (id: SkinId) => {
     setSkin(id);
+    setRecents(pushSkinRecent(id));
     if (mobile) setSkinOpen(false);
   };
+
+  const recentThemes = recents
+    .map((id) => SKINS.find((s) => s.id === id))
+    .filter((s): s is (typeof SKINS)[number] => Boolean(s));
 
   const layouts: Array<SkinLayout | "all"> = ["all", ...LAYOUT_IDS];
 
@@ -207,6 +223,25 @@ export function SkinSwitcher() {
           </button>
         ))}
       </div>
+      {!q && recentThemes.length ? (
+        <div className="skin-panel__recents">
+          <div className="skin-panel__recents-label">{tr("skin.recents")}</div>
+          <div className="skin-panel__recents-row" data-no-swipe>
+            {recentThemes.map((s) => (
+              <button
+                key={`recent-${s.id}`}
+                type="button"
+                className={`skin-panel__recent ${skin === s.id ? "on" : ""}`}
+                style={{ ["--skin-accent" as string]: s.accent }}
+                onClick={() => pick(s.id as SkinId)}
+              >
+                <span className="skin-switcher__dot" style={{ background: s.accent }} />
+                {themeDisplayName(s, locale)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className={`skin-panel__grid ${mobile ? "skin-panel__grid--compact" : ""}`}>
         {filtered.map((s) => (
           <button

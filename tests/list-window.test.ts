@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { visibleWindow } from "../client/src/lib/list-window.js";
+import { VIRTUAL_ROW_H, visibleWindow } from "../client/src/lib/list-window.js";
 
 describe("visibleWindow", () => {
+  it("defaults to the CSS track-row height", () => {
+    expect(VIRTUAL_ROW_H).toBe(64);
+  });
+
   it("returns an empty slice for an empty list", () => {
     expect(visibleWindow({ length: 0, scrollTop: 0, viewportH: 400, rowH: 56 })).toEqual({
       start: 0,

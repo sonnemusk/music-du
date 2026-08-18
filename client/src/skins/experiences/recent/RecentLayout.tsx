@@ -3,7 +3,7 @@ import { ChartsPanel } from "../../../components/ChartsPanel";
 import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SearchBar } from "../../../components/SearchBar";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
@@ -119,6 +119,9 @@ function RecentRail() {
             aria-current={on ? "page" : undefined}
             aria-label={labelFor(id)}
             title={labelFor(id)}
+            onPointerDown={() => {
+              if (id === "search" && isMobileSearchUi()) void preloadSearchOverlay();
+            }}
             onClick={() => go(id)}
           >
             <span className="rec-rail__icon">
@@ -277,6 +280,7 @@ export function RecentLayout({ brand }: { brand: string }) {
             className="rec-search-launch"
             aria-label={tr("search.aria")}
             title={tr("search.aria")}
+            onPointerDown={() => void preloadSearchOverlay()}
             onClick={() => openMobileSearchFromGesture()}
           >
             <span aria-hidden>🔍</span>

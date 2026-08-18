@@ -84,7 +84,7 @@ describe("feed experience", () => {
     expect(css.includes("1024px") || css.includes("1023px")).toBe(true);
     expect(css).toMatch(/min-height:\s*44px/);
     expect(css).toMatch(/min-width:\s*44px/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/overflow:\s*hidden/);
   });

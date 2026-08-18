@@ -120,7 +120,7 @@ describe("feed e2e layout polish", () => {
     expect(css).toContain("390px");
     expect(css).toMatch(/overflow:\s*hidden/);
     expect(css).toMatch(/overflow-x:\s*hidden/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(rule(".layout-feed")).toMatch(/max-width:\s*100%/);
   });
@@ -141,7 +141,8 @@ describe("feed e2e layout polish", () => {
     expect(css).toMatch(
       /\.layout-feed \.quality-wrap[\s\S]{0,200}writing-mode:\s*horizontal-tb/
     );
-    expect(rule(".layout-feed .transport-row")).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rule(".layout-feed .transport-row")).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule(".layout-feed .transport-row")).toMatch(/writing-mode:\s*horizontal-tb/);
   });
 
   it("cover is centered and play hits sit under the poster, not on the art", () => {

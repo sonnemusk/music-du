@@ -3,7 +3,7 @@ import { ChartsPanel } from "../../../components/ChartsPanel";
 import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SearchBar } from "../../../components/SearchBar";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
@@ -162,6 +162,7 @@ export function FindLayout({ brand }: { brand: string }) {
             className="find-overlay-btn"
             aria-label={findText(locale, "overlay")}
             title={findText(locale, "overlay")}
+            onPointerDown={() => void preloadSearchOverlay()}
             onClick={() => openMobileSearchFromGesture()}
           >
             <svg viewBox="0 0 24 24" aria-hidden focusable="false">

@@ -47,6 +47,14 @@ function minPx(body: string, ...props: string[]): number {
 }
 
 describe("stage e2e layout polish", () => {
+  it("idle compresses the empty hall but keeps play and the cue rail", () => {
+    expect(css).toMatch(/\[data-idle="1"\] \.layout-stage\s*\{[^}]*--stage-art:/s);
+    expect(css).toMatch(/\[data-idle="1"\] \.layout-stage \.seek-row/);
+    expect(css).toMatch(/\[data-idle="1"\] \.layout-stage \.vol-row/);
+    expect(css).toMatch(/\[data-idle="1"\] \.layout-stage \.stage-foots \.t-btn\.play/);
+    expect(css).not.toMatch(/\[data-idle="1"\][^{]*\.stage-wings\s*\{[^}]*display:\s*none/s);
+  });
+
   it("footlight trio is large and ≥44 (ghost rules cannot shrink play)", () => {
     const play = block(css, ".layout-stage .t-btn.play");
     const skip = block(css, ".layout-stage .t-btn:not(.ghost)");
@@ -67,6 +75,18 @@ describe("stage e2e layout polish", () => {
     expect(css).toMatch(/pointer:\s*coarse/);
     expect(skip).toMatch(/!important/);
     expect(play).toMatch(/!important/);
+  });
+
+  it("charts sheet does not repeat the Charts heading", () => {
+    expect(css).toMatch(
+      /\[data-sheet="charts"\] \.stage-sheet__title\s*\{[^}]*display:\s*none/s
+    );
+  });
+
+  it("cue rail uses short EN labels so History/Charts do not ellipsize", () => {
+    expect(tsx).toMatch(/WING_I18N\[id\]\.short/);
+    expect(tsx).toMatch(/locale === "en" \? tr\(WING_I18N\[id\]\.short\) : full/);
+    expect(tsx).toMatch(/aria-label=\{full\}/);
   });
 
   it("cue rail is one 6-up grid, 44px tall, tight at 390", () => {

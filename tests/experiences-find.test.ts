@@ -72,7 +72,7 @@ describe("find experience", () => {
     expect(css).toMatch(/font-size:\s*16px/);
     expect(css).toMatch(/min-height:\s*44px/);
     expect(css).toMatch(/min-width:\s*44px/);
-    expect(css).toMatch(/100dvh|dvh/);
+    expect(css).toMatch(/height:\s*100%|max-height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/overflow:\s*hidden/);
   });

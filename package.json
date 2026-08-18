@@ -21,6 +21,7 @@
     "setup:d1": "bash scripts/setup-d1.sh",
     "deploy:cf": "npm run build && wrangler deploy",
     "deploy:cf:demo": "npm run build && wrangler deploy --env demo",
+    "check:bundle": "node scripts/check-bundle.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check": "npm run lint && npm run typecheck && npm test"
