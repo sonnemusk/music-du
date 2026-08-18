@@ -51,6 +51,7 @@ import {
   pruneResolveCache,
   putResolveCache,
 } from "./resolve-cache.js";
+import { isSafeUpstreamUrl } from "./safe-url.js";
 import {
   isDemoMode,
   isLibraryReadonly,
@@ -890,7 +891,7 @@ app.get("/api/stream/:sid", async (c) => {
       try {
         await ensureResolveCacheSchema(db);
         const hit = await getResolveCache(db, sid, level || "default");
-        if (hit?.url && chksz.isRemoteUrl(hit.url)) {
+        if (hit?.url && isSafeUpstreamUrl(hit.url)) {
           return new Response(null, {
             status: 302,
             headers: {
@@ -909,7 +910,7 @@ app.get("/api/stream/:sid", async (c) => {
       apikey: withKey(c.env),
     });
     const audioUrl = raw?.url || "";
-    if (!chksz.isRemoteUrl(audioUrl)) {
+    if (!isSafeUpstreamUrl(audioUrl)) {
       return c.json({ ok: false, error: "no remote url" }, 404);
     }
     if (db) {

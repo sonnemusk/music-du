@@ -1,5 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { isPrivateHostname, isSafeUpstreamUrl } from "../server/safe-url.js";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("isSafeUpstreamUrl", () => {
   it("allows public https CDNs", () => {
@@ -18,5 +23,15 @@ describe("isSafeUpstreamUrl", () => {
   it("rejects non-http schemes", () => {
     expect(isSafeUpstreamUrl("file:///etc/passwd")).toBe(false);
     expect(isSafeUpstreamUrl("javascript:alert(1)")).toBe(false);
+  });
+
+  it("Worker stream 302s only after the same SSRF check as Node", () => {
+    const worker = fs.readFileSync(path.join(root, "server/worker.ts"), "utf8");
+    const node = fs.readFileSync(path.join(root, "server/app.ts"), "utf8");
+    expect(worker).toMatch(/from ["']\.\/safe-url\.js["']/);
+    expect(worker).toMatch(/\/api\/stream\/:sid/);
+    expect(worker).toMatch(/isSafeUpstreamUrl\(hit\.url\)/);
+    expect(worker).toMatch(/isSafeUpstreamUrl\(audioUrl\)/);
+    expect(node).toMatch(/isSafeUpstreamUrl\(audioUrl\)/);
   });
 });
