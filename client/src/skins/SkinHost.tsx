@@ -118,8 +118,9 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
   const meta = getTheme(skin);
   const locale = usePlayer((s) => s.locale);
   const brand = `Music · ${themeDisplayName(meta, locale)}`;
-  const vars = themeToCssVars(meta) as CSSProperties;
-  const [displayFont, setDisplayFont] = useState(() => String(vars["--font"] || ""));
+  const tokens = themeToCssVars(meta);
+  const vars = tokens as CSSProperties;
+  const [displayFont, setDisplayFont] = useState(() => String(tokens["--font"] || ""));
 
   useEffect(() => {
     const applied = themeToCssVars(meta);
@@ -157,7 +158,7 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       dataLayout={meta.layout}
       style={{
         ...vars,
-        ["--display-font" as string]: displayFont || vars["--font"],
+        ["--display-font" as string]: displayFont || tokens["--font"],
         background: "var(--wallpaper)",
         color: "var(--fg)",
         fontFamily: "var(--font)",
