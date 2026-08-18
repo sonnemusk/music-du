@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { themeDisplayName } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { ensureThemeFonts } from "../lib/fonts";
@@ -92,21 +92,36 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
   const vars = themeToCssVars(meta) as CSSProperties;
   const idle = usePlayer((s) => !s.curTrack);
   const tab = usePlayer((s) => s.tab);
+  const [displayFont, setDisplayFont] = useState(() => String(vars["--font"] || ""));
 
   useEffect(() => {
-    ensureThemeFonts(meta.font, meta.displayFont, meta.monoFont);
-  }, [meta.font, meta.displayFont, meta.monoFont]);
+    const applied = themeToCssVars(meta);
+    const nextDisplay = applied["--display-font"] || applied["--font"] || "";
+    const fallback = applied["--font"] || nextDisplay;
+    setDisplayFont((prev) => prev || fallback);
+    let cancelled = false;
+    void ensureThemeFonts(meta.font, meta.displayFont, meta.monoFont).then(() => {
+      if (!cancelled) setDisplayFont(nextDisplay);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [meta]);
 
   // Portalled surfaces (theme panel, mobile search layer) hang off <body> and
   // would otherwise miss the tokens set on .skin-host — mirror them on :root.
   useEffect(() => {
     const root = document.documentElement;
     const applied = themeToCssVars(meta);
-    for (const [k, v] of Object.entries(applied)) root.style.setProperty(k, v);
+    for (const [k, v] of Object.entries(applied)) {
+      if (k === "--display-font") continue;
+      root.style.setProperty(k, v);
+    }
+    if (displayFont) root.style.setProperty("--display-font", displayFont);
     return () => {
       for (const k of Object.keys(applied)) root.style.removeProperty(k);
     };
-  }, [meta]);
+  }, [meta, displayFont]);
 
   return (
     <div
@@ -117,6 +132,7 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       data-tab={tab}
       style={{
         ...vars,
+        ["--display-font" as string]: displayFont || vars["--font"],
         background: "var(--wallpaper)",
         color: "var(--fg)",
         fontFamily: "var(--font)",

@@ -52,7 +52,7 @@ const LATIN_LOADERS: Record<string, () => Promise<unknown>> = {
     ]),
 }
 
-const loaded = new Set<string>(["DM Sans", "Outfit"]);
+const loaded = new Set<string>(["DM Sans"]);
 
 function firstFamily(stack: string | undefined): string {
   return stack?.split(",")[0]?.replace(/["']/g, "").trim() || "";
@@ -114,20 +114,27 @@ export function fontCssVars(t: { font: string; displayFont?: string; monoFont?: 
 }
 
 /** Load a Latin webfont from the bundled package — no fonts.googleapis.com. */
-export function ensureThemeFont(fontFamily: string | undefined) {
-  if (!fontFamily || typeof document === "undefined") return;
+export function ensureThemeFont(fontFamily: string | undefined): Promise<void> {
+  if (!fontFamily || typeof document === "undefined") return Promise.resolve();
   const name = firstFamily(fontFamily);
   if (!name || name === "system-ui" || /PingFang|Hiragino|YaHei|Noto Sans|HarmonyOS/.test(name)) {
-    return;
+    return Promise.resolve();
   }
   const load = LATIN_LOADERS[name];
-  if (!load || loaded.has(name)) return;
+  if (!load) return Promise.resolve();
+  if (loaded.has(name)) {
+    return document.fonts?.ready ? document.fonts.ready.then(() => undefined) : Promise.resolve();
+  }
   loaded.add(name);
-  void load().catch(() => {
-    loaded.delete(name);
-  });
+  return load()
+    .then(() => {
+      if (document.fonts?.load) return document.fonts.load(`16px "${name}"`).then(() => undefined);
+    })
+    .catch(() => {
+      loaded.delete(name);
+    });
 }
 
-export function ensureThemeFonts(...stacks: Array<string | undefined>) {
-  for (const stack of stacks) ensureThemeFont(stack);
+export function ensureThemeFonts(...stacks: Array<string | undefined>): Promise<void> {
+  return Promise.all(stacks.map((stack) => ensureThemeFont(stack))).then(() => undefined);
 }
