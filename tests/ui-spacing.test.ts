@@ -31,6 +31,16 @@ describe("cross-layout chrome consistency", () => {
     expect(app).not.toMatch(/SkinSwitcher/);
   });
 
+  it("idle phones at 400px keep a play button on classic shells", () => {
+    const phone = layouts.split("@media (max-width: 400px)")[1] || "";
+    expect(phone).toMatch(/\.t-btn:not\(\.play\)/);
+    expect(phone).toMatch(/\.t-btn\.play/);
+    expect(phone).toMatch(/min-width:\s*44px/);
+    expect(phone).not.toMatch(
+      /\.side-player \.transport,\s*\n\s*\.skin-host\[data-idle="1"\] \.imm-now \.transport,\s*\n\s*\.skin-host\[data-idle="1"\] \.layout-compact \.player-bar__controls \{\s*display:\s*none/
+    );
+  });
+
   it("narrow-window compress does not hide volume on experience skins", () => {
     const css = fs.readFileSync(
       path.join(root, "client/src/skins/layouts/layouts.css"),

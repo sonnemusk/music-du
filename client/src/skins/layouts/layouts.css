@@ -1700,13 +1700,41 @@ button.badge,
     padding: 6px 8px;
     gap: 4px;
   }
+  /* Reclaim height, but keep play — hiding the whole transport left idle
+     side/immersive/compact phones with no way to start a track. */
+  .skin-host[data-idle="1"] .side-player .transport .seek-row,
+  .skin-host[data-idle="1"] .imm-now .transport .seek-row,
+  .skin-host[data-idle="1"] .layout-compact .player-bar__controls .seek-row,
+  .skin-host[data-idle="1"] .side-player .transport .vol-row,
+  .skin-host[data-idle="1"] .imm-now .transport .vol-row,
+  .skin-host[data-idle="1"] .layout-compact .player-bar__controls .vol-row,
+  .skin-host[data-idle="1"] .side-player .transport .t-btn:not(.play),
+  .skin-host[data-idle="1"] .imm-now .transport .t-btn:not(.play),
+  .skin-host[data-idle="1"] .layout-compact .player-bar__controls .t-btn:not(.play),
+  .skin-host[data-idle="1"] .side-player .transport .quality-wrap,
+  .skin-host[data-idle="1"] .imm-now .transport .quality-wrap,
+  .skin-host[data-idle="1"] .layout-compact .player-bar__controls .quality-wrap {
+    display: none;
+  }
   .skin-host[data-idle="1"] .side-player .transport,
   .skin-host[data-idle="1"] .imm-now .transport,
   .skin-host[data-idle="1"] .layout-compact .player-bar__controls {
-    display: none;
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    margin: 0;
+  }
+  .skin-host[data-idle="1"] .side-player .t-btn.play,
+  .skin-host[data-idle="1"] .imm-now .t-btn.play,
+  .skin-host[data-idle="1"] .layout-compact .player-bar__controls .t-btn.play {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
   .skin-host[data-idle="1"] .layout-compact .player-bar {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
   }
   .track-row {
     min-height: 52px;
