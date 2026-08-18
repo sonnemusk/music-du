@@ -1056,6 +1056,7 @@ export const usePlayer = create<State>((set, get) => ({
         return;
       }
     }
+    const gen = ++chartGen;
     chartsInflight = flightKey;
     if (!get().chartTracks.length || get().chartPlatform !== p || get().chartBoard !== b) {
       set({ chartLoading: true, chartPlatform: p, chartBoard: b });
@@ -1068,6 +1069,7 @@ export const usePlayer = create<State>((set, get) => ({
         if (cachedPlats?.length) set({ chartPlatforms: cachedPlats });
         try {
           const meta = await api.listChartMeta();
+          if (gen !== chartGen) return;
           if (meta.platforms?.length) {
             set({ chartPlatforms: meta.platforms });
             setCachedPlatforms(meta.platforms);
@@ -1076,6 +1078,7 @@ export const usePlayer = create<State>((set, get) => ({
         } catch {
           try {
             const plats = await api.listChartPlatforms();
+            if (gen !== chartGen) return;
             if (plats?.length) {
               set({ chartPlatforms: plats });
               setCachedPlatforms(plats);
@@ -1086,6 +1089,7 @@ export const usePlayer = create<State>((set, get) => ({
         }
       }
       const data = await api.fetchChart(p, { limit: 40, force, board: b });
+      if (gen !== chartGen) return;
       const tracks = (data.tracks || []).map(norm).filter(Boolean) as Track[];
       const payload = {
         ...data,
@@ -1094,6 +1098,7 @@ export const usePlayer = create<State>((set, get) => ({
         updatedAt: data.updatedAt || Date.now(),
       };
       setCachedChart(payload);
+      if (gen !== chartGen) return;
       set({
         chartTracks: tracks,
         chartMetaName: data.name || "",
@@ -1112,6 +1117,7 @@ export const usePlayer = create<State>((set, get) => ({
       });
       if (!tracks.length) get().showToast(i18n("toast.chartEmpty"));
     } catch (e: any) {
+      if (gen !== chartGen) return;
       set({ chartLoading: false });
       if (!get().chartTracks.length) get().showToast(e?.message || i18n("toast.chartFail"));
     } finally {
@@ -2489,6 +2495,8 @@ let tabTouched = false;
 let queueTouched = false;
 /** Ignore stale search() completions when a newer query is already in flight. */
 let searchGen = 0;
+/** Ignore stale loadCharts() completions when the user already switched board. */
+let chartGen = 0;
 
 let chartsInflight: string | null = null;
 

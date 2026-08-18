@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   chartEdgeMaxAgeSec,
@@ -97,5 +98,18 @@ describe("charts catalog", () => {
     expect(kuwoTrackDuration({ duration: "4" })).toBe(240);
     expect(kuwoTrackDuration({ duration: "03:15" })).toBe(195);
     expect(kuwoTrackDuration({ duration: 275 })).toBe(275);
+  });
+});
+
+describe("client loadCharts generation token", () => {
+  it("drops stale board responses the way search drops stale queries", () => {
+    const src = fs.readFileSync(
+      new URL("../client/src/store/player.ts", import.meta.url),
+      "utf8"
+    );
+    expect(src).toMatch(/let chartGen = 0/);
+    expect(src).toMatch(/const gen = \+\+chartGen/);
+    expect(src).toMatch(/if \(gen !== chartGen\) return/);
+    expect(src).toMatch(/await api\.fetchChart[\s\S]*if \(gen !== chartGen\) return/s);
   });
 });
