@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import * as api from "../lib/api";
-import { unionTracksById } from "../lib/library-union";
+import {
+  resolveStructuralLibraryConflict,
+  trackIdSetEqual,
+  unionTracksById,
+} from "../lib/library-union";
 import {
   abortNeighborBlobCaches,
   cacheAudioFromStream,
@@ -2510,17 +2514,6 @@ let saveInflight = false;
 let saveDirty = false;
 let saveForce: Record<string, boolean> = {};
 
-function trackIdSetEqual(
-  a: Track[] | null | undefined,
-  b: Track[] | null | undefined
-): boolean {
-  const A = new Set((a || []).map((t) => String(t.id)).filter(Boolean));
-  const B = new Set((b || []).map((t) => String(t.id)).filter(Boolean));
-  if (A.size !== B.size) return false;
-  for (const id of A) if (!B.has(id)) return false;
-  return true;
-}
-
 /** P1-4: localStorage mirror immediately on library mutation (before slow D1). */
 function mirrorLibraryLocal(get: () => State) {
   if (get().libraryReadOnly) return;
@@ -2630,9 +2623,13 @@ async function flushLibrarySave(get: () => State) {
         usePlayer.setState({ libraryRevision: rev });
         saveDirty = true;
       } else {
-        // Real multi-device structural change — server wins
-        applyLib(usePlayer.setState)(server);
-        get().showToast(i18n("toast.libSynced"));
+        // Structural change: adopt server fav/playlist, union history, re-PUT if needed
+        const { next, historyDiverged } = resolveStructuralLibraryConflict(payload, server);
+        applyLib(usePlayer.setState)(next);
+        if (historyDiverged) {
+          saveDirty = true;
+          get().showToast(i18n("toast.libSynced"));
+        }
       }
     }
     /* offline ok */
