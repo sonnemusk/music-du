@@ -94,7 +94,7 @@ describe("verse experience", () => {
     expect(css).toMatch(/max-width:\s*720px/);
     expect(css).toMatch(/min-width:\s*44px/);
     expect(css).toMatch(/min-height:\s*44px/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/overflow:\s*hidden/);
     expect(css).toMatch(/verse-dim/);

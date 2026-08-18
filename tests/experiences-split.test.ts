@@ -112,7 +112,7 @@ describe("split.css breakpoints and hits", () => {
   });
 
   it("uses dvh and safe-area insets", () => {
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset-top/);
     expect(css).toMatch(/safe-area-inset-bottom/);
   });

@@ -95,7 +95,7 @@ describe("find e2e layout — search-first", () => {
     expect(css).toMatch(/overflow-x:\s*hidden/);
     expect(css).toMatch(/max-width:\s*100%/);
     expect(css).toMatch(/min-width:\s*0/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
   });
 

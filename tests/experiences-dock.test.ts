@@ -32,7 +32,7 @@ describe("dock experience", () => {
     const css = read("dock.css");
     expect(css.includes("720px")).toBe(true);
     expect(css.includes("1024px")).toBe(true);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     const phone = css.slice(css.indexOf("max-width: 720px"));
     expect(phone).toMatch(/\.dock-mini__play[\s\S]{0,180}min-(width|height):\s*44px/);
     expect(phone).toMatch(/\.dock-mini__skip[\s\S]{0,160}min-(width|height):\s*44px/);

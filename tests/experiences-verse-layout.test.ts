@@ -127,7 +127,7 @@ describe("verse e2e layout — leaf sheet", () => {
 describe("verse e2e layout — overflow + header + palettes", () => {
   it("locks the shell at 390–1280 with overflow hidden and 720px split", () => {
     expect(decl(".verse")).toMatch(/overflow:\s*hidden/);
-    expect(decl(".verse")).toMatch(/100dvh/);
+    expect(decl(".verse")).toMatch(/height:\s*100%/);
     expect(decl(".verse")).toMatch(/max-width:\s*100%/);
     expect(css.includes("720px")).toBe(true);
     expect(css).toMatch(/@media \(max-width:\s*720px\)/);

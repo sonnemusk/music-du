@@ -96,7 +96,7 @@ describe("recent layout contract", () => {
   it("clamps overflow from 390 to 1280 and keeps dvh / safe-area", () => {
     expect(css).toMatch(/max-width:\s*100%/);
     expect(css).toMatch(/overflow:\s*hidden/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset-bottom/);
     expect(css).toMatch(/safe-area-inset-left/);
     expect(css).toMatch(/@media \(max-width:\s*1279px\)/);

@@ -120,7 +120,7 @@ describe("feed e2e layout polish", () => {
     expect(css).toContain("390px");
     expect(css).toMatch(/overflow:\s*hidden/);
     expect(css).toMatch(/overflow-x:\s*hidden/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(rule(".layout-feed")).toMatch(/max-width:\s*100%/);
   });

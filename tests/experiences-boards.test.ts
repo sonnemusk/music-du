@@ -56,7 +56,7 @@ describe("boards experience", () => {
     expect(css).toMatch(/@media \(min-width:\s*721px\)/);
     expect(css).toMatch(/@media \(max-width:\s*720px\)/);
     expect(css).not.toMatch(/@media \(min-width:\s*720px\)/);
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/safe-area-inset/);
     expect(css).toMatch(/44px/);
     expect(css).toMatch(/\.charts-chip/);

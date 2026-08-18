@@ -64,7 +64,6 @@ html,
 body,
 #root {
   height: 100%;
-  height: 100dvh;
   margin: 0;
 }
 
@@ -114,7 +113,7 @@ img {
   flex-direction: column;
 }
 
-/* Experience roots often set height: 100dvh. Cap them to the host so a
+/* Experience roots fill the host. Cap them so a
    demo banner (or any sibling chrome) cannot push the player off-screen. */
 .app-shell .skin-host > * {
   flex: 1 1 auto;

@@ -97,9 +97,9 @@ describe("dock layout polish", () => {
     expect(css).toMatch(/\.dock-main\s*\{[^}]*overflow-x:\s*hidden/s);
   });
 
-  it("uses 100dvh and safe-area insets", () => {
+  it("uses 100% host height and safe-area insets", () => {
     const css = read("dock.css");
-    expect(css).toMatch(/100dvh/);
+    expect(css).toMatch(/height:\s*100%/);
     expect(css).toMatch(/env\(safe-area-inset-top/);
     expect(css).toMatch(/env\(safe-area-inset-bottom/);
     expect(css).toMatch(/font-size:\s*16px/);
