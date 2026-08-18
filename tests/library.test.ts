@@ -113,4 +113,38 @@ describe("SqliteLibrary", () => {
     ).toThrow(/revision conflict/);
     expect(lib.load().playlist).toHaveLength(2);
   });
+
+  it("deleteSid rejects a stale revision and leaves the row", () => {
+    const lib = new SqliteLibrary(tmpDb());
+    const first = lib.save({
+      playlist: [track(1), track(2)],
+      favorites: [],
+      history: [],
+      curIdx: 0,
+    });
+    const second = lib.mergePut({
+      playlist: [track(1), track(2), track(3)],
+      favorites: [],
+      history: [],
+      curIdx: 0,
+      revision: first.revision,
+    });
+    expect(() => lib.deleteSid("playlist", 1002, first.revision)).toThrow(/revision conflict/);
+    expect(lib.load().playlist).toHaveLength(3);
+    const after = lib.deleteSid("playlist", 1002, second.revision);
+    expect(after.playlist.map((t) => String(t.id))).not.toContain("1002");
+    expect(after.revision).toBe((second.revision || 0) + 1);
+  });
+
+  it("deleteSid without a revision still deletes (legacy clients)", () => {
+    const lib = new SqliteLibrary(tmpDb());
+    lib.save({
+      playlist: [track(1), track(2)],
+      favorites: [],
+      history: [],
+      curIdx: 0,
+    });
+    const after = lib.deleteSid("playlist", 1001);
+    expect(after.playlist.map((t) => String(t.id))).not.toContain("1001");
+  });
 });

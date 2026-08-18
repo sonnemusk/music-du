@@ -333,8 +333,19 @@ export class SqliteLibrary {
     });
   }
 
-  deleteSid(listType: ListType, sid: string | number): Library {
+  deleteSid(
+    listType: ListType,
+    sid: string | number,
+    expectedRevision?: number | null
+  ): Library {
     if (!(listType in LIST_CAPS)) throw new Error(`bad list_type: ${listType}`);
+    const serverRev = this.loadRevision();
+    if (!libraryRevisionOk(serverRev, expectedRevision)) {
+      const err = new Error("revision conflict") as Error & { conflict: true; data: Library };
+      err.conflict = true;
+      err.data = this.load();
+      throw err;
+    }
     this.db
       .prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`)
       .run(listType, String(sid));
