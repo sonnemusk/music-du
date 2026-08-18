@@ -121,6 +121,7 @@ export const zh: Dict = {
     dialogAria: "切换主题",
     hint: "共 {n} 套 · {layouts} 种布局 · 点选切换",
     filterAll: "全部",
+    recents: "最近用过",
     filterPh: "筛选主题名…",
     layoutPrefix: "布局·{name} · ",
     toast: "界面 → {name}",

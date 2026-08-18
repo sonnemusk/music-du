@@ -120,6 +120,7 @@ export const en: Dict = {
     dialogAria: "Switch theme",
     hint: "{n} themes · {layouts} layouts · click to apply",
     filterAll: "All",
+    recents: "Recent",
     filterPh: "Filter themes…",
     layoutPrefix: "Layout·{name} · ",
     toast: "UI → {name}",

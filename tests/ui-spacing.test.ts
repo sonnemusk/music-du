@@ -84,6 +84,13 @@ describe("cross-layout chrome consistency", () => {
     }
   });
 
+  it("theme drawer opens on the current layout and keeps recents", () => {
+    expect(switcher).toMatch(/loadSkinRecents/);
+    expect(switcher).toMatch(/pushSkinRecent/);
+    expect(switcher).toMatch(/skin-panel__recents/);
+    expect(switcher).toMatch(/setLayoutFilter\(lay\)/);
+  });
+
   it("theme panel is portaled (not clipped by layout overflow)", () => {
     expect(switcher).toMatch(/createPortal/);
     expect(switcher).toMatch(/document\.body/);
