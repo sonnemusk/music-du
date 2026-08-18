@@ -69,6 +69,12 @@ describe("stage e2e layout polish", () => {
     expect(play).toMatch(/!important/);
   });
 
+  it("cue rail uses short EN labels so History/Charts do not ellipsize", () => {
+    expect(tsx).toMatch(/WING_I18N\[id\]\.short/);
+    expect(tsx).toMatch(/locale === "en" \? tr\(WING_I18N\[id\]\.short\) : full/);
+    expect(tsx).toMatch(/aria-label=\{full\}/);
+  });
+
   it("cue rail is one 6-up grid, 44px tall, tight at 390", () => {
     const wings = block(css, ".stage-wings");
     const cue = block(css, ".stage-cue");

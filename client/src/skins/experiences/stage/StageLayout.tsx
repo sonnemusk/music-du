@@ -269,7 +269,8 @@ export function StageLayout({ brand }: { brand: string }) {
           {WINGS.map((id) => {
             const on = sheetOpen && tab === id;
             const full = tr(WING_I18N[id].full);
-            const label = full;
+            // 6-up rail truncates EN "History"/"Charts"; zh full is already 2 chars.
+            const label = locale === "en" ? tr(WING_I18N[id].short) : full;
             return (
               <button
                 key={id}
