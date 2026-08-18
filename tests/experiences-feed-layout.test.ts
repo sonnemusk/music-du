@@ -141,7 +141,8 @@ describe("feed e2e layout polish", () => {
     expect(css).toMatch(
       /\.layout-feed \.quality-wrap[\s\S]{0,200}writing-mode:\s*horizontal-tb/
     );
-    expect(rule(".layout-feed .transport-row")).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rule(".layout-feed .transport-row")).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule(".layout-feed .transport-row")).toMatch(/writing-mode:\s*horizontal-tb/);
   });
 
   it("cover is centered and play hits sit under the poster, not on the art", () => {

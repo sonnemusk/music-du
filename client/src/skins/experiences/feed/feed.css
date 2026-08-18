@@ -64,7 +64,7 @@
 
 .feed-chrome__row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -514,12 +514,12 @@
 
 .layout-feed .transport-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
   min-width: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   writing-mode: horizontal-tb;
 }
@@ -776,7 +776,10 @@
     border-radius: 0;
   }
 
-  .feed-transport .vol-row {
+  .feed-transport .vol-row,
+  .feed-transport .t-btn.ghost.mode,
+  .feed-transport .t-btn.ghost.fav,
+  .feed-transport .quality-wrap {
     display: none;
   }
 }
