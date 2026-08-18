@@ -166,8 +166,8 @@
   line-height: 1.55;
   padding: 12px 18px;
   min-height: 44px;
-  opacity: 0.34;
-  color: var(--muted);
+  opacity: 1;
+  color: color-mix(in srgb, var(--verse-ink, var(--fg)) 55%, var(--muted));
   scroll-margin-block: 16px;
 }
 

@@ -146,6 +146,11 @@ describe("cross-layout chrome consistency", () => {
     );
   });
 
+  it("inactive lyric lines are muted by color, not stacked opacity", () => {
+    expect(layouts).toMatch(/\.lyrics-panel \.ly\s*\{[^}]*color-mix\(in srgb, var\(--fg\)/s);
+    expect(layouts).not.toMatch(/\.lyrics-panel \.ly\s*\{[^}]*opacity:\s*0\.4/s);
+  });
+
   it("classic shells keep a single quality picker", () => {
     expect(layouts).toMatch(
       /\.side-player > \.transport \.quality-wrap,\s*\n\s*\.imm-now > \.transport \.quality-wrap,\s*\n\s*\.layout-compact \.player-bar__controls > \.transport \.quality-wrap \{\s*\n\s*display:\s*none/
