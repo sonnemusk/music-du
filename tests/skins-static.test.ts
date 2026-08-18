@@ -139,4 +139,16 @@ describe("theme catalog", () => {
       false
     );
   });
+
+  it("keeps idle/tab attrs on SkinHostFrame so layout children stay stable", () => {
+    const host = fs.readFileSync(path.join(root, "client/src/skins/SkinHost.tsx"), "utf8");
+    expect(host).toMatch(/function SkinHostFrame\(/);
+    expect(host).toMatch(/data-idle=\{idle \? "1" : undefined\}/);
+    expect(host).toMatch(/data-tab=\{tab\}/);
+    const afterExport = host.split("export function SkinHost")[1] || "";
+    expect(afterExport).not.toMatch(/usePlayer\(\(s\) => !s\.curTrack\)/);
+    expect(afterExport).not.toMatch(/usePlayer\(\(s\) => s\.tab\)/);
+    expect(afterExport).toMatch(/<SkinHostFrame/);
+    expect(afterExport).toMatch(/\{layoutFor\(meta\.layout, brand\)\}/);
+  });
 });

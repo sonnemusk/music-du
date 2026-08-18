@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { themeDisplayName } from "../lib/types";
 import { usePlayer } from "../store/player";
@@ -85,13 +85,40 @@ function layoutFor(id: string, brand: string) {
   }
 }
 
+function SkinHostFrame({
+  className,
+  dataSkin,
+  dataLayout,
+  style,
+  children,
+}: {
+  className: string;
+  dataSkin: string;
+  dataLayout: string;
+  style: CSSProperties;
+  children: ReactNode;
+}) {
+  const idle = usePlayer((s) => !s.curTrack);
+  const tab = usePlayer((s) => s.tab);
+  return (
+    <div
+      className={className}
+      data-skin={dataSkin}
+      data-layout={dataLayout}
+      data-idle={idle ? "1" : undefined}
+      data-tab={tab}
+      style={style}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function SkinHost({ skin }: { skin: SkinId | string }) {
   const meta = getTheme(skin);
   const locale = usePlayer((s) => s.locale);
   const brand = `Music · ${themeDisplayName(meta, locale)}`;
   const vars = themeToCssVars(meta) as CSSProperties;
-  const idle = usePlayer((s) => !s.curTrack);
-  const tab = usePlayer((s) => s.tab);
   const [displayFont, setDisplayFont] = useState(() => String(vars["--font"] || ""));
 
   useEffect(() => {
@@ -124,12 +151,10 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
   }, [meta, displayFont]);
 
   return (
-    <div
+    <SkinHostFrame
       className={`skin-host surface-${meta.surface} density-${meta.density} radius-${meta.radius}`}
-      data-skin={meta.id}
-      data-layout={meta.layout}
-      data-idle={idle ? "1" : undefined}
-      data-tab={tab}
+      dataSkin={meta.id}
+      dataLayout={meta.layout}
       style={{
         ...vars,
         ["--display-font" as string]: displayFont || vars["--font"],
@@ -147,6 +172,6 @@ export function SkinHost({ skin }: { skin: SkinId | string }) {
       >
         {layoutFor(meta.layout, brand)}
       </Suspense>
-    </div>
+    </SkinHostFrame>
   );
 }
