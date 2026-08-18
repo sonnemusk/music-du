@@ -151,6 +151,11 @@ export class SqliteLibrary {
       );
       pos++;
     }
+    if (pos === 0) {
+      // Same-second updated_at < now would leave the previous rows in place.
+      this.db.prepare(`DELETE FROM library_tracks WHERE list_type=?`).run(listType);
+      return;
+    }
     this.db
       .prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`)
       .run(listType, now);
