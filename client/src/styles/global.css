@@ -350,7 +350,7 @@ img {
 }
 .skin-fab button:focus-visible,
 .skin-switcher button:focus-visible {
-  outline: 2px solid #67e8f9;
+  outline: 2px solid var(--accent, #67e8f9);
   outline-offset: 2px;
 }
 
@@ -427,9 +427,8 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
+  html {
+    scroll-behavior: auto;
   }
 }
 

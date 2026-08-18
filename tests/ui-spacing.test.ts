@@ -146,6 +146,16 @@ describe("cross-layout chrome consistency", () => {
     );
   });
 
+  it("reduced-motion does not nuke every transition with a global star rule", () => {
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    expect(css).not.toMatch(
+      /prefers-reduced-motion:\s*reduce\)\s*\{\s*\*\s*\{[^}]*animation:\s*none\s*!important/s
+    );
+  });
+
   it("inactive lyric lines are muted by color, not stacked opacity", () => {
     expect(layouts).toMatch(/\.lyrics-panel \.ly\s*\{[^}]*color-mix\(in srgb, var\(--fg\)/s);
     expect(layouts).not.toMatch(/\.lyrics-panel \.ly\s*\{[^}]*opacity:\s*0\.4/s);
