@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import * as api from "../lib/api";
+import { unionTracksById } from "../lib/library-union";
 import {
-  resolveStructuralLibraryConflict,
-  trackIdSetEqual,
-  unionTracksById,
-} from "../lib/library-union";
+  applyLib,
+  bindLibraryPersistSet,
+  LIBRARY_LS_KEY,
+  persistSoon,
+} from "./library-persist";
 import {
   abortNeighborBlobCaches,
   cacheAudioFromStream,
@@ -85,7 +87,6 @@ import type {
   ChartBoardId,
   ChartPlatform,
   ChartPlatformId,
-  Library,
   LyricLine,
   PanelTab,
   PlayMode,
@@ -96,7 +97,7 @@ import type {
 import { DEFAULT_SKIN, SKINS } from "../lib/types";
 
 const SKIN_KEY = "kazam.v2.skin";
-const LS_KEY = "kazam.v2.library";
+const LS_KEY = LIBRARY_LS_KEY;
 const VOL_KEY = "kazam.v2.volume";
 const MUTE_KEY = "kazam.v2.muted";
 const MODE_KEY = "kazam.v2.playMode";
@@ -2480,17 +2481,7 @@ export const usePlayer = create<State>((set, get) => ({
   },
 }));
 
-function applyLib(set: (p: Partial<State>) => void) {
-  return (lib: Library) => {
-    set({
-      playlist: (lib.playlist || []).map(norm).filter(Boolean) as Track[],
-      favorites: (lib.favorites || []).map(norm).filter(Boolean) as Track[],
-      history: (lib.history || []).map(norm).filter(Boolean) as Track[],
-      curIdx: lib.curIdx ?? -1,
-      libraryRevision: Number(lib.revision ?? 0) || 0,
-    });
-  };
-}
+bindLibraryPersistSet((p) => usePlayer.setState(p));
 
 /** Prevents double-fetch when setTab + ChartsPanel mount both call loadCharts */
 /** Set once any tab navigation happens, so async bootstrap won't override it. */
@@ -2503,143 +2494,3 @@ let searchGen = 0;
 let chartGen = 0;
 
 let chartsInflight: string | null = null;
-
-/**
- * Library persist: debounced + single-flight.
- * playTrack updates history/curIdx often; overlapping PUTs used to 409 and
- * falsely toast「其他设备更新」. Same-tab revision races retry silently.
- */
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-let saveInflight = false;
-let saveDirty = false;
-let saveForce: Record<string, boolean> = {};
-
-/** P1-4: localStorage mirror immediately on library mutation (before slow D1). */
-function mirrorLibraryLocal(get: () => State) {
-  if (get().libraryReadOnly) return;
-  try {
-    const s = get();
-    localStorage.setItem(
-      LS_KEY,
-      JSON.stringify({
-        playlist: s.playlist,
-        favorites: s.favorites,
-        history: s.history,
-        curIdx: s.curIdx,
-        revision: s.libraryRevision,
-      })
-    );
-  } catch {
-    /* */
-  }
-}
-
-let saveFlushBound = false;
-/** A pending fast save must not be pushed back by later history churn. */
-let savePendingFast = false;
-
-const SAVE_FAST_MS = 500;
-const SAVE_SLOW_MS = 20_000;
-
-/**
- * P1-4 two-speed save.
- * fast (500ms)  — deliberate library edits (fav / queue / import / clears)
- * slow (20s)    — playback churn only (history, curIdx); flushed on hide/unload
- * `force` keys alone can't imply "deliberate": most explicit edits pass none.
- */
-function persistSoon(
-  get: () => State,
-  force: Record<string, boolean> = {},
-  opts: { fast?: boolean } = {}
-) {
-  // Demo never touches D1 (or library localStorage merge path)
-  if (get().libraryReadOnly) return;
-  mirrorLibraryLocal(get);
-  saveDirty = true;
-  saveForce = { ...saveForce, ...force };
-  const fast = opts.fast === true || Object.keys(force).length > 0 || savePendingFast;
-  savePendingFast = fast;
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(
-    () => {
-      void flushLibrarySave(get);
-    },
-    fast ? SAVE_FAST_MS : SAVE_SLOW_MS
-  );
-  if (!saveFlushBound && typeof window !== "undefined") {
-    saveFlushBound = true;
-    const flush = () => {
-      if (saveTimer) clearTimeout(saveTimer);
-      void flushLibrarySave(get);
-    };
-    window.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") flush();
-    });
-    window.addEventListener("pagehide", flush);
-  }
-}
-
-async function flushLibrarySave(get: () => State) {
-  if (get().libraryReadOnly) {
-    saveDirty = false;
-    return;
-  }
-  if (saveInflight) return;
-  if (!saveDirty) return;
-  saveInflight = true;
-  saveDirty = false;
-  savePendingFast = false;
-  const force = { ...saveForce };
-  saveForce = {};
-  const s = get();
-  const payload = {
-    playlist: s.playlist,
-    favorites: s.favorites,
-    history: s.history,
-    curIdx: s.curIdx,
-    revision: s.libraryRevision,
-    ...force,
-  };
-  mirrorLibraryLocal(get);
-  try {
-    const lib = await api.saveLibrary(payload);
-    const rev = Number(lib.revision ?? 0) || 0;
-    if (saveDirty) {
-      // Local changed mid-flight — keep lists, take revision, chain another save
-      usePlayer.setState({ libraryRevision: rev });
-    } else {
-      applyLib(usePlayer.setState)(lib);
-    }
-  } catch (e) {
-    if (e instanceof api.LibraryConflictError) {
-      const server = e.data;
-      const rev = Number(server.revision ?? 0) || 0;
-      // Same favorites + playlist ids → our own overlapping save, not another device
-      const sameFavPl =
-        trackIdSetEqual(payload.favorites, server.favorites) &&
-        trackIdSetEqual(payload.playlist, server.playlist);
-      if (sameFavPl) {
-        // Keep local history/curIdx (newer skip), adopt server revision, re-push
-        usePlayer.setState({ libraryRevision: rev });
-        saveDirty = true;
-      } else {
-        // Structural change: adopt server fav/playlist, union history, re-PUT if needed
-        const { next, historyDiverged } = resolveStructuralLibraryConflict(payload, server);
-        applyLib(usePlayer.setState)(next);
-        if (historyDiverged) {
-          saveDirty = true;
-          get().showToast(i18n("toast.libSynced"));
-        }
-      }
-    }
-    /* offline ok */
-  } finally {
-    saveInflight = false;
-    if (saveDirty) {
-      if (saveTimer) clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        void flushLibrarySave(get);
-      }, 100);
-    }
-  }
-}

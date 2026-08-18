@@ -79,8 +79,11 @@ describe("library-union", () => {
     expect(historyDiverged).toBe(false);
   });
 
-  it("player persist uses the union helper instead of dropping local history", () => {
-    const src = fs.readFileSync(path.join(root, "client/src/store/player.ts"), "utf8");
+  it("library persist uses the union helper instead of dropping local history", () => {
+    const src = fs.readFileSync(
+      path.join(root, "client/src/store/library-persist.ts"),
+      "utf8"
+    );
     expect(src).toMatch(/resolveStructuralLibraryConflict/);
     expect(src).toMatch(/historyDiverged/);
     expect(src).not.toMatch(/Real multi-device structural change — server wins/);
