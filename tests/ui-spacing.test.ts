@@ -67,6 +67,12 @@ describe("cross-layout chrome consistency", () => {
     expect(css).toMatch(/\.app-shell \.skin-host\s*\{[^}]*overflow:\s*hidden/s);
   });
 
+  it("debounces swipe-nav rebind when the shell mutates", () => {
+    expect(app).toMatch(/MutationObserver/);
+    expect(app).toMatch(/setTimeout\(bind,\s*80\)/);
+    expect(app).toMatch(/if \(bindTimer\) clearTimeout\(bindTimer\)/);
+  });
+
   it("SkinHead owns brand + search + tools for shared layouts", () => {
     expect(shared).toMatch(/skin-head__main/);
     expect(shared).toMatch(/skin-head__tools/);

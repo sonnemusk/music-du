@@ -103,10 +103,15 @@ export default function App() {
       });
     };
     bind();
-    const mo = new MutationObserver(() => bind());
+    let bindTimer: ReturnType<typeof setTimeout> | null = null;
+    const mo = new MutationObserver(() => {
+      if (bindTimer) clearTimeout(bindTimer);
+      bindTimer = setTimeout(bind, 80);
+    });
     mo.observe(shell, { childList: true, subtree: true });
     return () => {
       mo.disconnect();
+      if (bindTimer) clearTimeout(bindTimer);
       for (const c of cleanups) c();
     };
   }, [next, skin]);
