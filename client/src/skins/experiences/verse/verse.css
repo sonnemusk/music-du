@@ -280,6 +280,10 @@
   font-weight: 600;
 }
 
+.verse-leaf:has(.charts-panel) .verse-leaf__title {
+  display: none;
+}
+
 .verse-close {
   flex: 0 0 auto;
   width: 44px;

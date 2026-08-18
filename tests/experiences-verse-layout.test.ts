@@ -41,6 +41,12 @@ describe("verse e2e layout — lyrics stage", () => {
     expect(css).toMatch(/scroll-margin-block:\s*16px/);
   });
 
+  it("charts leaf does not repeat the Charts heading", () => {
+    expect(css).toMatch(
+      /\.verse-leaf:has\(\.charts-panel\) \.verse-leaf__title\s*\{[^}]*display:\s*none/s
+    );
+  });
+
   it("does not use SkinHead / TabNav chrome", () => {
     expect(tsx).not.toMatch(/SkinHead/);
     expect(tsx).not.toMatch(/TabNav/);

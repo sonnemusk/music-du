@@ -538,6 +538,11 @@
   font-weight: 600;
 }
 
+/* ChartsPanel already titles the board ("抖音 · 飙升"). */
+.layout-stage[data-sheet="charts"] .stage-sheet__title {
+  display: none;
+}
+
 .stage-sheet__close {
   box-sizing: border-box;
   width: 44px;

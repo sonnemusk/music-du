@@ -806,6 +806,12 @@ button.badge,
 .np-badges .quality-wrap {
   display: inline-flex !important;
 }
+/* Desktop was showing NowPlaying + Transport pickers. NP / compact --keep owns it. */
+.side-player > .transport .quality-wrap,
+.imm-now > .transport .quality-wrap,
+.layout-compact .player-bar__controls > .transport .quality-wrap {
+  display: none;
+}
 .np-quality .quality-btn,
 .quality-wrap--keep .quality-btn {
   min-height: 32px;

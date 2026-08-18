@@ -136,6 +136,23 @@ describe("cross-layout chrome consistency", () => {
     expect(layouts).not.toMatch(/\.search-overlay__go\s*\{[^}]*#1a1030/s);
   });
 
+  it("gallery hides the page Charts heading at every width", () => {
+    const gallery = fs.readFileSync(
+      path.join(root, "client/src/skins/layouts/gallery.css"),
+      "utf8"
+    );
+    expect(gallery).toMatch(
+      /\.skin-host\[data-tab="charts"\] \.gal-main__head\s*\{[^}]*display:\s*none/s
+    );
+  });
+
+  it("classic shells keep a single quality picker", () => {
+    expect(layouts).toMatch(
+      /\.side-player > \.transport \.quality-wrap,\s*\n\s*\.imm-now > \.transport \.quality-wrap,\s*\n\s*\.layout-compact \.player-bar__controls > \.transport \.quality-wrap \{\s*\n\s*display:\s*none/
+    );
+    expect(layouts).toMatch(/\.quality-wrap--keep/);
+  });
+
   it("transport controls meet touch-friendly sizes", () => {
     expect(layouts).toMatch(/\.t-btn\s*\{[^}]*min-width:\s*44px/s);
     expect(layouts).toMatch(/\.t-btn\.play\s*\{[^}]*56px/s);

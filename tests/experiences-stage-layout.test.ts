@@ -77,6 +77,12 @@ describe("stage e2e layout polish", () => {
     expect(play).toMatch(/!important/);
   });
 
+  it("charts sheet does not repeat the Charts heading", () => {
+    expect(css).toMatch(
+      /\[data-sheet="charts"\] \.stage-sheet__title\s*\{[^}]*display:\s*none/s
+    );
+  });
+
   it("cue rail uses short EN labels so History/Charts do not ellipsize", () => {
     expect(tsx).toMatch(/WING_I18N\[id\]\.short/);
     expect(tsx).toMatch(/locale === "en" \? tr\(WING_I18N\[id\]\.short\) : full/);

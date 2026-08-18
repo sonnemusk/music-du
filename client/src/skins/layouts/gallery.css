@@ -189,6 +189,11 @@
   padding: 2px 2px 0;
 }
 
+/* ChartsPanel already titles the board ("抖音 · 飙升"). */
+.skin-host[data-tab="charts"] .gal-main__head {
+  display: none;
+}
+
 .gal-main__title {
   margin: 0;
   font-family: var(--display-font, var(--font));
@@ -623,11 +628,6 @@
   }
   .gal-main__title {
     font-size: 21px;
-  }
-  /* Charts brings its own heading ("抖音 · 飙升"), so the page title is a
-     duplicate that costs a third of the visible grid on a phone. */
-  .skin-host[data-tab="charts"] .gal-main__head {
-    display: none;
   }
   .gal-body {
     padding: 0 2px 4px;
