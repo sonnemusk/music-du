@@ -811,6 +811,38 @@
   }
 }
 
+/* Idle: shrink the empty hall so the cue rail stays on the first screen.
+   Keep wings (that is how you pick a track). Hide seek/vol; play stays ≥44. */
+.skin-host[data-idle="1"] .layout-stage {
+  --stage-art: min(48vw, 32dvh, 260px);
+}
+.skin-host[data-idle="1"] .layout-stage .stage-proscenium {
+  padding: 8px;
+}
+.skin-host[data-idle="1"] .layout-stage .stage-art__rest {
+  font-size: 40px;
+}
+.skin-host[data-idle="1"] .layout-stage .seek-row,
+.skin-host[data-idle="1"] .layout-stage .vol-row,
+.skin-host[data-idle="1"] .layout-stage .t-btn.ghost:not(.fav),
+.skin-host[data-idle="1"] .layout-stage .quality-wrap {
+  display: none;
+}
+.skin-host[data-idle="1"] .layout-stage .stage-foots .t-btn:not(.ghost):not(.play) {
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  font-size: 18px;
+}
+.skin-host[data-idle="1"] .layout-stage .stage-foots .t-btn.play {
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  font-size: 24px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stage-sheet,
   .stage-house {
