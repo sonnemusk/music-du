@@ -87,6 +87,26 @@ describe("cross-layout chrome consistency", () => {
     expect(layouts).toMatch(/\.skin-head__main\s*\{[^}]*display:\s*flex/s);
   });
 
+  it("list and failed covers show a note glyph instead of a blank box", () => {
+    const cover = fs.readFileSync(
+      path.join(root, "client/src/components/CoverImg.tsx"),
+      "utf8"
+    );
+    const list = fs.readFileSync(
+      path.join(root, "client/src/components/TrackList.tsx"),
+      "utf8"
+    );
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    expect(cover).toMatch(/cov--empty/);
+    expect(cover).toMatch(/♪/);
+    expect(list).toMatch(/<CoverImg src=\{t\.cover\}/);
+    expect(list).not.toMatch(/<div className="cov" \/>/);
+    expect(css).toMatch(/\.cov--empty\s*\{/);
+  });
+
   it("chrome tokens follow the active skin instead of hardcoded dark", () => {
     const css = fs.readFileSync(
       path.join(root, "client/src/styles/global.css"),

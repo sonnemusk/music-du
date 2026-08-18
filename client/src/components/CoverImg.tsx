@@ -55,7 +55,12 @@ export function CoverImg({
   // F-3: no per-row warmCoverFromRemote — list uses IntersectionObserver + warmTrackCovers
 
   if (!src || !display || stage === "empty") {
-    return <div className={className || "cov"} aria-hidden />;
+    const cls = [className || "cov", "cov--empty"].filter(Boolean).join(" ");
+    return (
+      <div className={cls} aria-hidden>
+        ♪
+      </div>
+    );
   }
 
   return (
