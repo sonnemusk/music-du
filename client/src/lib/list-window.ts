@@ -7,7 +7,7 @@ export function visibleWindow(opts: {
   overscan?: number;
 }): { start: number; end: number; padTop: number; padBottom: number } {
   const length = Math.max(0, Math.floor(opts.length) || 0);
-  const rowH = Math.max(1, opts.rowH || 56);
+  const rowH = Math.max(1, opts.rowH || VIRTUAL_ROW_H);
   const overscan = Math.max(0, opts.overscan ?? 8);
   if (!length) return { start: 0, end: 0, padTop: 0, padBottom: 0 };
   const scrollTop = Math.max(0, opts.scrollTop || 0);
@@ -23,5 +23,6 @@ export function visibleWindow(opts: {
 }
 
 export const VIRTUAL_LIST_MIN = 80;
-export const VIRTUAL_ROW_H = 56;
+/** Must match `.track-row { min-height: 64px }` in layouts.css. */
+export const VIRTUAL_ROW_H = 64;
 export const VIRTUAL_OVERSCAN = 8;
