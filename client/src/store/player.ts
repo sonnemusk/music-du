@@ -241,6 +241,23 @@ function loadChartBoard(): ChartBoardId {
 }
 
 /** Hard-stop current audio immediately (no network wait). */
+/** Warm must not write audio.src / store after playTrack has taken over. */
+export function isWarmTrackStale(
+  startedToken: number,
+  trackId: string,
+  s: {
+    playToken: number;
+    loadingPlay: boolean;
+    playing: boolean;
+    curTrack: { id?: string | number } | null | undefined;
+  },
+): boolean {
+  if (s.playToken !== startedToken) return true;
+  if (s.loadingPlay || s.playing) return true;
+  if (!s.curTrack || String(s.curTrack.id) !== String(trackId)) return true;
+  return false;
+}
+
 export function hardStopAudio(audio: HTMLAudioElement | null) {
   if (!audio) return;
   try {
@@ -1698,8 +1715,11 @@ export const usePlayer = create<State>((set, get) => ({
   warmTrack: (raw) => {
     const t = norm(raw);
     if (!t) return;
+    if (get().loadingPlay) return;
+    const startedToken = get().playToken;
 
     void (async () => {
+      const stale = () => isWarmTrackStale(startedToken, String(t.id), get());
       let remote = "";
       let level = "";
       // Warm uses best-effort preferred; full probe happens on real play
@@ -1709,7 +1729,7 @@ export const usePlayer = create<State>((set, get) => ({
       if (cached && (cached.url || cached.stream)) {
         remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
         level = cached.level || "";
-        if (get().curTrack && String(get().curTrack!.id) === String(t.id) && !get().playing) {
+        if (!stale()) {
           set({
             curTrack: {
               ...get().curTrack!,
@@ -1727,8 +1747,7 @@ export const usePlayer = create<State>((set, get) => ({
       } else {
         try {
           const meta = await api.resolveSong(t.id, { level: prefQ });
-          // Abort if user already switched away
-          if (get().curTrack && String(get().curTrack!.id) !== String(t.id)) return;
+          if (stale()) return;
           remote =
             meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
           level = String(meta.level || "");
@@ -1756,11 +1775,7 @@ export const usePlayer = create<State>((set, get) => ({
             source: String(meta.source || ""),
             play: meta.play,
           }, prefQ);
-          if (
-            get().curTrack &&
-            String(get().curTrack!.id) === String(t.id) &&
-            !get().playing
-          ) {
+          if (!stale()) {
             set({
               curTrack: updated,
               quality: level || "…",
@@ -1772,15 +1787,14 @@ export const usePlayer = create<State>((set, get) => ({
         }
       }
 
-      if (get().playing) return;
-      if (!get().curTrack || String(get().curTrack!.id) !== String(t.id)) return;
+      if (stale()) return;
 
       // Prefer durable blob (favorites re-visit) → CDN → stream proxy
       let playUrl = remote || stream;
       let fromBlob = false;
       try {
         const blobUrl = await getAudioObjectURL(t.id);
-        if (blobUrl && !get().playing && String(get().curTrack?.id) === String(t.id)) {
+        if (blobUrl && !stale()) {
           playUrl = blobUrl;
           fromBlob = true;
           set({ playSource: "cache", quality: level || "缓存" });
@@ -1789,9 +1803,11 @@ export const usePlayer = create<State>((set, get) => ({
         /* */
       }
 
+      if (stale()) return;
+
       // Load onto the actual player element (hidden warmer alone doesn't help Space)
       const audio = get().audioEl;
-      if (audio && !get().playing && String(get().curTrack?.id) === String(t.id)) {
+      if (audio) {
         try {
           if (audio.dataset.warmFor !== String(t.id) || !audio.src) {
             audio.preload = "auto";
@@ -1810,7 +1826,7 @@ export const usePlayer = create<State>((set, get) => ({
 
       // Lyrics into cache; apply to UI if still selected and empty
       const applyLyricsIfNeeded = () => {
-        if (!get().curTrack || String(get().curTrack!.id) !== String(t.id)) return;
+        if (stale()) return;
         if (get().lyrics.length) return;
         const hit =
           getCachedLyric(t.id) || getCachedLyricByMeta(t.name, t.artist);
