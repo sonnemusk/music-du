@@ -365,8 +365,9 @@ img {
   z-index: 1100;
   padding: 10px 16px;
   border-radius: 999px;
-  background: #111;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--card, #111) 92%, var(--fg, #fff));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.15));
+  color: var(--fg, #f5f5f7);
   font-weight: 700;
   font-size: 13px;
   opacity: 0;
@@ -392,8 +393,8 @@ img {
   font-weight: 800;
   font-size: 12px;
   cursor: pointer;
-  background: #a78bfa;
-  color: #1e1b4b;
+  background: var(--accent, #a78bfa);
+  color: var(--accent-fg, #1e1b4b);
 }
 
 /* shared bits */
@@ -402,7 +403,7 @@ img {
   height: 48px;
   border-radius: 8px;
   object-fit: cover;
-  background: #222;
+  background: color-mix(in srgb, var(--fg, #fff) 8%, var(--card, #222));
   flex-shrink: 0;
 }
 .cov.lg {
@@ -477,7 +478,7 @@ img {
   width: 40px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--fg, #fff) 25%, transparent);
 }
 .skin-panel__head {
   display: flex;
@@ -490,9 +491,9 @@ img {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--fg, #fff) 6%, transparent);
+  color: var(--fg, #fff);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;

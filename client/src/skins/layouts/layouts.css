@@ -211,7 +211,7 @@
 .search-overlay__go {
   border: none;
   background: var(--accent, #a78bfa);
-  color: #1a1030;
+  color: var(--accent-fg, #111);
 }
 .search-overlay__go:disabled {
   opacity: 0.55;
@@ -998,9 +998,10 @@ button.badge,
   letter-spacing: 0.01em;
   white-space: nowrap;
   line-height: 1.2;
-  color: #fff;
-  background: color-mix(in srgb, #111 92%, currentColor 8%);
-  box-shadow: 0 6px 18px color-mix(in srgb, #000 40%, transparent);
+  color: var(--fg, #fff);
+  background: color-mix(in srgb, var(--card, #111) 94%, var(--fg, #fff));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.15));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--fg, #000) 18%, transparent);
   pointer-events: none;
   opacity: 0;
   visibility: hidden;

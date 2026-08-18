@@ -87,6 +87,25 @@ describe("cross-layout chrome consistency", () => {
     expect(layouts).toMatch(/\.skin-head__main\s*\{[^}]*display:\s*flex/s);
   });
 
+  it("chrome tokens follow the active skin instead of hardcoded dark", () => {
+    const css = fs.readFileSync(
+      path.join(root, "client/src/styles/global.css"),
+      "utf8"
+    );
+    const toast = css.match(/\.toast\s*\{[^}]+\}/)?.[0] || "";
+    expect(toast).toMatch(/var\(--card/);
+    expect(toast).toMatch(/var\(--fg/);
+    expect(toast).toMatch(/var\(--line/);
+    expect(toast).not.toMatch(/background:\s*#111/);
+    expect(css).toMatch(/\.toast__action\s*\{[^}]*var\(--accent-fg/s);
+    expect(css).toMatch(/\.cov\s*\{[^}]*var\(--card/s);
+    expect(css).toMatch(/\.skin-panel__drawer-handle span\s*\{[^}]*var\(--fg/s);
+    expect(css).toMatch(/\.skin-panel__close\s*\{[^}]*var\(--fg/s);
+    expect(layouts).toMatch(/\.search-overlay__go\s*\{[^}]*var\(--accent-fg/s);
+    expect(layouts).toMatch(/\.seek-track\[data-tip\]::after\s*\{[^}]*var\(--card/s);
+    expect(layouts).not.toMatch(/\.search-overlay__go\s*\{[^}]*#1a1030/s);
+  });
+
   it("transport controls meet touch-friendly sizes", () => {
     expect(layouts).toMatch(/\.t-btn\s*\{[^}]*min-width:\s*44px/s);
     expect(layouts).toMatch(/\.t-btn\.play\s*\{[^}]*56px/s);
