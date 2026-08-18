@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { AudioEngine } from "./components/AudioEngine";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { MediaSession } from "./components/MediaSession";
-import { SearchOverlay } from "./components/SearchOverlay";
 import { Toast } from "./components/Toast";
+import { isMobileSearchUi } from "./lib/mobile-ui";
 import { attachSwipeNav } from "./lib/swipe-nav";
 import { getTheme } from "./skins/theme-catalog";
 import { SkinHost } from "./skins/SkinHost";
 import { t, useT } from "./i18n";
 import { usePlayer } from "./store/player";
+
+const SearchOverlay = lazy(() =>
+  import("./components/SearchOverlay").then((m) => ({ default: m.SearchOverlay }))
+);
 
 export default function App() {
   const skin = usePlayer((s) => s.skin);
@@ -26,6 +30,22 @@ export default function App() {
 
   const showToast = usePlayer((s) => s.showToast);
   const reloadLibrary = usePlayer((s) => s.reloadLibrary);
+  const searchOpen = usePlayer((s) => s.searchOpen);
+  const [mobileSearch, setMobileSearch] = useState(() => isMobileSearchUi());
+  const [searchLayerOnce, setSearchLayerOnce] = useState(false);
+  const searchLayerReady = searchLayerOnce || (searchOpen && mobileSearch);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const apply = () => setMobileSearch(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen && mobileSearch) setSearchLayerOnce(true);
+  }, [searchOpen, mobileSearch]);
 
   useEffect(() => {
     void (async () => {
@@ -148,7 +168,11 @@ export default function App() {
         </div>
       ) : null}
       <SkinHost skin={skin} />
-      <SearchOverlay />
+      {searchLayerReady ? (
+        <Suspense fallback={null}>
+          <SearchOverlay />
+        </Suspense>
+      ) : null}
       <AudioEngine />
       <KeyboardShortcuts />
       <MediaSession />

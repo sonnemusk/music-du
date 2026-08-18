@@ -45,6 +45,7 @@ export const zh: Dict = {
     loading: "搜索中…",
     overlayAria: "搜索",
     draftHint: "按搜索查看结果",
+    resultsLive: "{n} 条结果",
   },
   nowPlaying: {
     pick: "点选一首歌开始",

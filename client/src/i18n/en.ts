@@ -44,6 +44,7 @@ export const en: Dict = {
     loading: "Searching…",
     overlayAria: "Search",
     draftHint: "Press Search to see results",
+    resultsLive: "{n} results",
   },
   nowPlaying: {
     pick: "Pick a track to start",

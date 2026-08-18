@@ -3,7 +3,7 @@ import { ChartsPanel } from "../../../components/ChartsPanel";
 import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SearchBar } from "../../../components/SearchBar";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
@@ -246,6 +246,7 @@ export function BoardsLayout({ brand }: { brand: string }) {
               className="boards-search-launch"
               aria-label={bt("searchLaunch")}
               title={bt("searchLaunch")}
+              onPointerDown={() => void preloadSearchOverlay()}
               onClick={() => openMobileSearchFromGesture()}
             >
               <span aria-hidden>🔍</span>

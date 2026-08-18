@@ -4,7 +4,7 @@ import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
@@ -281,6 +281,9 @@ export function StageLayout({ brand }: { brand: string }) {
                 aria-label={full}
                 aria-expanded={id === "search" && narrow ? undefined : on}
                 aria-controls={id === "search" && narrow ? undefined : "stage-sheet"}
+                onPointerDown={() => {
+                  if (id === "search" && narrow) void preloadSearchOverlay();
+                }}
                 onClick={() => openWing(id)}
               >
                 {label}

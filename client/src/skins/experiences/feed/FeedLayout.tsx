@@ -13,7 +13,7 @@ import { CoverImg } from "../../../components/CoverImg";
 import { LocaleSwitcher } from "../../../components/LocaleSwitcher";
 import { LyricsView } from "../../../components/LyricsView";
 import { SearchBar } from "../../../components/SearchBar";
-import { openMobileSearchFromGesture } from "../../../components/SearchOverlay";
+import { openMobileSearchFromGesture, preloadSearchOverlay } from "../../../lib/search-gesture";
 import { SkinSwitcher } from "../../../components/SkinSwitcher";
 import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
@@ -319,6 +319,7 @@ export function FeedLayout({ brand }: { brand: string }) {
               className="feed-search-launch"
               aria-label={ft("searchLaunch")}
               title={ft("searchLaunch")}
+              onPointerDown={() => void preloadSearchOverlay()}
               onClick={() => openMobileSearchFromGesture()}
             >
               <span aria-hidden>🔍</span>
