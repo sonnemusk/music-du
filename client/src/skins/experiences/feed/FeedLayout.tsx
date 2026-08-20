@@ -19,6 +19,7 @@ import { TrackList } from "../../../components/TrackList";
 import { Transport } from "../../../components/Transport";
 import { useT } from "../../../i18n";
 import { isMobileSearchUi } from "../../../lib/mobile-ui";
+import { SWIPE_DY_OVER_DX, SWIPE_MIN_DY, resolveVerticalSwipe } from "../../../lib/swipe-nav";
 import type { Track } from "../../../lib/types";
 import { useLyricIdx } from "../../../store/lyric-clock";
 import { usePlaybackClock } from "../../../store/playback-clock";
@@ -30,9 +31,6 @@ import "./feed.css";
 const SITE_QUEUES = ["favorites", "history", "playlist", "charts"] as const;
 type SiteQueue = (typeof SITE_QUEUES)[number];
 type DockKind = "queue" | "lyrics" | "search";
-
-const SWIPE_MIN_DY = 56;
-const SWIPE_DY_OVER_DX = 1.25;
 
 function isSiteQueue(v: string): v is SiteQueue {
   return (SITE_QUEUES as readonly string[]).includes(v);
@@ -236,9 +234,9 @@ export function FeedLayout({ brand }: { brand: string }) {
     const dy = e.clientY - dragRef.current.y;
     const dx = e.clientX - dragRef.current.x;
     setDragY(0);
-    if (Math.abs(dy) < SWIPE_MIN_DY) return;
-    if (Math.abs(dy) <= SWIPE_DY_OVER_DX * Math.abs(dx)) return;
-    next(dy < 0 ? 1 : -1);
+    const dir = resolveVerticalSwipe(dx, dy, SWIPE_MIN_DY, SWIPE_DY_OVER_DX);
+    if (!dir) return;
+    next(dir === "up" ? 1 : -1);
   };
 
   const onPointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {

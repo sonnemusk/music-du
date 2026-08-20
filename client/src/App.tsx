@@ -4,7 +4,7 @@ import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { MediaSession } from "./components/MediaSession";
 import { Toast } from "./components/Toast";
 import { isMobileSearchUi } from "./lib/mobile-ui";
-import { attachSwipeNav } from "./lib/swipe-nav";
+import { attachCoverSwipe, attachSwipeNav } from "./lib/swipe-nav";
 import { getTheme } from "./skins/theme-catalog";
 import { SkinHost } from "./skins/SkinHost";
 import { t, useT } from "./i18n";
@@ -98,6 +98,19 @@ export default function App() {
           attachSwipeNav(node, {
             onSwipeLeft: () => next(1),
             onSwipeRight: () => next(-1),
+          })
+        );
+      });
+      const covers = shell.querySelectorAll<HTMLElement>(
+        ".pocket-cover, .stage-art, .dock-now__cover, .now-playing.lg .np-cover, .split-cover"
+      );
+      covers.forEach((node) => {
+        if (seen.has(node)) return;
+        seen.add(node);
+        cleanups.push(
+          attachCoverSwipe(node, {
+            onSwipeUp: () => next(1),
+            onSwipeDown: () => next(-1),
           })
         );
       });

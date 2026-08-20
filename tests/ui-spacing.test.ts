@@ -73,6 +73,15 @@ describe("cross-layout chrome consistency", () => {
     expect(app).toMatch(/if \(bindTimer\) clearTimeout\(bindTimer\)/);
   });
 
+  it("binds vertical cover swipe on player-first covers, not the lyrics face", () => {
+    expect(app).toMatch(/attachCoverSwipe/);
+    expect(app).toMatch(/\.pocket-cover/);
+    expect(app).toMatch(/\.stage-art/);
+    expect(app).toMatch(/\.dock-now__cover/);
+    expect(app).toMatch(/onSwipeUp:\s*\(\) => next\(1\)/);
+    expect(app).toMatch(/onSwipeDown:\s*\(\) => next\(-1\)/);
+  });
+
   it("SkinHead owns brand + search + tools for shared layouts", () => {
     expect(shared).toMatch(/skin-head__main/);
     expect(shared).toMatch(/skin-head__tools/);

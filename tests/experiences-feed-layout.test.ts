@@ -40,7 +40,8 @@ describe("feed e2e layout polish", () => {
     expect(tsx).toMatch(/onPointerUp/);
     expect(tsx).toMatch(/function ignoreSwipeTarget/);
     expect(tsx).toMatch(/closest\("\[data-no-swipe\]"\)/);
-    expect(tsx).toMatch(/next\(\s*dy\s*<\s*0\s*\?\s*1\s*:\s*-1\s*\)/);
+    expect(tsx).toMatch(/resolveVerticalSwipe/);
+    expect(tsx).toMatch(/next\(dir === "up" \? 1 : -1\)/);
     expect(tsx).toMatch(/className="feed-chrome"[\s\S]*data-no-swipe/);
     expect(tsx).toMatch(/className="feed-deck"[\s\S]*data-no-swipe/);
     expect(tsx).toMatch(/className="feed-skips"/);

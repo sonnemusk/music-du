@@ -15,7 +15,7 @@ Two palettes, one shell.
 
 ## Chrome (not SkinHead / TabNav)
 1. **Mast** — mark, search (desktop `SearchBar` / phone overlay), paper/ink toggle, locale, theme.
-2. **Now** — cover and `LyricsView` in one stage. Face switch is a segmented control, not a modal.
+2. **Now** — cover and `LyricsView` in one stage. Face switch is a segmented control, not a modal. On the cover face, swipe up / down changes track (same as feed).
 3. **Library** — playlist / likes / charts / history as a full page.
 4. **Tabs** — 播 / 列 / 藏 / 榜 / 史. Search is the header lens on phone.
 5. **Mini** — only while browsing a list. Cover + title + prev / play / next. Class `player-bar`.
