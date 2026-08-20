@@ -62,7 +62,8 @@ describe("feed experience", () => {
     expect(tsx).toMatch(/onWheel/);
     expect(tsx).toMatch(/next\(\s*-1\s*\)/);
     expect(tsx).toMatch(/next\(\s*1\s*\)/);
-    expect(tsx).toMatch(/next\(\s*dy\s*<\s*0\s*\?\s*1\s*:\s*-1\s*\)/);
+    expect(tsx).toMatch(/resolveVerticalSwipe/);
+    expect(tsx).toMatch(/next\(dir === "up" \? 1 : -1\)/);
     expect(tsx).toMatch(/ignoreSwipeTarget/);
     expect(tsx).toMatch(/\[data-no-swipe\]/);
     expect(tsx).toMatch(/className="feed-skips"/);

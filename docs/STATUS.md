@@ -12,7 +12,7 @@ Personal music SPA + BFF. Production for the maintainer is **Cloudflare Workers 
 | Default skin | `stage-dim`（暗场） |
 | Layouts | **15** — 10 experience shells + pocket + side / immersive / compact / gallery |
 | Themes | **73** (classic palettes + dim/deep per experience + gallery pale/deep + pocket paper/ink) |
-| Tests | 54 files / 412 tests (`npm test`) |
+| Tests | 54 files / 415 tests (`npm test`) |
 | Main JS (prod) | ~194 KB / **gzip ~60 KB** after layout + SearchOverlay `React.lazy` |
 | CI | lint + typecheck + test + build + `check:bundle`; CodeQL on PR/main; push to `main` deploys primary + demo Workers |
 
