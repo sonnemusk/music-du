@@ -11,6 +11,7 @@ import { recentThemeToCssVars, RECENT_THEMES } from "../client/src/skins/experie
 import { splitThemeToCssVars, SPLIT_THEMES } from "../client/src/skins/experiences/split/theme.js";
 import { stageThemeToCssVars, STAGE_THEMES } from "../client/src/skins/experiences/stage/theme.js";
 import { verseThemeToCssVars, VERSE_THEMES } from "../client/src/skins/experiences/verse/theme.js";
+import { pocketThemeToCssVars, POCKET_THEMES } from "../client/src/skins/experiences/pocket/theme.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -70,6 +71,7 @@ describe("China-safe fonts", () => {
       ...SPLIT_THEMES.map(splitThemeToCssVars),
       ...STAGE_THEMES.map(stageThemeToCssVars),
       ...VERSE_THEMES.map(verseThemeToCssVars),
+      ...POCKET_THEMES.map(pocketThemeToCssVars),
     ];
     expect(samples.length).toBeGreaterThanOrEqual(16);
     for (const vars of samples) {

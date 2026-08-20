@@ -137,6 +137,7 @@ export const en: Dict = {
     find: "Find",
     boards: "Boards",
     split: "Split",
+    pocket: "Pocket",
     side: "Side",
     immersive: "Immersive",
     compact: "Compact",

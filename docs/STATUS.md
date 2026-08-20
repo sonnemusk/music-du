@@ -1,6 +1,6 @@
 # Current project status
 
-**Updated:** 2026-08-18 · display + persist/CI leftovers closed on `cursor/display-and-correctness-fixes-2fd6`  
+**Updated:** 2026-08-20 · pocket paper/ink phone skins (`cursor/pocket-mobile-themes-2fd6`)  
 This is the living brief for humans and agents. Do **not** execute `OPTIMIZATION-PLAN.md` or `GROK-RUNBOOK.md` — those 2026-08-12 construction docs are closed.
 
 ## What this app is
@@ -10,9 +10,9 @@ Personal music SPA + BFF. Production for the maintainer is **Cloudflare Workers 
 | | |
 |--|--|
 | Default skin | `stage-dim`（暗场） |
-| Layouts | **14** — 10 experience shells (dock/desk/feed/stage/verse/likes/recent/find/boards/split) + side / immersive / compact / gallery |
-| Themes | **71** (classic palettes + dim/deep per experience + gallery pale/deep) |
-| Tests | 52 files / 388 tests (`npm test`) |
+| Layouts | **15** — 10 experience shells + pocket + side / immersive / compact / gallery |
+| Themes | **73** (classic palettes + dim/deep per experience + gallery pale/deep + pocket paper/ink) |
+| Tests | 54 files (`npm test`) |
 | Main JS (prod) | ~194 KB / **gzip ~60 KB** after layout + SearchOverlay `React.lazy` |
 | CI | lint + typecheck + test + build + `check:bundle`; CodeQL on PR/main; push to `main` deploys primary + demo Workers |
 
@@ -30,7 +30,7 @@ Never bake a library token into the Vite bundle (`VITE_MUSIC_ACCESS_TOKEN` must 
 
 **Privacy / Worker cost:** separate demo D1; readonly GET strip; sparse D1 list writes; `ensureSchema` + resolve-cache DDL memoized; history `planHistoryWrites`; client 500ms/20s persist in `library-persist.ts`; saveLib batches list statements and bumps `revision` last; import 2MB cap; list/pos index in `ensureSchema`.
 
-**Mobile / UX:** immersive breakpoints; scheme B search overlay + `visualViewport`; overlay is `React.lazy` (preload on pointerdown so iOS still focuses in-gesture); 44px coarse targets; theme drawer (current-layout filter + recents); quality menu portalled; SW build-stamped cache + `SKIP_WAITING`; no first-visit reload loop; `tabTouched` / `queueTouched`; search generation token; classic-layout `--search-overlay-bottom`; mobile quality chip (`quality-wrap--keep`); idle ≤400px classic shells keep a play button; idle stage compresses art/seek without hiding wings.
+**Mobile / UX:** immersive breakpoints; scheme B search overlay + `visualViewport`; overlay is `React.lazy` (preload on pointerdown so iOS still focuses in-gesture); 44px coarse targets; theme drawer (current-layout filter + recents); quality menu portalled; SW build-stamped cache + `SKIP_WAITING`; no first-visit reload loop; `tabTouched` / `queueTouched`; search generation token; classic-layout `--search-overlay-bottom`; mobile quality chip (`quality-wrap--keep`); idle ≤400px classic shells keep a play button; idle stage compresses art/seek without hiding wings; **pocket** (`袋·纸` / `袋·墨`) keeps cover + lyrics on one page (segment + tap cover), no lyrics sheet / close button.
 
 **Frontend:** `playback-clock` + `lyric-clock`; TrackList memo + **real window virtualization** (64px row); layout code-split; Latin `@fontsource` (DM Sans at boot) + system CJK; display font waits for `ensureThemeFont`; i18n zh/en aligned; stage EN wing shorts; toast/drawer/Go/seek/empty-cover use theme tokens; missing art shows a note glyph; one quality picker on side/immersive/compact; charts heading not doubled on stage/verse/gallery; SkinHostFrame owns `data-idle` / `data-tab`; swipe-nav rebind is debounced.
 
@@ -40,7 +40,7 @@ Never bake a library token into the Vite bundle (`VITE_MUSIC_ACCESS_TOKEN` must 
 
 ## Do not add
 
-- More theme/layout shells unless the user asks (14 × 71 is already a maintenance tax).
+- More theme/layout shells unless the user asks (15 × 73 is already a maintenance tax).
 - Paid CF products (R2, paid KV, Image Resizing, Workers AI).
 - Audio bodies on the Worker (keep 302 to CDN).
 - A second in-app Access/token on the private Worker.

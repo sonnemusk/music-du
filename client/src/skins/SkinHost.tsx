@@ -38,6 +38,9 @@ const StageLayout = lazy(() =>
 const VerseLayout = lazy(() =>
   import("./experiences/verse/VerseLayout").then((m) => ({ default: m.VerseLayout }))
 );
+const PocketLayout = lazy(() =>
+  import("./experiences/pocket/PocketLayout").then((m) => ({ default: m.PocketLayout }))
+);
 const CompactLayout = lazy(() =>
   import("./layouts/CompactLayout").then((m) => ({ default: m.CompactLayout }))
 );
@@ -73,6 +76,8 @@ function layoutFor(id: string, brand: string) {
       return <BoardsLayout brand={brand} />;
     case "split":
       return <SplitLayout brand={brand} />;
+    case "pocket":
+      return <PocketLayout brand={brand} />;
     case "immersive":
       return <ImmersiveLayout brand={brand} />;
     case "compact":

@@ -9,6 +9,7 @@
 .skin-host[data-layout="find"] .charts-desc,
 .skin-host[data-layout="boards"] .charts-desc,
 .skin-host[data-layout="split"] .charts-desc,
+.skin-host[data-layout="pocket"] .charts-desc,
 .skin-host[data-layout="dock"] .charts-source,
 .skin-host[data-layout="desk"] .charts-source,
 .skin-host[data-layout="feed"] .charts-source,
@@ -19,6 +20,7 @@
 .skin-host[data-layout="find"] .charts-source,
 .skin-host[data-layout="boards"] .charts-source,
 .skin-host[data-layout="split"] .charts-source,
+.skin-host[data-layout="pocket"] .charts-source,
 .skin-host[data-layout="dock"] .charts-hint,
 .skin-host[data-layout="desk"] .charts-hint,
 .skin-host[data-layout="feed"] .charts-hint,
@@ -28,7 +30,8 @@
 .skin-host[data-layout="recent"] .charts-hint,
 .skin-host[data-layout="find"] .charts-hint,
 .skin-host[data-layout="boards"] .charts-hint,
-.skin-host[data-layout="split"] .charts-hint {
+.skin-host[data-layout="split"] .charts-hint,
+.skin-host[data-layout="pocket"] .charts-hint {
   display: none;
 }
 

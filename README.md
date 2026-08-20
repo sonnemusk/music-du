@@ -58,7 +58,7 @@ Top-right: **language** (中文 / English) and **theme** (主题 · 一键切换
 - Library — queue, likes, history, multi-device sync  
 - Search & charts — rising / hot / new  
 - Lyrics — multi-source, cached, follow-scroll  
-- Skins — 71 themes × 14 layouts (default **stage-dim**); phone search overlay  
+- Skins — 73 themes × 15 layouts (default **stage-dim**); phone search overlay; **pocket** paper/ink keep lyrics on the same page  
 - Import / export — `/favs`, `/import`  
 - **中文** UI by default; switch to **English** in the header  
 - Shortcuts — `Space`, `N` / `P`, …

@@ -39,7 +39,7 @@ Concise checklist of what ships in the current TypeScript app (v2).
 
 ## UI
 
-- **71** theme tokens × **14** layout shells (10 listen-first experiences + side / immersive / compact / gallery)
+- **73** theme tokens × **15** layout shells (10 listen-first experiences + pocket + side / immersive / compact / gallery)
 - Default skin: `stage-dim`
 - Layouts load with `React.lazy` (unused shells stay out of the first JS pack)
 - Cover proxy + browser Cache Storage

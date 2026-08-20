@@ -10,6 +10,7 @@ import { RECENT_THEMES } from "./experiences/recent/theme";
 import { SPLIT_THEMES } from "./experiences/split/theme";
 import { STAGE_THEMES } from "./experiences/stage/theme";
 import { VERSE_THEMES } from "./experiences/verse/theme";
+import { POCKET_THEMES } from "./experiences/pocket/theme";
 import { GALLERY_THEMES } from "./layouts/gallery-themes";
 
 export type { SkinLayout };
@@ -58,6 +59,7 @@ export const THEME_CATALOG: ThemeTokens[] = [
   ...(FIND_THEMES as ThemeTokens[]),
   ...(BOARDS_THEMES as ThemeTokens[]),
   ...(SPLIT_THEMES as ThemeTokens[]),
+  ...(POCKET_THEMES as ThemeTokens[]),
   {
     id: "aurora",
     name: "极光",

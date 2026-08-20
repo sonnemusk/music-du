@@ -43,7 +43,7 @@
 | Worker save 单组 batch + import 2MB + list 索引 | `worker.ts` |
 | Node token / CORS / SSRF / 事务+revision / `/import` | `app.ts` `library.ts` `safe-url.ts` |
 | 测试 | **46 files / 344 tests** |
-| 主题 / 布局 | **71** 主题 · **14** 布局 |
+| 主题 / 布局 | **73** 主题 · **15** 布局 |
 
 CI 部署记录：https://github.com/sonnemusk/music-du/actions/runs/31819033396
 

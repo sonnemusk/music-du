@@ -138,6 +138,7 @@ export const zh: Dict = {
     find: "检索",
     boards: "榜单",
     split: "并听",
+    pocket: "袋",
     side: "侧栏",
     immersive: "沉浸",
     compact: "紧凑",

@@ -1,6 +1,7 @@
 /**
  * Active skin layouts used by THEME_CATALOG.
  * First ten are the 2026 experience shells (dim/deep palettes).
+ * `pocket` is a phone-first pair (paper / ink), not dim/deep.
  * Last four are the original shared chrome layouts.
  */
 export const LAYOUT_IDS = [
@@ -14,6 +15,7 @@ export const LAYOUT_IDS = [
   "find",
   "boards",
   "split",
+  "pocket",
   "side",
   "immersive",
   "compact",
@@ -36,6 +38,7 @@ export const LAYOUT_META: Record<
   find: { name: "检索", short: "搜", blurb: "打开就能搜" },
   boards: { name: "榜单", short: "榜", blurb: "多平台热歌入口" },
   split: { name: "并听", short: "并", blurb: "播放器和列表同时在" },
+  pocket: { name: "袋", short: "袋", blurb: "封面和歌词同一页 · 不飘关闭层" },
   side: { name: "侧栏", short: "侧", blurb: "左播放器 · 右列表" },
   immersive: { name: "沉浸", short: "浸", blurb: "封面虚化全屏背景" },
   compact: { name: "紧凑", short: "紧", blurb: "顶栏信息 + 列表" },

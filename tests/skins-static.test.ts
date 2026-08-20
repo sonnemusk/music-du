@@ -117,6 +117,40 @@ describe("theme catalog", () => {
     expect(tsx).not.toMatch(/[\u4e00-\u9fff]/);
   });
 
+  it("pocket layout ships paper + ink palettes and its stylesheet", () => {
+    expect(LAYOUT_IDS).toContain("pocket");
+    const onPocket = THEME_CATALOG.filter((t) => t.layout === "pocket");
+    expect(onPocket.map((t) => t.id).sort()).toEqual(["pocket-ink", "pocket-paper"]);
+    const paper = onPocket.find((t) => t.id === "pocket-paper")!;
+    const ink = onPocket.find((t) => t.id === "pocket-ink")!;
+    const lum = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return (r * 299 + g * 587 + b * 114) / 1000;
+    };
+    expect(paper.bg).not.toBe(ink.bg);
+    expect(paper.accent).not.toBe(ink.accent);
+    expect(lum(paper.bg)).toBeGreaterThan(160);
+    expect(lum(paper.fg)).toBeLessThan(80);
+    expect(lum(ink.bg)).toBeLessThan(80);
+    expect(lum(ink.fg)).toBeGreaterThan(160);
+
+    const css = fs.readFileSync(
+      path.join(root, "client/src/skins/experiences/pocket/pocket.css"),
+      "utf8"
+    );
+    expect(css.includes("720px")).toBe(true);
+    expect(css.includes("390px")).toBe(true);
+    const tsx = fs.readFileSync(
+      path.join(root, "client/src/skins/experiences/pocket/PocketLayout.tsx"),
+      "utf8"
+    );
+    expect(tsx).toMatch(/LyricsView/);
+    expect(tsx).not.toMatch(/role=["']dialog["']/);
+    expect(tsx).not.toMatch(/[\u4e00-\u9fff]/);
+  });
+
   it("refined base + host exist (responsive shared layouts)", () => {
     expect(fs.existsSync(path.join(root, "client/src/skins/SkinHost.tsx"))).toBe(true);
     expect(fs.existsSync(path.join(root, "client/src/skins/themes/refined-base.css"))).toBe(

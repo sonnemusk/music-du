@@ -1,0 +1,723 @@
+/* Pocket — phone-first now-playing. Cover and lyrics share one stage. */
+
+.pocket,
+.pocket * {
+  box-sizing: border-box;
+}
+
+.pocket {
+  --pocket-hit: 44px;
+  --pocket-mast: 56px;
+  --pocket-tabs: 64px;
+  --pocket-mini: 64px;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  overflow-x: hidden;
+  color: var(--fg);
+  background: var(--wallpaper, var(--bg));
+  font-family: var(--font);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pocket-bleed {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.15);
+  transform: scale(1.12);
+  pointer-events: none;
+}
+
+.pocket-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 18%, transparent);
+}
+
+.pocket[data-pocket="pocket-paper"] .pocket-bleed {
+  display: none;
+}
+
+.pocket[data-pocket="pocket-ink"] .pocket-veil {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 42%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 86%, transparent) 46%,
+    var(--bg) 100%
+  );
+}
+
+.pocket-mast,
+.pocket-body,
+.pocket-tray,
+.pocket-tabs {
+  position: relative;
+  z-index: 2;
+}
+
+.pocket-mast {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--pocket-mast);
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 12px 4px 14px;
+  overflow: hidden;
+}
+
+.pocket-brand {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45em;
+  overflow: hidden;
+}
+
+.pocket-brand__mark {
+  font-family: var(--display-font, var(--font));
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.pocket-brand__name {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pocket-search {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.pocket-search input,
+.pocket .pocket-search input {
+  font-size: 16px;
+}
+
+.pocket-search-launch,
+.pocket-palette,
+.pocket-face,
+.pocket-tab,
+.pocket-mini__btn,
+.pocket-mini__art,
+.pocket-cover {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pocket-search-launch {
+  flex: 0 0 auto;
+  width: var(--pocket-hit);
+  height: var(--pocket-hit);
+  min-width: var(--pocket-hit);
+  min-height: var(--pocket-hit);
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 1.1rem;
+}
+
+.pocket-tools {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(72%, 24rem);
+  overflow: hidden;
+}
+
+.pocket .locale-switch,
+.pocket .skin-switcher__btn {
+  min-width: var(--pocket-hit);
+  min-height: var(--pocket-hit);
+}
+
+.pocket .skin-switcher__btn.primary .skin-switcher__label-full {
+  display: none;
+}
+
+.pocket-palettes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+}
+
+.pocket-palette {
+  min-width: var(--pocket-hit);
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.pocket-palette.on {
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.pocket-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pocket-now {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 16px 8px;
+  overflow: hidden;
+}
+
+.pocket-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: grid;
+  grid-template-areas: "stage";
+}
+
+.pocket-cover-slot,
+.pocket-verse {
+  grid-area: stage;
+  min-height: 0;
+  min-width: 0;
+  transition: opacity 0.22s ease;
+}
+
+.pocket-cover-slot {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.pocket-cover {
+  width: min(72vw, 320px);
+  aspect-ratio: 1;
+  max-height: 100%;
+  border-radius: var(--radius-lg, 28px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--card) 70%, var(--bg));
+  box-shadow: 0 18px 40px color-mix(in srgb, #3a2410 22%, transparent);
+}
+
+.pocket-cover.has {
+  background: var(--bg2, var(--bg));
+}
+
+.pocket-cover__img,
+.pocket-cover img,
+.pocket-cover .cov {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pocket-cover__rest {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 3rem;
+  color: var(--muted);
+}
+
+.pocket-verse {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pocket-verse > .lyrics-scroller,
+.pocket .lyrics-panel.lyrics-scroller {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pocket .lyrics-panel .ly {
+  font-family: var(--display-font, var(--font));
+  font-size: 1.15rem;
+  line-height: 1.55;
+}
+
+.pocket .lyrics-panel .ly.on {
+  font-size: 1.28rem;
+}
+
+/* Phone: one face at a time, in-flow — never a fixed sheet. */
+@media (max-width: 720px) {
+  .pocket[data-face="cover"] .pocket-verse {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .pocket[data-face="lyrics"] .pocket-cover-slot {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .pocket[data-pocket="pocket-ink"][data-face="lyrics"] .pocket-stage {
+    grid-template-rows: 56px minmax(0, 1fr);
+    grid-template-areas:
+      "chip"
+      "verse";
+  }
+
+  .pocket[data-pocket="pocket-ink"][data-face="lyrics"] .pocket-cover-slot {
+    grid-area: chip;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    justify-items: start;
+  }
+
+  .pocket[data-pocket="pocket-ink"][data-face="lyrics"] .pocket-cover {
+    width: 52px;
+    box-shadow: none;
+    border-radius: 12px;
+  }
+
+  .pocket[data-pocket="pocket-ink"][data-face="lyrics"] .pocket-verse {
+    grid-area: verse;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.pocket-meta {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 6px;
+  text-align: center;
+  min-width: 0;
+}
+
+.pocket-title {
+  margin: 0;
+  max-width: 100%;
+  font-family: var(--display-font, var(--font));
+  font-size: 1.45rem;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pocket-artist {
+  margin: 0;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pocket-faces {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.pocket-face {
+  min-width: 72px;
+  min-height: var(--pocket-hit);
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.pocket-face.on {
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.pocket-hint,
+.pocket-line {
+  margin: 6px 0 0;
+  max-width: 28rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.pocket-line {
+  min-height: var(--pocket-hit);
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: var(--accent);
+  font-family: var(--display-font, var(--font));
+  font-size: 1.02rem;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.pocket-transport {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.pocket-now .vol-row {
+  display: none;
+}
+
+.pocket-library {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 4px 12px 0;
+}
+
+.pocket-library__head {
+  flex: 0 0 auto;
+  padding: 4px 4px 8px;
+}
+
+.pocket-library__title {
+  margin: 0;
+  font-family: var(--display-font, var(--font));
+  font-size: 1.5rem;
+}
+
+.pocket-library:has(.charts-panel) .pocket-library__title {
+  display: none;
+}
+
+.pocket-library__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.pocket-demo {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 0.8rem;
+}
+
+.pocket-tray {
+  flex: 0 0 auto;
+  padding: 0 10px;
+}
+
+.pocket .pocket-mini.player-bar {
+  display: grid;
+  grid-template-columns: var(--pocket-hit) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--pocket-mini);
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 16px);
+  background: color-mix(in srgb, var(--card) 92%, var(--bg));
+}
+
+.pocket-mini__art {
+  width: var(--pocket-hit);
+  height: var(--pocket-hit);
+  min-width: var(--pocket-hit);
+  min-height: var(--pocket-hit);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg2, var(--bg));
+}
+
+.pocket-mini__art img,
+.pocket-mini__art .cov {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pocket-mini__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.pocket-mini__title,
+.pocket-mini__artist {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pocket-mini__title {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.pocket-mini__artist {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.pocket-mini__ctrls {
+  display: flex;
+  align-items: center;
+  height: var(--pocket-hit);
+}
+
+.pocket-mini__btn,
+.pocket-mini__btn.play {
+  width: var(--pocket-hit);
+  height: var(--pocket-hit);
+  min-width: var(--pocket-hit);
+  min-height: var(--pocket-hit);
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.pocket-mini__btn.play {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.pocket-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  min-height: var(--pocket-tabs);
+  padding: 4px 6px 2px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  background: color-mix(in srgb, var(--bg) 88%, var(--card));
+}
+
+.pocket-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-width: var(--pocket-hit);
+  min-height: var(--pocket-hit);
+  padding: 4px 2px;
+  border-radius: var(--radius-sm, 10px);
+  color: var(--muted);
+}
+
+.pocket-tab__icon {
+  width: 20px;
+  height: 20px;
+}
+
+.pocket-tab__icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pocket-tab__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pocket-tab.on {
+  color: var(--accent-fg);
+  background: linear-gradient(160deg, var(--accent), var(--accent2, var(--accent)));
+}
+
+/* Paper: airy raised cover, serif page. */
+.pocket[data-pocket="pocket-paper"] .pocket-title {
+  letter-spacing: -0.02em;
+}
+
+.pocket[data-pocket="pocket-paper"] .pocket-cover {
+  border-radius: 28px;
+  box-shadow:
+    0 22px 48px color-mix(in srgb, #3a2410 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
+.pocket[data-pocket="pocket-paper"] .pocket-tab.on {
+  background: var(--accent);
+}
+
+/* Ink: tighter type, gold line, glass tabs. */
+.pocket[data-pocket="pocket-ink"] .pocket-cover {
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.pocket[data-pocket="pocket-ink"] .pocket-title {
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
+}
+
+.pocket[data-pocket="pocket-ink"] .lyrics-panel .ly {
+  font-family: var(--font);
+  font-size: 1.02rem;
+}
+
+.pocket[data-pocket="pocket-ink"] .pocket-tabs {
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+@media (max-width: 390px) {
+  .pocket-title {
+    font-size: 1.2rem;
+  }
+
+  .pocket-cover {
+    width: min(78vw, 260px);
+  }
+
+  .pocket-brand__name {
+    display: none;
+  }
+}
+
+@media (min-width: 721px) {
+  .pocket-now {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.15fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "cover lyrics"
+      "meta lyrics"
+      "transport transport";
+    gap: 12px 28px;
+    padding: 12px 28px 16px;
+  }
+
+  .pocket-stage {
+    display: contents;
+  }
+
+  .pocket-cover-slot,
+  .pocket[data-face="cover"] .pocket-cover-slot,
+  .pocket[data-face="lyrics"] .pocket-cover-slot,
+  .pocket[data-pocket="pocket-ink"][data-face="lyrics"] .pocket-cover-slot {
+    grid-area: cover;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .pocket-verse,
+  .pocket[data-face="cover"] .pocket-verse,
+  .pocket[data-face="lyrics"] .pocket-verse,
+  .pocket[data-pocket="pocket-ink"][data-face="lyrics"] .pocket-verse {
+    grid-area: lyrics;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .pocket-meta {
+    grid-area: meta;
+    align-items: flex-start;
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .pocket-transport {
+    grid-area: transport;
+  }
+
+  .pocket-now .vol-row {
+    display: flex;
+  }
+
+  .pocket-cover {
+    width: min(100%, 340px);
+  }
+
+  .pocket-tabs {
+    max-width: 36rem;
+    margin: 0 auto;
+    border-top: 0;
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pocket-bleed,
+  .pocket-cover,
+  .pocket-verse,
+  .pocket-cover-slot {
+    transition: none;
+    filter: none;
+  }
+}

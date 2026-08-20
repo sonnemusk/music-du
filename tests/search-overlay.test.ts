@@ -24,6 +24,7 @@ const layouts = [
   "client/src/skins/experiences/find/FindLayout.tsx",
   "client/src/skins/experiences/likes/LikesLayout.tsx",
   "client/src/skins/experiences/boards/BoardsLayout.tsx",
+  "client/src/skins/experiences/pocket/PocketLayout.tsx",
 ];
 
 describe("lazy SearchOverlay", () => {
