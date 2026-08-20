@@ -363,6 +363,7 @@
   max-width: 100%;
   aspect-ratio: 1;
   height: auto;
+  touch-action: none;
 }
 .np-cover {
   width: 108px;

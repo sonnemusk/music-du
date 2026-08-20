@@ -268,6 +268,7 @@
   overflow: hidden;
   padding: 0;
   cursor: pointer;
+  touch-action: none;
 }
 
 .dock-now__cover.has {

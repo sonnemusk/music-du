@@ -266,6 +266,12 @@
   background: var(--bg2, var(--bg));
 }
 
+@media (max-width: 720px) {
+  .pocket[data-face="cover"] .pocket-cover {
+    touch-action: none;
+  }
+}
+
 .pocket-cover__img,
 .pocket-cover img,
 .pocket-cover .cov {

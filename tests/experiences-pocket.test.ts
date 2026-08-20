@@ -138,5 +138,7 @@ describe("pocket i18n", () => {
     expect(pocketT("zh", "faceCover")).toBe(pocketI18n.zh.faceCover);
     expect(pocketT("en", "tab.now")).toBe(pocketI18n.en.tab.now);
     expect(pocketT("en", "flipHint")).toMatch(/cover/i);
+    expect(pocketT("en", "flipHint")).toMatch(/swipe/i);
+    expect(pocketT("zh", "flipHint")).toMatch(/上下滑/);
   });
 });
