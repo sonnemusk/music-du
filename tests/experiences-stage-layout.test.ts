@@ -123,6 +123,14 @@ describe("stage e2e layout polish", () => {
     expect(title).not.toMatch(/520px/);
   });
 
+  it("phone lyrics stay on the floor, not in the pit sheet", () => {
+    expect(tsx).toMatch(/data-face=\{narrow && lyricsOpen \? "lyrics"/);
+    expect(tsx).toMatch(/className="stage-verse"/);
+    expect(tsx).toMatch(/id === "lyrics" && narrow/);
+    expect(css).toMatch(/\[data-face="lyrics"\] \.stage-verse/);
+    expect(css).toMatch(/\[data-face="lyrics"\] \.stage-proscenium/);
+  });
+
   it("sheet close is 44 and pit does not sit on the footlights", () => {
     const close = block(css, ".stage-sheet__close");
     expect(px(decl(close, "min-width"))).toBeGreaterThanOrEqual(44);

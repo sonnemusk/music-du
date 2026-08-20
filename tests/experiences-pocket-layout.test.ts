@@ -45,6 +45,15 @@ describe("pocket e2e layout — lyrics stay on the stage", () => {
     expect(css).not.toMatch(/position:\s*fixed[\s\S]{0,80}z-index:\s*[1-9]/);
   });
 
+  it("desktop uses a left rail and a cover | lyrics now-playing column", () => {
+    expect(tsx).toMatch(/data-wide=\{narrow \? undefined : "1"\}/);
+    expect(tsx).toMatch(/className="pocket-shell"/);
+    expect(css).toMatch(/grid-template-areas:[\s\S]*"rail main"/);
+    expect(css).toMatch(/"cover lyrics"/);
+    expect(css).toMatch(/grid-area:\s*lyrics/);
+    expect(css).toMatch(/\.pocket\[data-page="now"\] \.pocket-shell/);
+  });
+
   it("charts library does not repeat the Charts heading", () => {
     expect(css).toMatch(
       /\.pocket-library:has\(\.charts-panel\) \.pocket-library__title\s*\{[^}]*display:\s*none/s

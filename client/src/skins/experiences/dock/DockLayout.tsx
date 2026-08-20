@@ -127,6 +127,7 @@ export function DockLayout({ brand }: { brand: string }) {
   const phone = useMq(PHONE_MQ);
   const desktop = useMq(DESKTOP_MQ);
   const [sheet, setSheet] = useState(false);
+  const [face, setFace] = useState<"cover" | "lyrics">("cover");
 
   useEffect(() => {
     const root = document.documentElement;
@@ -136,7 +137,9 @@ export function DockLayout({ brand }: { brand: string }) {
       root.style.setProperty(
         "--search-overlay-bottom",
         narrow
-          ? "calc(64px + 58px + env(safe-area-inset-bottom, 0px))"
+          ? sheet
+            ? "calc(58px + env(safe-area-inset-bottom, 0px))"
+            : "calc(64px + 58px + env(safe-area-inset-bottom, 0px))"
           : "calc(72px + env(safe-area-inset-bottom, 0px))"
       );
     };
@@ -146,7 +149,7 @@ export function DockLayout({ brand }: { brand: string }) {
       window.removeEventListener("resize", apply);
       root.style.removeProperty("--search-overlay-bottom");
     };
-  }, []);
+  }, [sheet]);
 
   useEffect(() => {
     if (!sheet) return;
@@ -173,9 +176,11 @@ export function DockLayout({ brand }: { brand: string }) {
 
   return (
     <div
-      className={`layout-dock${sheet ? " is-boarded" : ""}`}
+      className={`layout-dock${sheet && !phone ? " is-boarded" : ""}`}
       data-phone={phone ? "1" : undefined}
       data-desktop={desktop ? "1" : undefined}
+      data-now={phone && sheet ? "1" : undefined}
+      data-face={phone && sheet ? face : undefined}
     >
       <header className="dock-head">
         <div className="dock-brand" title={brand}>
@@ -238,14 +243,77 @@ export function DockLayout({ brand }: { brand: string }) {
 
         <main
           className="dock-main"
-          data-tab={tab}
+          data-tab={phone && sheet ? "now" : tab}
           aria-label={tr("contentAria")}
         >
-          {isDemoSite ? <p className="dock-demo">{tr("demo.banner")}</p> : null}
-          <DockMain tr={tr} />
+          {phone && sheet ? (
+            <section className="dock-now" aria-label={tr("shell.nowAria")}>
+              <div className="dock-now__stage">
+                <div className="dock-now__cover-slot">
+                  <button
+                    type="button"
+                    className={`dock-now__cover${curTrack?.cover ? " has" : ""}`}
+                    onClick={() => setFace((f) => (f === "cover" ? "lyrics" : "cover"))}
+                    aria-label={face === "cover" ? tr("shell.faceLyrics") : tr("shell.backCover")}
+                  >
+                    {curTrack?.cover ? (
+                      <CoverImg
+                        src={curTrack.cover}
+                        className="dock-now__cov"
+                        size="full"
+                        priority
+                      />
+                    ) : (
+                      <span className="dock-now__rest" aria-hidden>
+                        ♪
+                      </span>
+                    )}
+                  </button>
+                </div>
+                <div className="dock-now__verse">
+                  <LyricsView variant="panel" />
+                </div>
+              </div>
+              <div className="dock-now__meta">
+                <h2 className="dock-now__title">{curTrack?.name || tr("shell.idle")}</h2>
+                <p className="dock-now__artist">
+                  {curTrack?.artist || tr("nowPlaying.pick")}
+                </p>
+                <div className="dock-now__faces" role="tablist" aria-label={tr("shell.facesAria")}>
+                  <button
+                    type="button"
+                    role="tab"
+                    className={`dock-now__face${face === "cover" ? " on" : ""}`}
+                    aria-selected={face === "cover"}
+                    onClick={() => setFace("cover")}
+                  >
+                    {tr("shell.faceCover")}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    className={`dock-now__face${face === "lyrics" ? " on" : ""}`}
+                    aria-selected={face === "lyrics"}
+                    onClick={() => setFace("lyrics")}
+                  >
+                    {tr("shell.faceLyrics")}
+                  </button>
+                </div>
+              </div>
+              <div className="dock-now__transport" data-no-swipe>
+                <Transport />
+              </div>
+            </section>
+          ) : (
+            <>
+              {isDemoSite ? <p className="dock-demo">{tr("demo.banner")}</p> : null}
+              <DockMain tr={tr} />
+            </>
+          )}
         </main>
       </div>
 
+      {phone && sheet ? null : (
       <footer className="dock-mini player-bar" aria-label={tr("shell.miniAria")}>
         <div
           className="dock-mini__progress"
@@ -259,7 +327,10 @@ export function DockLayout({ brand }: { brand: string }) {
         <button
           type="button"
           className="dock-mini__now"
-          onClick={() => setSheet(true)}
+          onClick={() => {
+            setFace("cover");
+            setSheet(true);
+          }}
           aria-label={tr("shell.expand")}
           title={tr("shell.slipHint")}
         >
@@ -312,6 +383,7 @@ export function DockLayout({ brand }: { brand: string }) {
           </button>
         </div>
       </footer>
+      )}
 
       {phone ? (
         <nav className="dock-tabs" aria-label={tr("shell.navAria")}>
@@ -329,7 +401,7 @@ export function DockLayout({ brand }: { brand: string }) {
         </nav>
       ) : null}
 
-      {sheet ? (
+      {sheet && !phone ? (
         <div className="dock-sheet now-playing" role="dialog" aria-modal="true" aria-label={tr("shell.sheetAria")}>
           <div className="dock-sheet__bar">
             <button

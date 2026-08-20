@@ -21,6 +21,11 @@ export const dockZh: Dict = {
     progressAria: "播放进度",
     recent: "最近搜索",
     queueHint: "当前队列",
+    faceCover: "封面",
+    faceLyrics: "歌词",
+    facesAria: "封面或歌词",
+    backCover: "回到封面",
+    nowAria: "正在播放",
   },
 };
 
@@ -43,6 +48,11 @@ export const dockEn: Dict = {
     progressAria: "Playback progress",
     recent: "Recent searches",
     queueHint: "Now in queue",
+    faceCover: "Cover",
+    faceLyrics: "Lyrics",
+    facesAria: "Cover or lyrics",
+    backCover: "Back to cover",
+    nowAria: "Now playing",
   },
 };
 

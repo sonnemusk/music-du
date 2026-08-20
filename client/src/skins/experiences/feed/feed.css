@@ -617,6 +617,26 @@
   padding: 0 8px 10px;
 }
 
+.feed-verse {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 560px;
+  overflow: hidden;
+}
+
+.feed-verse > .lyrics-scroller,
+.layout-feed .feed-verse .lyrics-panel.lyrics-scroller {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .layout-feed .lyrics-panel,
 .layout-feed .lyrics-scroller {
   min-height: 100%;
@@ -729,6 +749,20 @@
     flex: 1 1 0;
     min-height: 0;
     border-radius: 18px;
+  }
+
+  .feed-verse {
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    padding: 8px 6px 0;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--card) 72%, transparent);
+    border: 1px solid var(--line);
+  }
+
+  .feed-stage[data-dock="lyrics"] .feed-reel {
+    display: none;
   }
 
   .feed-skips {

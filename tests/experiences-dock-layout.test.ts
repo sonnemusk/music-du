@@ -88,6 +88,17 @@ describe("dock layout polish", () => {
     expect(tsx).toMatch(/SkinSwitcher/);
   });
 
+  it("phone now-playing is in-flow; dialog sheet stays desktop", () => {
+    const tsx = read("DockLayout.tsx");
+    const css = read("dock.css");
+    expect(tsx).toMatch(/className="dock-now"/);
+    expect(tsx).toMatch(/phone && sheet/);
+    expect(tsx).toMatch(/sheet && !phone/);
+    expect(tsx).toMatch(/shell\.faceCover|faceCover/);
+    expect(css).toMatch(/\.dock-now/);
+    expect(css).toMatch(/\[data-face="lyrics"\] \.dock-now__cover-slot/);
+  });
+
   it("overflow-x is hidden on shell, head, mini, tabs, main", () => {
     const css = read("dock.css");
     expect(css).toMatch(/\.layout-dock\s*\{[^}]*overflow-x:\s*hidden/s);

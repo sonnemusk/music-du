@@ -114,6 +114,14 @@ describe("feed e2e layout polish", () => {
     expect(feedEn.navAria).toMatch(/track/i);
   });
 
+  it("phone lyrics replace the reel in-page; queue keeps the sheet close", () => {
+    expect(tsx).toMatch(/className="feed-verse"/);
+    expect(tsx).toMatch(/mobile && dock === "lyrics"/);
+    expect(tsx).toMatch(/setSheetOpen\(false\)/);
+    expect(tsx).toMatch(/className="feed-sheet-close"/);
+    expect(css).toMatch(/\.feed-verse[\s\S]{0,80}min-height:\s*0/);
+  });
+
   it("covers 390–1280 without horizontal overflow", () => {
     expect(css).toContain("720px");
     expect(css.includes("1024px") || css.includes("1023px")).toBe(true);

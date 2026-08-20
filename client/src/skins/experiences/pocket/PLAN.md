@@ -22,7 +22,7 @@ Two palettes, one shell.
 
 ## Layout
 - Root `100%` / overflow hidden / `env(safe-area-inset-*)`.
-- Phone ≤720: one face at a time. Desktop ≥721: cover and lyrics side by side.
+- Phone ≤720: one face at a time. Desktop ≥721: left rail (播 / 列 / 藏 / 榜 / 史) and cover | lyrics columns. Face switch is phone-only.
 - Hits ≥44px. `720px` + `390px` + `dvh`.
 - Lyrics live in-flow (`min-height: 0`). Never `position: fixed` / `role="dialog"`.
 
