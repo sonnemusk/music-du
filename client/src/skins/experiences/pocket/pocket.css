@@ -63,11 +63,21 @@
 }
 
 .pocket-mast,
+.pocket-shell,
 .pocket-body,
 .pocket-tray,
 .pocket-tabs {
   position: relative;
   z-index: 2;
+}
+
+.pocket-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .pocket-mast {
@@ -200,6 +210,15 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  order: 1;
+}
+
+.pocket-tray {
+  order: 2;
+}
+
+.pocket-tabs {
+  order: 3;
 }
 
 .pocket-now {
@@ -649,16 +668,87 @@
 }
 
 @media (min-width: 721px) {
+  .pocket-shell {
+    display: grid;
+    grid-template-columns: 168px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rail main"
+      "rail tray";
+  }
+
+  .pocket[data-page="now"] .pocket-shell {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "rail main";
+  }
+
+  .pocket-tabs {
+    grid-area: rail;
+    order: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    padding: 12px 10px 16px;
+    border-top: 0;
+    border-right: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+  }
+
+  .pocket-tab {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: var(--pocket-hit);
+    padding: 0 12px;
+  }
+
+  .pocket-tab__label {
+    font-size: 0.88rem;
+    letter-spacing: 0;
+  }
+
+  .pocket-body {
+    grid-area: main;
+    order: 0;
+  }
+
+  .pocket-tray {
+    grid-area: tray;
+    order: 0;
+    padding: 0 18px 12px;
+  }
+
+  .pocket-mast {
+    padding: 10px 22px 8px 18px;
+  }
+
+  .pocket-search {
+    flex: 1 1 360px;
+    max-width: 420px;
+  }
+
+  .pocket-tools {
+    max-width: none;
+  }
+
   .pocket-now {
     display: grid;
-    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.15fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       "cover lyrics"
       "meta lyrics"
-      "transport transport";
-    gap: 12px 28px;
-    padding: 12px 28px 16px;
+      "transport lyrics";
+    gap: 10px 32px;
+    width: min(100%, 1120px);
+    margin: 0 auto;
+    padding: 16px 28px 20px;
   }
 
   .pocket-stage {
@@ -672,7 +762,7 @@
     grid-area: cover;
     visibility: visible;
     opacity: 1;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .pocket-verse,
@@ -683,6 +773,11 @@
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
+    min-height: 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-lg, 20px);
+    background: color-mix(in srgb, var(--card) 82%, transparent);
+    border: 1px solid var(--line);
   }
 
   .pocket-meta {
@@ -690,10 +785,17 @@
     align-items: flex-start;
     text-align: left;
     justify-content: flex-start;
+    padding: 4px 0 0;
+  }
+
+  .pocket-title {
+    white-space: normal;
+    font-size: 1.7rem;
   }
 
   .pocket-transport {
     grid-area: transport;
+    align-self: end;
   }
 
   .pocket-now .vol-row {
@@ -701,14 +803,26 @@
   }
 
   .pocket-cover {
-    width: min(100%, 340px);
+    width: min(100%, 360px);
   }
 
-  .pocket-tabs {
-    max-width: 36rem;
-    margin: 0 auto;
-    border-top: 0;
-    background: transparent;
+  .pocket-library {
+    padding: 8px 22px 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pocket-shell {
+    grid-template-columns: 188px minmax(0, 1fr);
+  }
+
+  .pocket-now {
+    grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+    padding: 20px 36px 24px;
+  }
+
+  .pocket-cover {
+    width: min(100%, 400px);
   }
 }
 

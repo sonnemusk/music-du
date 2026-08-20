@@ -95,6 +95,7 @@ export function StageLayout({ brand }: { brand: string }) {
 
   const themeId: StageThemeId = isStageThemeId(skin) ? skin : "stage-dim";
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
 
   const hostRef = useRef<HTMLDivElement>(null);
   const floorRef = useRef<HTMLElement>(null);
@@ -152,9 +153,17 @@ export function StageLayout({ brand }: { brand: string }) {
   const openWing = (id: PanelTab) => {
     if (id === "search" && narrow) {
       setSheetOpen(false);
+      setLyricsOpen(false);
       openMobileSearchFromGesture();
       return;
     }
+    if (id === "lyrics" && narrow) {
+      setSheetOpen(false);
+      setTab("lyrics");
+      setLyricsOpen((open) => (tab === "lyrics" ? !open : true));
+      return;
+    }
+    setLyricsOpen(false);
     if (sheetOpen && tab === id) {
       setSheetOpen(false);
       return;
@@ -180,6 +189,7 @@ export function StageLayout({ brand }: { brand: string }) {
       data-layout="stage"
       data-theme={themeId}
       data-sheet={sheetOpen ? tab : undefined}
+      data-face={narrow && lyricsOpen ? "lyrics" : undefined}
       data-narrow={narrow ? "1" : undefined}
       style={{
         ...vars,
@@ -237,7 +247,15 @@ export function StageLayout({ brand }: { brand: string }) {
       <main ref={floorRef} className="stage-floor">
         <div className={`now-playing stage-now ${loadingPlay ? "loading" : ""}`}>
           <div className="stage-proscenium">
-            <div className={`stage-art ${curTrack?.cover ? "has" : ""}`}>
+            <div
+              className={`stage-art ${curTrack?.cover ? "has" : ""}`}
+              onClick={() => {
+                if (!narrow) return;
+                setTab("lyrics");
+                setSheetOpen(false);
+                setLyricsOpen(true);
+              }}
+            >
               {curTrack?.cover ? (
                 <CoverImg
                   key={String(curTrack.id)}
@@ -253,6 +271,9 @@ export function StageLayout({ brand }: { brand: string }) {
               )}
             </div>
           </div>
+          <div className="stage-verse">
+            <LyricsView variant="panel" />
+          </div>
           <h1 className="stage-title" title={curTrack?.name || undefined}>
             {curTrack?.name || tr("nowPlaying.pick")}
           </h1>
@@ -267,7 +288,7 @@ export function StageLayout({ brand }: { brand: string }) {
 
         <nav className="stage-wings" aria-label={stageText(locale, "wingsAria")} data-no-swipe>
           {WINGS.map((id) => {
-            const on = sheetOpen && tab === id;
+            const on = id === "lyrics" && narrow ? lyricsOpen : sheetOpen && tab === id;
             const full = tr(WING_I18N[id].full);
             // 6-up rail truncates EN "History"/"Charts"; zh full is already 2 chars.
             const label = locale === "en" ? tr(WING_I18N[id].short) : full;
@@ -280,7 +301,9 @@ export function StageLayout({ brand }: { brand: string }) {
                 data-stage-search={id === "search" ? "1" : undefined}
                 aria-label={full}
                 aria-expanded={id === "search" && narrow ? undefined : on}
-                aria-controls={id === "search" && narrow ? undefined : "stage-sheet"}
+                aria-controls={
+                  (id === "search" || id === "lyrics") && narrow ? undefined : "stage-sheet"
+                }
                 onPointerDown={() => {
                   if (id === "search" && narrow) void preloadSearchOverlay();
                 }}

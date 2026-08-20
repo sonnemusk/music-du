@@ -198,8 +198,12 @@ export function FeedLayout({ brand }: { brand: string }) {
 
   const openLyrics = useCallback(() => {
     setTab("lyrics");
+    if (mobile) {
+      setDock((current) => (current === "lyrics" ? "queue" : "lyrics"));
+      setSheetOpen(false);
+      return;
+    }
     setDock("lyrics");
-    if (mobile) setSheetOpen(true);
   }, [mobile, setTab]);
 
   const openQueue = useCallback(() => {
@@ -376,7 +380,12 @@ export function FeedLayout({ brand }: { brand: string }) {
             onClick={() => setSheetOpen(false)}
           />
         ) : null}
-        <section className="feed-stage">
+        <section className="feed-stage" data-dock={dock}>
+          {mobile && dock === "lyrics" ? (
+            <div className="feed-verse">
+              <LyricsView variant="panel" />
+            </div>
+          ) : (
           <div
             className="feed-reel"
             onPointerDown={onPointerDown}
@@ -425,6 +434,7 @@ export function FeedLayout({ brand }: { brand: string }) {
               <span className="feed-index__fill" style={{ height: `${Math.round(indexRatio * 100)}%` }} />
             </div>
           </div>
+          )}
 
           <div className="feed-deck" data-no-swipe>
             <div className="feed-skips" role="group" aria-label={ft("navAria")}>

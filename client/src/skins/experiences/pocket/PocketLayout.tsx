@@ -237,6 +237,7 @@ export function PocketLayout({ brand }: { brand: string }) {
       data-pocket={palette}
       data-page={page}
       data-face={face}
+      data-wide={narrow ? undefined : "1"}
       style={{
         ...vars,
         background: "var(--wallpaper)",
@@ -295,124 +296,148 @@ export function PocketLayout({ brand }: { brand: string }) {
         </div>
       </header>
 
-      <div className="pocket-body">
-        {page === "now" ? (
-          <section
-            className={`pocket-now${loadingPlay ? " loading" : ""}`}
-            aria-label={pocketT(locale, "nowAria")}
-          >
-            <div className="pocket-stage">
-              <div className="pocket-cover-slot">
-                <button
-                  type="button"
-                  className={`pocket-cover${curTrack?.cover ? " has" : ""}`}
-                  onClick={() => setFace((f) => (f === "cover" ? "lyrics" : "cover"))}
-                  aria-label={
-                    face === "cover" ? pocketT(locale, "faceLyrics") : pocketT(locale, "backCover")
-                  }
-                >
-                  {curTrack?.cover ? (
-                    <CoverImg
-                      key={String(curTrack.id)}
-                      src={curTrack.cover}
-                      className="pocket-cover__img"
-                      size="medium"
-                      priority
-                    />
-                  ) : (
-                    <span className="pocket-cover__rest" aria-hidden>
-                      ♪
-                    </span>
-                  )}
-                </button>
-              </div>
-              <div className="pocket-verse">
-                <LyricsView variant="panel" />
-              </div>
-            </div>
+      <div className="pocket-shell">
+        <nav ref={tabsRef} className="pocket-tabs" aria-label={pocketT(locale, "tabsAria")} data-no-swipe>
+          {TABS.map((id) => {
+            const Icon = ICONS[id];
+            const on = id === "now" ? page === "now" : page === "library" && libraryTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`pocket-tab${on ? " on" : ""}`}
+                data-tab={id}
+                aria-current={on ? "page" : undefined}
+                aria-label={pocketT(locale, `tab.${id}`)}
+                onClick={() => goTab(id)}
+              >
+                <span className="pocket-tab__icon">
+                  <Icon />
+                </span>
+                <span className="pocket-tab__label">{pocketT(locale, `tab.${id}`)}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-            <div className="pocket-meta">
-              <h1 className="pocket-title">{curTrack?.name || tr("nowPlaying.pick")}</h1>
-              <p className="pocket-artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
-              <div className="pocket-faces" role="tablist" aria-label={pocketT(locale, "facesAria")}>
-                <button
-                  type="button"
-                  role="tab"
-                  className={`pocket-face ${face === "cover" ? "on" : ""}`}
-                  aria-selected={face === "cover"}
-                  onClick={() => setFace("cover")}
-                >
-                  {pocketT(locale, "faceCover")}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  className={`pocket-face ${face === "lyrics" ? "on" : ""}`}
-                  aria-selected={face === "lyrics"}
-                  onClick={() => setFace("lyrics")}
-                >
-                  {pocketT(locale, "faceLyrics")}
-                </button>
-              </div>
-              {palette === "pocket-ink" && face === "cover" ? (
-                <button
-                  type="button"
-                  className="pocket-line"
-                  onClick={() => setFace("lyrics")}
-                  aria-label={pocketT(locale, "lineHint")}
-                >
-                  {line?.orig || pocketT(locale, "flipHint")}
-                </button>
-              ) : (
-                <p className="pocket-hint">{pocketT(locale, "flipHint")}</p>
-              )}
-            </div>
-
-            <div className="pocket-transport" data-no-swipe>
-              <Transport />
-            </div>
-          </section>
-        ) : (
-          <section className="pocket-library" aria-label={pocketT(locale, "libraryAria")}>
-            {isDemoSite ? <p className="pocket-demo">{tr("demo.banner")}</p> : null}
-            <header className="pocket-library__head">
-              <h1 className="pocket-library__title">{libraryTitle}</h1>
-            </header>
-            <div className="pocket-library__body">
-              <PocketBody tab={libraryTab} />
-            </div>
-          </section>
-        )}
-      </div>
-
-      {page === "library" ? (
-        <footer ref={dockRef} className="pocket-tray">
-          <PocketMini onOpen={() => setPage("now")} />
-        </footer>
-      ) : null}
-
-      <nav ref={tabsRef} className="pocket-tabs" aria-label={pocketT(locale, "tabsAria")} data-no-swipe>
-        {TABS.map((id) => {
-          const Icon = ICONS[id];
-          const on = id === "now" ? page === "now" : page === "library" && libraryTab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`pocket-tab${on ? " on" : ""}`}
-              data-tab={id}
-              aria-current={on ? "page" : undefined}
-              aria-label={pocketT(locale, `tab.${id}`)}
-              onClick={() => goTab(id)}
+        <div className="pocket-body">
+          {page === "now" ? (
+            <section
+              className={`pocket-now${loadingPlay ? " loading" : ""}`}
+              aria-label={pocketT(locale, "nowAria")}
             >
-              <span className="pocket-tab__icon">
-                <Icon />
-              </span>
-              <span className="pocket-tab__label">{pocketT(locale, `tab.${id}`)}</span>
-            </button>
-          );
-        })}
-      </nav>
+              <div className="pocket-stage">
+                <div className="pocket-cover-slot">
+                  {narrow ? (
+                    <button
+                      type="button"
+                      className={`pocket-cover${curTrack?.cover ? " has" : ""}`}
+                      onClick={() => setFace((f) => (f === "cover" ? "lyrics" : "cover"))}
+                      aria-label={
+                        face === "cover" ? pocketT(locale, "faceLyrics") : pocketT(locale, "backCover")
+                      }
+                    >
+                      {curTrack?.cover ? (
+                        <CoverImg
+                          key={String(curTrack.id)}
+                          src={curTrack.cover}
+                          className="pocket-cover__img"
+                          size="medium"
+                          priority
+                        />
+                      ) : (
+                        <span className="pocket-cover__rest" aria-hidden>
+                          ♪
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <div className={`pocket-cover${curTrack?.cover ? " has" : ""}`}>
+                      {curTrack?.cover ? (
+                        <CoverImg
+                          key={String(curTrack.id)}
+                          src={curTrack.cover}
+                          className="pocket-cover__img"
+                          size="full"
+                          priority
+                        />
+                      ) : (
+                        <span className="pocket-cover__rest" aria-hidden>
+                          ♪
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="pocket-verse">
+                  <LyricsView variant="panel" />
+                </div>
+              </div>
+
+              <div className="pocket-meta">
+                <h1 className="pocket-title">{curTrack?.name || tr("nowPlaying.pick")}</h1>
+                <p className="pocket-artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
+                {narrow ? (
+                  <>
+                    <div className="pocket-faces" role="tablist" aria-label={pocketT(locale, "facesAria")}>
+                      <button
+                        type="button"
+                        role="tab"
+                        className={`pocket-face ${face === "cover" ? "on" : ""}`}
+                        aria-selected={face === "cover"}
+                        onClick={() => setFace("cover")}
+                      >
+                        {pocketT(locale, "faceCover")}
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        className={`pocket-face ${face === "lyrics" ? "on" : ""}`}
+                        aria-selected={face === "lyrics"}
+                        onClick={() => setFace("lyrics")}
+                      >
+                        {pocketT(locale, "faceLyrics")}
+                      </button>
+                    </div>
+                    {palette === "pocket-ink" && face === "cover" ? (
+                      <button
+                        type="button"
+                        className="pocket-line"
+                        onClick={() => setFace("lyrics")}
+                        aria-label={pocketT(locale, "lineHint")}
+                      >
+                        {line?.orig || pocketT(locale, "flipHint")}
+                      </button>
+                    ) : (
+                      <p className="pocket-hint">{pocketT(locale, "flipHint")}</p>
+                    )}
+                  </>
+                ) : null}
+              </div>
+
+              <div className="pocket-transport" data-no-swipe>
+                <Transport />
+              </div>
+            </section>
+          ) : (
+            <section className="pocket-library" aria-label={pocketT(locale, "libraryAria")}>
+              {isDemoSite ? <p className="pocket-demo">{tr("demo.banner")}</p> : null}
+              <header className="pocket-library__head">
+                <h1 className="pocket-library__title">{libraryTitle}</h1>
+              </header>
+              <div className="pocket-library__body">
+                <PocketBody tab={libraryTab} />
+              </div>
+            </section>
+          )}
+        </div>
+
+        {page === "library" ? (
+          <footer ref={dockRef} className="pocket-tray">
+            <PocketMini onOpen={() => setPage("now")} />
+          </footer>
+        ) : null}
+      </div>
     </div>
   );
 }

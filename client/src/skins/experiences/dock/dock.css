@@ -220,6 +220,173 @@
   max-height: none;
 }
 
+.dock-now {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 4px 14px 10px;
+}
+
+.layout-dock[data-now="1"] .dock-main {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.dock-now__stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: grid;
+  grid-template-areas: "stage";
+}
+
+.dock-now__cover-slot,
+.dock-now__verse {
+  grid-area: stage;
+  min-height: 0;
+  min-width: 0;
+}
+
+.dock-now__cover-slot {
+  display: grid;
+  place-items: center;
+}
+
+.dock-now__cover {
+  appearance: none;
+  border: 0;
+  background: color-mix(in srgb, var(--card) 70%, var(--bg));
+  color: inherit;
+  width: min(72vw, 320px);
+  aspect-ratio: 1;
+  max-height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dock-now__cover.has {
+  background: var(--bg2, var(--bg));
+}
+
+.dock-now__cov,
+.dock-now__cover img,
+.dock-now__cover .cov {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dock-now__rest {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 3rem;
+  color: var(--muted);
+}
+
+.dock-now__verse {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dock-now__verse > .lyrics-scroller,
+.layout-dock .dock-now .lyrics-panel.lyrics-scroller {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: auto;
+}
+
+.layout-dock[data-face="cover"] .dock-now__verse {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.layout-dock[data-face="lyrics"] .dock-now__cover-slot {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dock-now__meta {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  text-align: center;
+  min-width: 0;
+}
+
+.dock-now__title {
+  margin: 0;
+  max-width: 100%;
+  font-family: var(--display-font, var(--font));
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-now__artist {
+  margin: 0;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-now__faces {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.dock-now__face {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.dock-now__face.on {
+  color: var(--accent-fg);
+  background: var(--accent);
+}
+
+.dock-now__transport {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+}
+
 .dock-demo {
   margin: 4px 8px 10px;
   padding: 8px 12px;
@@ -809,8 +976,19 @@
     min-height: 44px;
   }
 
+  .layout-dock .dock-now__face {
+    min-width: 72px;
+    min-height: 44px;
+  }
+
+  .layout-dock .dock-now .vol-row {
+    display: none;
+  }
+
   .layout-dock .dock-sheet .t-btn:not(.ghost),
-  .layout-dock .dock-sheet .t-btn.play {
+  .layout-dock .dock-sheet .t-btn.play,
+  .layout-dock .dock-now .t-btn:not(.ghost),
+  .layout-dock .dock-now .t-btn.play {
     width: 44px !important;
     height: 44px !important;
     min-width: 44px !important;
@@ -818,7 +996,9 @@
   }
 
   .layout-dock .dock-sheet .t-btn.ghost,
-  .layout-dock .dock-sheet .quality-btn {
+  .layout-dock .dock-sheet .quality-btn,
+  .layout-dock .dock-now .t-btn.ghost,
+  .layout-dock .dock-now .quality-btn {
     min-width: 44px;
     min-height: 44px !important;
     height: 44px !important;
