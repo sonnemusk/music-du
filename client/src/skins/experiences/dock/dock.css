@@ -229,6 +229,14 @@
   padding: 4px 14px 10px;
 }
 
+.layout-dock[data-face="cover"] .dock-now {
+  touch-action: none;
+}
+
+.layout-dock[data-face="cover"] .dock-now [data-no-swipe] {
+  touch-action: auto;
+}
+
 .layout-dock[data-now="1"] .dock-main {
   overflow: hidden;
   display: flex;

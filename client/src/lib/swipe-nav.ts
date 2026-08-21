@@ -24,6 +24,14 @@ export const SWIPE_MIN_DY = 56;
 /** Require |dy| > ratio * |dx| so a tap / horizontal swipe does not flip tracks. */
 export const SWIPE_DY_OVER_DX = 1.25;
 
+/** Lyrics panes and chrome must not steal the cover-page vertical swipe. */
+export const COVER_SWIPE_IGNORE =
+  "[data-no-swipe], .lyrics-scroller, .lyrics-panel, .pocket-verse, .stage-verse, .dock-now__verse, .feed-verse, .transport";
+
+export function isCoverSwipeIgnoredTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest(COVER_SWIPE_IGNORE));
+}
+
 /** Pure decision for unit tests (M-11). */
 export function resolveSwipe(
   dx: number,
@@ -105,13 +113,17 @@ export function attachSwipeNav(
 }
 
 function lyricsFaceOpen(el: HTMLElement): boolean {
-  return Boolean(el.closest('[data-face="lyrics"]'));
+  const host = el.closest<HTMLElement>("[data-face]");
+  if (!host || host.getAttribute("data-face") !== "lyrics") return false;
+  // Desktop pocket shows cover | lyrics together; only the verse is ignored.
+  if (host.hasAttribute("data-wide")) return false;
+  return true;
 }
 
 /**
- * Vertical swipe on a cover: up = next, down = prev.
- * Skips the lyrics face (so the verse can scroll) and swallows the
- * following click so a swipe does not also flip cover → lyrics.
+ * Vertical swipe on the cover page (not just the art): up = next, down = prev.
+ * Skips lyrics panes / chrome and the lyrics face so the verse can scroll.
+ * Swallows the following click so a swipe does not also flip cover → lyrics.
  */
 export function attachCoverSwipe(
   el: HTMLElement,
@@ -124,7 +136,7 @@ export function attachCoverSwipe(
 
   const onStart = (e: TouchEvent) => {
     if (e.touches.length !== 1) return;
-    if (shouldIgnoreTarget(e.target) || lyricsFaceOpen(el)) {
+    if (isCoverSwipeIgnoredTarget(e.target) || lyricsFaceOpen(el)) {
       tracking = false;
       return;
     }
@@ -136,7 +148,7 @@ export function attachCoverSwipe(
   const onEnd = (e: TouchEvent) => {
     if (!tracking) return;
     tracking = false;
-    if (shouldIgnoreTarget(e.target) || lyricsFaceOpen(el)) return;
+    if (isCoverSwipeIgnoredTarget(e.target) || lyricsFaceOpen(el)) return;
     const t = e.changedTouches[0];
     if (!t) return;
     const dir = resolveVerticalSwipe(t.clientX - x0, t.clientY - y0);

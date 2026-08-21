@@ -73,11 +73,10 @@ describe("cross-layout chrome consistency", () => {
     expect(app).toMatch(/if \(bindTimer\) clearTimeout\(bindTimer\)/);
   });
 
-  it("binds vertical cover swipe on player-first covers, not the lyrics face", () => {
+  it("binds vertical cover swipe on the now-playing page, not just the art", () => {
     expect(app).toMatch(/attachCoverSwipe/);
-    expect(app).toMatch(/\.pocket-cover/);
-    expect(app).toMatch(/\.stage-art/);
-    expect(app).toMatch(/\.dock-now__cover/);
+    expect(app).toMatch(/\.pocket-now, \.stage-now, \.dock-now, \.imm-now, \.side-player, \.split-now/);
+    expect(app).not.toMatch(/\.pocket-cover, \.stage-art, \.dock-now__cover/);
     expect(app).toMatch(/onSwipeUp:\s*\(\) => next\(1\)/);
     expect(app).toMatch(/onSwipeDown:\s*\(\) => next\(-1\)/);
   });

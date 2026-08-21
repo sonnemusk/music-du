@@ -369,7 +369,7 @@ export function PocketLayout({ brand }: { brand: string }) {
                     </div>
                   )}
                 </div>
-                <div className="pocket-verse">
+                <div className="pocket-verse" data-no-swipe>
                   <LyricsView variant="panel" />
                 </div>
               </div>
@@ -379,7 +379,7 @@ export function PocketLayout({ brand }: { brand: string }) {
                 <p className="pocket-artist">{curTrack?.artist || tr("nowPlaying.pick")}</p>
                 {narrow ? (
                   <>
-                    <div className="pocket-faces" role="tablist" aria-label={pocketT(locale, "facesAria")}>
+                    <div className="pocket-faces" role="tablist" aria-label={pocketT(locale, "facesAria")} data-no-swipe>
                       <button
                         type="button"
                         role="tab"

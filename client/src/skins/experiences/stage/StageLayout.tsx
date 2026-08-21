@@ -271,7 +271,7 @@ export function StageLayout({ brand }: { brand: string }) {
               )}
             </div>
           </div>
-          <div className="stage-verse">
+          <div className="stage-verse" data-no-swipe>
             <LyricsView variant="panel" />
           </div>
           <h1 className="stage-title" title={curTrack?.name || undefined}>

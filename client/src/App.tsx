@@ -101,12 +101,10 @@ export default function App() {
           })
         );
       });
-      const covers = shell.querySelectorAll<HTMLElement>(
-        ".pocket-cover, .stage-art, .dock-now__cover, .now-playing.lg .np-cover, .split-cover"
+      const coverPages = shell.querySelectorAll<HTMLElement>(
+        ".pocket-now, .stage-now, .dock-now, .imm-now, .side-player, .split-now"
       );
-      covers.forEach((node) => {
-        if (seen.has(node)) return;
-        seen.add(node);
+      coverPages.forEach((node) => {
         cleanups.push(
           attachCoverSwipe(node, {
             onSwipeUp: () => next(1),

@@ -279,6 +279,14 @@
   );
 }
 
+.layout-stage:not([data-face="lyrics"]) .stage-now {
+  touch-action: none;
+}
+
+.layout-stage:not([data-face="lyrics"]) .stage-now [data-no-swipe] {
+  touch-action: auto;
+}
+
 .stage-art {
   width: 100%;
   height: 100%;

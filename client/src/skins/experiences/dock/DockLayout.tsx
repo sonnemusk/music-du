@@ -270,7 +270,7 @@ export function DockLayout({ brand }: { brand: string }) {
                     )}
                   </button>
                 </div>
-                <div className="dock-now__verse">
+                <div className="dock-now__verse" data-no-swipe>
                   <LyricsView variant="panel" />
                 </div>
               </div>
@@ -279,7 +279,7 @@ export function DockLayout({ brand }: { brand: string }) {
                 <p className="dock-now__artist">
                   {curTrack?.artist || tr("nowPlaying.pick")}
                 </p>
-                <div className="dock-now__faces" role="tablist" aria-label={tr("shell.facesAria")}>
+                <div className="dock-now__faces" role="tablist" aria-label={tr("shell.facesAria")} data-no-swipe>
                   <button
                     type="button"
                     role="tab"
