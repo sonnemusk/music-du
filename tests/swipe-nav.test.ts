@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  COVER_SWIPE_IGNORE,
   SWIPE_DX_OVER_DY,
   SWIPE_DY_OVER_DX,
   SWIPE_MIN_DX,
@@ -38,5 +39,14 @@ describe("cover vertical swipe", () => {
     expect(resolveVerticalSwipe(0, -40)).toBeNull();
     expect(resolveVerticalSwipe(80, -50)).toBeNull();
     expect(resolveVerticalSwipe(-90, 10)).toBeNull();
+  });
+
+  it("ignores lyrics panes and transport so a cover-page swipe can scroll verse", () => {
+    expect(COVER_SWIPE_IGNORE).toMatch(/\[data-no-swipe\]/);
+    expect(COVER_SWIPE_IGNORE).toMatch(/lyrics-scroller/);
+    expect(COVER_SWIPE_IGNORE).toMatch(/pocket-verse/);
+    expect(COVER_SWIPE_IGNORE).toMatch(/stage-verse/);
+    expect(COVER_SWIPE_IGNORE).toMatch(/dock-now__verse/);
+    expect(COVER_SWIPE_IGNORE).toMatch(/\.transport/);
   });
 });

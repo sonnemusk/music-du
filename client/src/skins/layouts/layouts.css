@@ -1496,6 +1496,18 @@ button.badge,
   .layout-compact .player-bar__controls .quality-wrap:not(.quality-wrap--keep) {
     display: none;
   }
+
+  .side-player,
+  .imm-now {
+    touch-action: none;
+  }
+
+  .side-player .transport,
+  .imm-now .transport,
+  .side-player [data-no-swipe],
+  .imm-now [data-no-swipe] {
+    touch-action: auto;
+  }
 }
 
 /* ========== M-3: idle compress + denser phone player + charts chips ========== */

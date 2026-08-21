@@ -267,8 +267,12 @@
 }
 
 @media (max-width: 720px) {
-  .pocket[data-face="cover"] .pocket-cover {
+  .pocket[data-face="cover"] .pocket-now {
     touch-action: none;
+  }
+
+  .pocket[data-face="cover"] .pocket-now [data-no-swipe] {
+    touch-action: auto;
   }
 }
 
@@ -745,16 +749,19 @@
 
   .pocket-now {
     display: grid;
-    grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
     grid-template-areas:
       "cover lyrics"
       "meta lyrics"
-      "transport lyrics";
-    gap: 10px 32px;
-    width: min(100%, 1120px);
+      "transport lyrics"
+      ". lyrics";
+    align-items: start;
+    gap: 12px 40px;
+    width: min(100%, 1180px);
+    height: 100%;
     margin: 0 auto;
-    padding: 16px 28px 20px;
+    padding: 20px 32px 24px;
   }
 
   .pocket-stage {
@@ -779,6 +786,7 @@
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
+    align-self: stretch;
     min-height: 0;
     padding: 8px 10px;
     border-radius: var(--radius-lg, 20px);
@@ -801,7 +809,17 @@
 
   .pocket-transport {
     grid-area: transport;
-    align-self: end;
+    align-self: start;
+    width: 100%;
+  }
+
+  .pocket .pocket-transport .transport {
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .pocket .pocket-transport .transport-row {
+    justify-content: flex-start;
   }
 
   .pocket-now .vol-row {
@@ -823,8 +841,8 @@
   }
 
   .pocket-now {
-    grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
-    padding: 20px 36px 24px;
+    grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+    padding: 24px 40px 28px;
   }
 
   .pocket-cover {

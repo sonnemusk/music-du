@@ -36,6 +36,13 @@ describe("pocket e2e layout — lyrics stay on the stage", () => {
     expect(css).toMatch(/\.pocket \.lyrics-panel\.lyrics-scroller[\s\S]{0,180}min-height:\s*0\s*!important/);
   });
 
+  it("lets the whole cover page take a vertical swipe, not just the art", () => {
+    const phone = css.split("@media (max-width: 720px)")[1] || "";
+    expect(phone).toMatch(/\[data-face="cover"\] \.pocket-now \{\s*touch-action:\s*none/);
+    expect(phone).toMatch(/\[data-face="cover"\] \.pocket-now \[data-no-swipe\] \{\s*touch-action:\s*auto/);
+    expect(tsx).toMatch(/className="pocket-verse" data-no-swipe/);
+  });
+
   it("flips cover and lyrics in-page with no dialog chrome", () => {
     expect(tsx).toMatch(/role="tablist"/);
     expect(tsx).toMatch(/className="pocket-faces"/);
@@ -52,6 +59,15 @@ describe("pocket e2e layout — lyrics stay on the stage", () => {
     expect(css).toMatch(/"cover lyrics"/);
     expect(css).toMatch(/grid-area:\s*lyrics/);
     expect(css).toMatch(/\.pocket\[data-page="now"\] \.pocket-shell/);
+  });
+
+  it("desktop packs cover, title, and transport at the top of the left column", () => {
+    const wide = css.split("@media (min-width: 721px)")[1] || "";
+    expect(wide).toMatch(/align-items:\s*start/);
+    expect(wide).toMatch(/\.pocket-transport \{[\s\S]*?align-self:\s*start/);
+    expect(wide).not.toMatch(/\.pocket-transport \{[\s\S]*?align-self:\s*end/);
+    expect(wide).toMatch(/\.pocket-verse,[\s\S]*?align-self:\s*stretch/);
+    expect(tsx).toMatch(/className="pocket-verse" data-no-swipe/);
   });
 
   it("charts library does not repeat the Charts heading", () => {
