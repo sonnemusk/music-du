@@ -161,11 +161,27 @@ export async function putResolveCache(
   }
 }
 
+/** At most one prune per isolate per half hour — not on every song write. */
+const PRUNE_INTERVAL_MS = 30 * 60 * 1000;
+let pruneAfter = 0;
+
+export function shouldPruneResolveCache(now = Date.now()): boolean {
+  if (now < pruneAfter) return false;
+  pruneAfter = now + PRUNE_INTERVAL_MS;
+  return true;
+}
+
+export function resetPruneScheduleForTests() {
+  pruneAfter = 0;
+}
+
 /** Drop expired rows opportunistically (cheap free-tier hygiene). */
 export async function pruneResolveCache(
   db: D1Database,
-  keepMax = 800
+  keepMax = 800,
+  now = Date.now()
 ): Promise<void> {
+  if (!shouldPruneResolveCache(now)) return;
   try {
     const now = Date.now() / 1000;
     await db

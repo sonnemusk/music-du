@@ -45,6 +45,13 @@ function createMockD1() {
             });
             return { success: true };
           }
+          if (/^DELETE FROM library_tracks WHERE list_type=\?$/i.test(s)) {
+            const lt = binds[0];
+            for (const [k, row] of [...tracks.entries()]) {
+              if (row.list_type === lt) tracks.delete(k);
+            }
+            return { success: true };
+          }
           if (/DELETE FROM library_tracks WHERE list_type=\? AND sid=\?/i.test(s)) {
             tracks.delete(`${binds[0]}|${binds[1]}`);
             return { success: true };
@@ -70,7 +77,7 @@ function createMockD1() {
           return { success: true };
         },
         async all() {
-          if (/SELECT \* FROM library_tracks WHERE list_type=\?/i.test(s)) {
+          if (/FROM library_tracks WHERE list_type=\?/i.test(s) && /SELECT /i.test(s)) {
             const lt = binds[0];
             const results = [...tracks.values()]
               .filter((r) => r.list_type === lt)
@@ -103,6 +110,11 @@ function createMockD1() {
             }
             const value = meta.get(k);
             return (value != null ? { value } : null) as T;
+          }
+          if (/SELECT COUNT\(\*\) AS c FROM library_tracks/i.test(s)) {
+            const lt = binds[0];
+            const c = [...tracks.values()].filter((r) => r.list_type === lt).length;
+            return { c } as T;
           }
           return null as T;
         },
@@ -237,6 +249,108 @@ describe("worker library routes", () => {
     expect(r.status).toBe(200);
     const j = await r.json();
     expect(j.count).toBe(1);
+  });
+
+  it("history-only PUT does not rewrite favorites", async () => {
+    const db = createMockD1();
+    await db
+      .prepare(
+        `INSERT OR REPLACE INTO library_tracks
+         (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      )
+      .bind("favorites", "1", 0, "Fav", "A", "", "", 0, "", 0, 0, 0, 1)
+      .run();
+    await db
+      .prepare(
+        `INSERT OR REPLACE INTO library_tracks
+         (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      )
+      .bind("history", "9", 0, "Old", "A", "", "", 0, "", 0, 0, 0, 5)
+      .run();
+    await db
+      .prepare(`INSERT OR REPLACE INTO library_meta (key, value) VALUES (?, ?)`)
+      .bind("revision", "0")
+      .run();
+
+    const e = env({ MUSIC_DU_DB: db });
+    const put = await req("/api/library", {
+      method: "PUT",
+      env: e,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        history: [
+          { id: "new", name: "New", artist: "A" },
+          { id: "9", name: "Old", artist: "A" },
+        ],
+        curIdx: -1,
+        revision: 0,
+      }),
+    });
+    expect(put.status).toBe(200);
+    const body = await put.json();
+    expect(body.data.partial).toBe(true);
+    expect(body.data.history.map((t: { id: string }) => String(t.id))).toEqual(["new", "9"]);
+    expect(body.data.favorites).toBeUndefined();
+
+    const fav = await db
+      .prepare(`SELECT * FROM library_tracks WHERE list_type=?`)
+      .bind("favorites")
+      .all();
+    expect(fav.results).toHaveLength(1);
+    expect(Number((fav.results[0] as { updated_at: number }).updated_at)).toBe(1);
+
+    const hist = await db
+      .prepare(`SELECT * FROM library_tracks WHERE list_type=?`)
+      .bind("history")
+      .all();
+    const old = (hist.results as { sid: string; updated_at: number }[]).find((r) => r.sid === "9");
+    expect(Number(old?.updated_at)).toBe(5);
+  });
+
+  it("adding one favorite does not rewrite the rest", async () => {
+    const db = createMockD1();
+    for (const sid of ["1", "2", "3"]) {
+      await db
+        .prepare(
+          `INSERT OR REPLACE INTO library_tracks
+           (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        )
+        .bind("favorites", sid, Number(sid), `S${sid}`, "A", "", "", 0, "", 0, 0, 0, 1)
+        .run();
+    }
+    await db
+      .prepare(`INSERT OR REPLACE INTO library_meta (key, value) VALUES (?, ?)`)
+      .bind("revision", "2")
+      .run();
+    const e = env({ MUSIC_DU_DB: db });
+    const put = await req("/api/library", {
+      method: "PUT",
+      env: e,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        favorites: [
+          { id: "9", name: "New", artist: "A" },
+          { id: "1", name: "S1", artist: "A" },
+          { id: "2", name: "S2", artist: "A" },
+          { id: "3", name: "S3", artist: "A" },
+        ],
+        revision: 2,
+      }),
+    });
+    expect(put.status).toBe(200);
+    const rows = (
+      await db.prepare(`SELECT * FROM library_tracks WHERE list_type=?`).bind("favorites").all()
+    ).results as { sid: string; updated_at: number; pos: number }[];
+    expect(rows).toHaveLength(4);
+    for (const sid of ["1", "2", "3"]) {
+      expect(Number(rows.find((r) => r.sid === sid)?.updated_at)).toBe(1);
+    }
+    expect(Number(rows.find((r) => r.sid === "9")?.updated_at)).toBeGreaterThan(1);
+    const order = [...rows].sort((a, b) => Number(a.pos) - Number(b.pos)).map((r) => r.sid);
+    expect(order[0]).toBe("9");
   });
 
 });

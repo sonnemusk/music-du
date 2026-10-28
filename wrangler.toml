@@ -22,10 +22,15 @@ head_sampling_rate = 0.05
 
 [vars]
 CHKSZ_API_BASE = "https://api.chksz.com"
+# Asset-first for hashed files, icons, and the SPA shell.
+# The Worker runs first only for API and HTML it generates (/favs, /export, /import).
+# Crawlers and /assets/* stay on the assets layer and do not wake the Worker.
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
-run_worker_first = true
+html_handling = "none"
+not_found_handling = "single-page-application"
+run_worker_first = [ "/api/*", "/favs", "/favs/*", "/export", "/import", "/import/*" ]
 
 # Free D1 — replace database_id after `npm run setup:d1` / `wrangler d1 create`
 [[d1_databases]]
@@ -56,7 +61,9 @@ DEMO_MODE = "true"
 [env.demo.assets]
 directory = "./dist/client"
 binding = "ASSETS"
-run_worker_first = true
+html_handling = "none"
+not_found_handling = "single-page-application"
+run_worker_first = [ "/api/*", "/favs", "/favs/*", "/export", "/import", "/import/*" ]
 
 [[env.demo.d1_databases]]
 binding = "MUSIC_DU_DB"

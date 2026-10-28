@@ -56,6 +56,8 @@ export type Library = {
   curIdx: number;
   /** Optimistic concurrency token from D1 (monotone). */
   revision?: number;
+  /** Server omitted lists that this request did not touch. */
+  partial?: boolean;
 };
 
 export type PlayMode = "list" | "single" | "shuffle";

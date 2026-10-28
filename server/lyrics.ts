@@ -88,8 +88,8 @@ async function fromNeteaseId(
         matchedId: String(sid),
       };
     }
-  } catch {
-    /* */
+  } catch (e) {
+    if (e instanceof chksz.ChkszError && e.status === 429) throw e;
   }
   return null;
 }
@@ -103,11 +103,7 @@ async function fromSearchRematch(
   const q = [cleanQueryPart(name), cleanQueryPart(artist)].filter(Boolean).join(" ");
   if (!q) return null;
   try {
-    let hits = await chksz.search(q, 8, opts);
-    if (!hits.length && name) {
-      hits = await chksz.search(cleanQueryPart(name), 8, opts);
-    }
-    // rank by name/artist similarity
+    const hits = await chksz.search(q, 6, opts);
     const ranked = hits
       .map((h) => ({
         h,
@@ -116,17 +112,15 @@ async function fromSearchRematch(
       .filter((x) => String(x.h.id) !== String(skipId))
       .sort((a, b) => b.score - a.score);
 
-    for (const { h, score } of ranked.slice(0, 5)) {
-      if (score < 40 && ranked[0]?.score < 40) {
-        // still try top result even if weak match
-      }
-      const lyr = await fromNeteaseId(h.id, opts);
-      if (lyr) {
-        return { ...lyr, source: "search", matchedId: String(h.id) };
-      }
+    // One candidate. Walking the top 5 is five extra lyric subrequests.
+    const top = ranked[0];
+    if (!top || top.score < 40) return null;
+    const lyr = await fromNeteaseId(top.h.id, opts);
+    if (lyr) {
+      return { ...lyr, source: "search", matchedId: String(top.h.id) };
     }
-  } catch {
-    /* */
+  } catch (e) {
+    if (e instanceof chksz.ChkszError && e.status === 429) throw e;
   }
   return null;
 }
@@ -140,20 +134,12 @@ async function fromLrclib(
   const art = cleanQueryPart(artist).split(/[/,、&]/)[0] || "";
   if (!track) return null;
 
-  const tryUrls: string[] = [];
-  if (art) {
-    const q = new URLSearchParams({
-      track_name: track,
-      artist_name: art,
-    });
-    if (durationMs && durationMs > 1000) {
-      q.set("duration", String(Math.round(durationMs / 1000)));
-    }
-    tryUrls.push(`https://lrclib.net/api/search?${q.toString()}`);
+  const q = new URLSearchParams({ track_name: track });
+  if (art) q.set("artist_name", art);
+  if (durationMs && durationMs > 1000) {
+    q.set("duration", String(Math.round(durationMs / 1000)));
   }
-  tryUrls.push(
-    `https://lrclib.net/api/search?q=${encodeURIComponent([track, art].filter(Boolean).join(" "))}`
-  );
+  const tryUrls = [`https://lrclib.net/api/search?${q.toString()}`];
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 10000);
@@ -184,7 +170,7 @@ async function fromLrclib(
           }))
           .sort((a: any, b: any) => b.score - a.score);
 
-        for (const { item } of ranked.slice(0, 4)) {
+        for (const { item } of ranked.slice(0, 1)) {
           const synced = String(item.syncedLyrics || "").trim();
           const plain = String(item.plainLyrics || "").trim();
           const lrc = hasUsableLrc(synced) ? synced : hasUsableLrc(plain) ? plain : "";

@@ -40,11 +40,13 @@ export async function edgeMatch(url: string): Promise<Response | null> {
 export function edgePut(
   url: string,
   response: Response,
-  ctx?: WaitUntilCtx | null
+  ctx?: WaitUntilCtx | null,
+  opts?: { allowError?: boolean }
 ): void {
   const c = getCaches();
   if (!c) return;
-  if (!response.ok) return;
+  // Success responses, or an explicit short negative cache (404 / 429).
+  if (!response.ok && !opts?.allowError) return;
   try {
     const key = cacheKeyFromUrl(url);
     // Ensure cacheable: Cache API ignores some private responses
@@ -88,8 +90,9 @@ export function withCacheHeaders(
       "CDN-Cache-Control": `public, max-age=${age}`,
     };
   }
+  const age = Math.max(60, opts?.maxAgeSec ?? 3600);
   return {
     ...headers,
-    "Cache-Control": "public, max-age=3600, s-maxage=3600",
+    "Cache-Control": `public, max-age=${age}, s-maxage=${age}`,
   };
 }

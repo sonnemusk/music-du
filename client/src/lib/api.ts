@@ -50,7 +50,8 @@ async function json<T = any>(path: string, opts?: RequestInit): Promise<T> {
     throw new Error(msg || t("access.denied"));
   }
   if (r.status === 429) {
-    throw new Error(j?.error || "HTTP 429 rate limited");
+    const msg = String(j?.error || "");
+    throw new Error(/429|rate limited/i.test(msg) ? msg : "HTTP 429 rate limited");
   }
   if (!r.ok && j?.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
   if (j?.ok === false) throw new Error(j.error || "request failed");
@@ -97,10 +98,12 @@ export async function fetchChart(
 
 export async function resolveSong(
   id: string | number,
-  opts?: { level?: string; force?: boolean }
+  opts?: { level?: string; force?: boolean; name?: string; artist?: string }
 ) {
   const q = new URLSearchParams();
   if (opts?.level) q.set("level", opts.level);
+  if (opts?.name) q.set("name", opts.name);
+  if (opts?.artist) q.set("artist", opts.artist);
   // Always bypass edge/D1 when force — signed CDN URLs expire
   if (opts?.force) q.set("force", "1");
   const qs = q.toString();

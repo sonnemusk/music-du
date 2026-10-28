@@ -16,10 +16,23 @@ export function onRemoteError(streamPath: string) {
   return { src: streamPath, mode: "stream" as const, fallback: null };
 }
 
+export type PlayLookup = { apikey?: string; name?: string; artist?: string };
+
+export function playHintsFromQuery(
+  query: (key: string) => string | undefined,
+  apikey?: string
+): PlayLookup {
+  return {
+    apikey,
+    name: String(query("name") || query("title") || "").trim(),
+    artist: String(query("artist") || "").trim(),
+  };
+}
+
 export async function resolvePlay(
   sid: string | number,
   level?: string | null,
-  opts?: { apikey?: string }
+  opts?: PlayLookup
 ): Promise<PlaySource> {
   const id = String(sid);
   const raw = await chksz.fetchMusic(id, level, opts);

@@ -210,6 +210,7 @@ export const en: Dict = {
     chartFail: "Failed to load chart",
     resolving: "Resolving stream…",
     cannotPlay: "Cannot play",
+    autoStop: "Stopped auto-advance after repeated resolve failures",
     clickOrSpace: "Click play or press Space",
     muted: "Muted",
     unmuted: "Unmuted",

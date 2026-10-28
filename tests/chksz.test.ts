@@ -6,6 +6,7 @@ afterEach(() => {
   chksz.setHttpTransport(null);
   chksz.resetKeyRotationForTests();
   delete process.env.CHKSZ_FALLBACK_APIKEYS;
+  delete process.env.CHKSZ_FALLBACK_BASE;
   delete process.env.CHKSZ_APIKEY;
   delete process.env.CHKSZ_TOKEN;
 });
@@ -185,7 +186,7 @@ describe("chksz adapter", () => {
     expect(d.tlrc).toContain("hi");
   });
 
-  it("searchAll merges NetEase then unique QQ / Kugou", async () => {
+  it("searchAll stays on NetEase when it already has hits", async () => {
     chksz.setHttpTransport(async (_m, url) => {
       const u = String(url);
       if (u.includes("163_search")) {
@@ -222,10 +223,88 @@ describe("chksz adapter", () => {
       return { status: 404, json: async () => ({}) };
     });
     const rows = await chksz.searchAll("周杰伦", 10);
-    expect(rows.map((r) => r.name)).toEqual(["晴天", "七里香", "东风破"]);
+    expect(rows.map((r) => r.name)).toEqual(["晴天"]);
     expect(rows[0]!.id).toBe(1);
-    expect(rows[1]!.id).toBe("qq:qqmid2");
-    expect(rows[2]!.id).toBe("kg:KG1");
+  });
+
+  it("searchAll asks QQ only after NetEase is empty", async () => {
+    const seen: string[] = [];
+    chksz.setHttpTransport(async (_m, url) => {
+      const u = String(url);
+      seen.push(u);
+      if (u.includes("163_search")) {
+        return { status: 200, json: async () => ({ code: 200, data: [] }) };
+      }
+      if (u.includes("qq_music")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            list: [{ n: 1, name: "七里香", singer: "周杰伦", mid: "qqmid2" }],
+          }),
+        };
+      }
+      return { status: 200, json: async () => ({ code: 200, list: [] }) };
+    });
+    const rows = await chksz.searchAll("周杰伦", 10);
+    expect(rows.map((r) => r.id)).toEqual(["qq:qqmid2"]);
+    expect(seen.some((u) => u.includes("kugou_music"))).toBe(false);
+  });
+
+  it("named qq: songs skip qq_music and match NetEase", async () => {
+    const seen: string[] = [];
+    chksz.setHttpTransport(async (_m, url, init) => {
+      const u = String(url);
+      seen.push(u);
+      if (u.includes("qq_music")) {
+        return { status: 200, json: async () => ({ code: 200, url: "" }) };
+      }
+      if (u.includes("163_search")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            data: [{ id: 186016, name: "晴天", ar: [{ name: "周杰伦" }] }],
+          }),
+        };
+      }
+      if (u.includes("163_music")) {
+        expect(String(init?.params?.id)).toBe("186016");
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            data: { url: "https://m7.music.126.net/a.flac", level: "jymaster" },
+          }),
+        };
+      }
+      return { status: 404, json: async () => ({}) };
+    });
+    const raw = await chksz.fetchMusic("qq:0039MnYb0qxYhV", "sky", {
+      name: "晴天",
+      artist: "周杰伦",
+    });
+    expect(seen.some((u) => u.includes("qq_music"))).toBe(false);
+    expect(seen.some((u) => u.includes("163_search"))).toBe(true);
+    expect(raw.url).toContain("music.126.net");
+  });
+
+  it("a fallback host does not hide later keys", async () => {
+    process.env.CHKSZ_APIKEY = "key-a";
+    process.env.CHKSZ_FALLBACK_APIKEYS = "key-b";
+    process.env.CHKSZ_FALLBACK_BASE = "https://backup.example";
+    const tried: { host: string; key: string }[] = [];
+    chksz.setHttpTransport(async (_m, url, init) => {
+      const host = new URL(String(url)).host;
+      const key = String(init?.params?.apikey || "");
+      tried.push({ host, key });
+      if (key === "key-a") return { status: 429, json: async () => ({ msg: "rate limited" }) };
+      return { status: 200, json: async () => ({ code: 200, data: [] }) };
+    });
+    await chksz.search("周杰伦", 1);
+    expect(tried[0]).toMatchObject({ host: "api.chksz.com", key: "key-a" });
+    expect(tried[1]).toMatchObject({ host: "api.chksz.com", key: "key-b" });
+    expect(tried.some((t) => t.host === "backup.example")).toBe(false);
   });
 
   it("fetchMusic routes qq: ids to qq_music", async () => {

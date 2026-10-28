@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
-import * as api from "../lib/api";
 import { warmTrackCovers } from "../lib/cover-browser-cache";
 import {
   VIRTUAL_LIST_MIN,
@@ -9,7 +8,6 @@ import {
   visibleWindow,
 } from "../lib/list-window";
 import type { CoverSize } from "../lib/player-core";
-import { prefetchSongResolveOne } from "../lib/resolve-prefetch";
 import type { Track } from "../lib/types";
 import { usePlayer } from "../store/player";
 import { CoverImg } from "./CoverImg";
@@ -251,7 +249,6 @@ export function TrackList({
   const removeFromHistory = usePlayer((s) => s.removeFromHistory);
   const libraryReadOnly = usePlayer((s) => s.libraryReadOnly);
   const locale = usePlayer((s) => s.locale);
-  const preferredQuality = usePlayer((s) => s.preferredQuality);
   const tr = useT(locale);
   const emptyText = empty ?? tr("empty.generic");
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -275,14 +272,9 @@ export function TrackList({
     [playTrack, mode]
   );
 
-  const warmRow = useCallback(
-    (t: Track) => {
-      void prefetchSongResolveOne(t.id, (id) =>
-        api.resolveSong(id, { level: preferredQuality })
-      );
-    },
-    [preferredQuality]
-  );
+  const warmRow = useCallback((_t: Track) => {
+    // Hover must not call /api/song. Playback resolves on click.
+  }, []);
 
   useEffect(() => {
     if (!virtual) return;

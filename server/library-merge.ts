@@ -200,6 +200,76 @@ export function planHistoryWrites(
   };
 }
 
+export type StoredListRow = {
+  sid: string;
+  pos: number;
+  name?: string;
+  artist?: string;
+  album?: string;
+  cover?: string;
+  duration?: number;
+};
+
+function rowMetaDiffers(prev: StoredListRow | undefined, track: LibTrack): boolean {
+  if (!prev) return true;
+  return (
+    String(prev.name || "") !== String(track.name || "") ||
+    String(prev.artist || "") !== String(track.artist || "") ||
+    String(prev.album || "") !== String(track.album || "") ||
+    String(prev.cover || "") !== String(track.cover || "") ||
+    Number(prev.duration || 0) !== Number(track.duration || 0)
+  );
+}
+
+/**
+ * Sparse delta for favorites / playlist / history.
+ * A single prepend or removal is a handful of writes, not a full-list rewrite.
+ * Rows that keep their order are left untouched unless title metadata changed.
+ */
+export function planListDelta(
+  existing: StoredListRow[] | undefined,
+  incoming: any[] | undefined,
+  cap: number
+): {
+  upserts: { sid: string; pos: number; track: LibTrack }[];
+  deleteSids: string[];
+  writeOps: number;
+  finalOrder: string[];
+} {
+  const rows = existing || [];
+  const order = planHistoryWrites(
+    rows.map((r) => ({ sid: String(r.sid), pos: Number(r.pos) })),
+    incoming,
+    cap
+  );
+  const bySid = new Map(rows.map((r) => [String(r.sid), r]));
+  const upserts = [...order.upserts];
+  const seen = new Set(upserts.map((u) => u.sid));
+  const clientSeen = new Set<string>();
+  let n = 0;
+  for (const raw of incoming || []) {
+    const t = sanitizeLibTrack(raw);
+    if (!t) continue;
+    const sid = String(t.id);
+    if (clientSeen.has(sid)) continue;
+    clientSeen.add(sid);
+    if (n >= cap) break;
+    n++;
+    if (seen.has(sid)) continue;
+    const prev = bySid.get(sid);
+    if (prev && rowMetaDiffers(prev, t)) {
+      upserts.push({ sid, pos: Number(prev.pos), track: t });
+      seen.add(sid);
+    }
+  }
+  return {
+    upserts,
+    deleteSids: order.deleteSids,
+    writeOps: upserts.length + order.deleteSids.length,
+    finalOrder: order.finalOrder,
+  };
+}
+
 /** Constant-time equality for equal-length strings (timing-safe token check). */
 export function timingSafeEqualStr(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

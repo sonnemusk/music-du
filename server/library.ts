@@ -9,7 +9,7 @@ import { dataDir, libraryDbPath } from "./config.js";
 import {
   libraryRevisionOk,
   nextLibraryRevision,
-  planHistoryWrites,
+  planListDelta,
 } from "./library-merge.js";
 import type { Library, Track } from "./types.js";
 
@@ -99,66 +99,50 @@ export class SqliteLibrary {
   private writeList(listType: ListType, tracks: any[]) {
     const cap = LIST_CAPS[listType];
     const now = Date.now() / 1000;
+    const existing = this.db
+      .prepare(
+        `SELECT sid, pos, name, artist, album, cover, duration
+         FROM library_tracks WHERE list_type=? LIMIT 2000`
+      )
+      .all(listType) as {
+      sid: string;
+      pos: number;
+      name: string;
+      artist: string;
+      album: string;
+      cover: string;
+      duration: number;
+    }[];
+    if (!tracks?.length) {
+      this.db.prepare(`DELETE FROM library_tracks WHERE list_type=?`).run(listType);
+      return;
+    }
+    const plan = planListDelta(existing, tracks, cap);
     const upsert = this.db.prepare(
       `INSERT OR REPLACE INTO library_tracks
        (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
     );
-    if (listType === "history") {
-      const existing = this.db
-        .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=? LIMIT 2000`)
-        .all("history") as { sid: string; pos: number }[];
-      const plan = planHistoryWrites(existing, tracks, cap);
-      for (const u of plan.upserts) {
-        const t = u.track;
-        upsert.run(
-          "history",
-          u.sid,
-          u.pos,
-          String(t.name || ""),
-          String(t.artist || ""),
-          String(t.album || ""),
-          String(t.cover || ""),
-          Number(t.duration || 0) || 0,
-          String(t.level || ""),
-          Number(t.br || 0) || 0,
-          Number(t.size || 0) || 0,
-          0,
-          now
-        );
-      }
-      const del = this.db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`);
-      for (const sid of plan.deleteSids) del.run("history", sid);
-      return;
-    }
-    let pos = 0;
-    for (const t of dedupe(tracks)) {
-      if (pos >= cap) break;
+    for (const u of plan.upserts) {
+      const t = u.track;
       upsert.run(
         listType,
-        String(t.id),
-        pos,
-        t.name,
-        t.artist,
-        t.album,
-        t.cover,
-        t.duration || 0,
-        t.level || "",
-        t.br || 0,
-        t.size || 0,
+        u.sid,
+        u.pos,
+        String(t.name || ""),
+        String(t.artist || ""),
+        String(t.album || ""),
+        String(t.cover || ""),
+        Number(t.duration || 0) || 0,
+        String(t.level || ""),
+        Number(t.br || 0) || 0,
+        Number(t.size || 0) || 0,
         0,
         now
       );
-      pos++;
     }
-    if (pos === 0) {
-      // Same-second updated_at < now would leave the previous rows in place.
-      this.db.prepare(`DELETE FROM library_tracks WHERE list_type=?`).run(listType);
-      return;
-    }
-    this.db
-      .prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`)
-      .run(listType, now);
+    const del = this.db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`);
+    for (const sid of plan.deleteSids) del.run(listType, sid);
   }
 
   private loadRevision(): number {
@@ -349,19 +333,17 @@ export class SqliteLibrary {
     this.db
       .prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`)
       .run(listType, String(sid));
-    const rows = this.db
-      .prepare(`SELECT sid FROM library_tracks WHERE list_type=? ORDER BY pos ASC`)
-      .all(listType) as { sid: string }[];
-    const upd = this.db.prepare(
-      `UPDATE library_tracks SET pos=? WHERE list_type=? AND sid=?`
-    );
-    rows.forEach((r, i) => upd.run(i, listType, r.sid));
+    // Sparse pos: deleting one row must not renumber the rest of the list.
     if (listType === "playlist") {
+      const countRow = this.db
+        .prepare(`SELECT COUNT(*) AS c FROM library_tracks WHERE list_type=?`)
+        .get(listType) as { c: number } | undefined;
+      const n = Number(countRow?.c || 0);
       const row = this.db
         .prepare(`SELECT value FROM library_meta WHERE key='curIdx'`)
         .get() as { value: string } | undefined;
       let cur = row ? parseInt(row.value, 10) : -1;
-      if (Number.isNaN(cur) || cur >= rows.length) cur = rows.length ? rows.length - 1 : -1;
+      if (Number.isNaN(cur) || cur >= n) cur = n ? n - 1 : -1;
       this.db
         .prepare(`INSERT OR REPLACE INTO library_meta(key,value) VALUES('curIdx',?)`)
         .run(String(cur));

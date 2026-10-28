@@ -32,7 +32,7 @@ export function AudioEngine() {
     const onTime = () => tick();
     const onEnd = () => {
       stopPausedBufferPump();
-      next(1);
+      next(1, { auto: true });
     };
     const onPlay = () => {
       onPlayerPlay();

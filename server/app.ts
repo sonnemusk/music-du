@@ -14,7 +14,7 @@ import { CHKSZ_APIKEY } from "./config.js";
 import { fetchAndCacheCover, readCoverCache } from "./cover-cache.js";
 import { getLibrary, type ListType } from "./library.js";
 import { resolveLyrics } from "./lyrics.js";
-import { chooseAudioSrc, onRemoteError, resolvePlay } from "./play.js";
+import { chooseAudioSrc, onRemoteError, playHintsFromQuery, resolvePlay } from "./play.js";
 import {
   envLibraryReadonly,
   libraryGate,
@@ -54,8 +54,7 @@ function clampSearchLimit(raw: string | undefined): number {
 }
 
 function publicUpstreamError(e: unknown): string {
-  if (e instanceof chksz.ChkszError && e.status === 429) return "rate limited";
-  return "upstream error";
+  return chksz.publicUpstreamError(e);
 }
 
 export function createApp(opts?: {
@@ -180,7 +179,11 @@ export function createApp(opts?: {
     const level = c.req.query("level");
     const withQualities = c.req.query("qualities") === "1";
     try {
-      const src = await resolvePlay(sid, level, { apikey: keyOf() });
+      const src = await resolvePlay(
+        sid,
+        level,
+        playHintsFromQuery((k) => c.req.query(k), keyOf())
+      );
       if (src.source === "none" && !src.meta) {
         return c.json({ ok: false, error: "no url" }, 404);
       }
@@ -245,9 +248,11 @@ export function createApp(opts?: {
 
   app.get("/api/stream/:sid", async (c) => {
     try {
-      const raw = await chksz.fetchMusic(c.req.param("sid"), c.req.query("level"), {
-        apikey: keyOf(),
-      });
+      const raw = await chksz.fetchMusic(
+        c.req.param("sid"),
+        c.req.query("level"),
+        playHintsFromQuery((k) => c.req.query(k), keyOf())
+      );
       const audioUrl = raw?.url || "";
       if (!chksz.isRemoteUrl(audioUrl) || !isSafeUpstreamUrl(audioUrl)) return c.body(null, 404);
       const headers: Record<string, string> = {
