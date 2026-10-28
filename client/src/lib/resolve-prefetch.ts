@@ -18,7 +18,7 @@ const inflight = new Set<string>();
 
 export type ResolveFn = (
   id: string | number,
-  opts?: { level?: string }
+  opts?: { level?: string; name?: string; artist?: string }
 ) => Promise<{
   url?: string;
   stream?: string;
@@ -84,7 +84,11 @@ export function prefetchSongResolves(
         if (getCachedSong(t.id, level) || inflight.has(k)) continue;
         inflight.add(k);
         try {
-          const meta = await resolveFn(t.id, { level });
+          const meta = await resolveFn(t.id, {
+            level,
+            name: t.name,
+            artist: t.artist,
+          });
           noteUpstreamOk();
           const remote =
             meta?.url && /^https?:\/\//i.test(String(meta.url))

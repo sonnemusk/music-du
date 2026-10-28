@@ -97,17 +97,33 @@ export async function fetchChart(
 
 export async function resolveSong(
   id: string | number,
-  opts?: { level?: string; force?: boolean }
+  opts?: { level?: string; force?: boolean; name?: string; artist?: string }
 ) {
   const q = new URLSearchParams();
   if (opts?.level) q.set("level", opts.level);
   // Always bypass edge/D1 when force — signed CDN URLs expire
   if (opts?.force) q.set("force", "1");
+  // Title hint lets the server fall back when a chart mid/hash has no URL.
+  if (opts?.name) q.set("name", opts.name);
+  if (opts?.artist) q.set("artist", opts.artist);
   const qs = q.toString();
   const j = await json(
     `/api/song/${encodeURIComponent(String(id))}${qs ? `?${qs}` : ""}`
   );
   return j.data;
+}
+
+/** Same-origin stream fallback. Name/artist let a failed native id resolve via search. */
+export function streamUrl(
+  id: string | number,
+  opts?: { level?: string; name?: string; artist?: string }
+) {
+  const q = new URLSearchParams();
+  if (opts?.level) q.set("level", opts.level);
+  if (opts?.name) q.set("name", opts.name);
+  if (opts?.artist) q.set("artist", opts.artist);
+  const qs = q.toString();
+  return `/api/stream/${encodeURIComponent(String(id))}${qs ? `?${qs}` : ""}`;
 }
 
 /** Top qualities that actually have a CDN URL for this track (≤3). */

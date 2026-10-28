@@ -467,11 +467,21 @@ export async function fetchQqToplist(topid: number, limit = MAX_TRACKS): Promise
   return out;
 }
 
-export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise<RawRow[]> {
-  const url =
-    `https://mobilecdn.kugou.com/api/v3/rank/song?version=9108` +
-    `&rankid=${rankid}&page=1&pagesize=${limit}&area_code=1&with_cover=1`;
-  const body = await httpJson(url);
+/**
+ * `mobilecdn.kugou.com` presents a certificate for a different host, so fetch()
+ * fails TLS and the whole 酷狗榜 502s. `mobiles.kugou.com` serves the same JSON.
+ */
+export function kugouRankUrls(rankid = 8888, limit = MAX_TRACKS): string[] {
+  const q =
+    `version=9108&rankid=${encodeURIComponent(String(rankid))}` +
+    `&page=1&pagesize=${limit}&area_code=1&with_cover=1`;
+  return [
+    `https://mobiles.kugou.com/api/v3/rank/song?${q}`,
+    `https://gatewayretry.kugou.com/mobileservice/api/v3/rank/song?${q}`,
+  ];
+}
+
+export function parseKugouRankBody(body: any, limit = MAX_TRACKS): RawRow[] {
   const info = body?.data?.info || [];
   const out: RawRow[] = [];
   for (const t of info) {
@@ -508,6 +518,20 @@ export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise
     if (out.length >= limit) break;
   }
   return out;
+}
+
+export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise<RawRow[]> {
+  let last: unknown;
+  for (const url of kugouRankUrls(rankid, limit)) {
+    try {
+      const rows = parseKugouRankBody(await httpJson(url), limit);
+      if (rows.length) return rows;
+    } catch (e) {
+      last = e;
+    }
+  }
+  if (last) throw last;
+  return [];
 }
 
 /** Bang JSON `duration` is minutes; `song_duration` is seconds. Track.duration is seconds. */

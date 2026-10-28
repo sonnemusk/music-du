@@ -228,6 +228,100 @@ describe("chksz adapter", () => {
     expect(rows[2]!.id).toBe("kg:KG1");
   });
 
+  it("reads a QQ play url nested in data[] and a string code", async () => {
+    chksz.setHttpTransport(async () => ({
+      status: 200,
+      json: async () => ({
+        code: "200",
+        data: [{ url: "http://cdn.example/a.mp3", name: "晴天", singer: "周杰伦" }],
+      }),
+    }));
+    const raw = await chksz.fetchMusic("qq:0039MnYb0qxYhV", "flac");
+    expect(raw.url).toBe("https://cdn.example/a.mp3");
+    expect(raw.artist).toBe("周杰伦");
+  });
+
+  it("falls back to NetEase when a chart mid has no playable url", async () => {
+    const calls: string[] = [];
+    chksz.setHttpTransport(async (_m, url) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("qq_music") || u.includes("kugou_music")) {
+        return { status: 200, json: async () => ({ code: 200, msg: "empty" }) };
+      }
+      if (u.includes("163_search")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            data: [{ id: 1901371647, name: "晴天", ar: [{ name: "周杰伦" }] }],
+          }),
+        };
+      }
+      if (u.includes("163_music")) {
+        return {
+          status: 200,
+          json: async () => ({
+            code: 200,
+            data: {
+              url: "https://m7.music.126.net/qingtian.mp3",
+              name: "晴天",
+              artist: "周杰伦",
+              level: "standard",
+            },
+          }),
+        };
+      }
+      return { status: 404, json: async () => ({}) };
+    });
+    const qq = await chksz.fetchMusic("qq:0039MnYb0qxYhV", "standard", {
+      name: "晴天",
+      artist: "周杰伦",
+    });
+    expect(qq.url).toContain("qingtian.mp3");
+    expect(calls.some((u) => u.includes("163_search"))).toBe(true);
+
+    calls.length = 0;
+    const kg = await chksz.fetchMusic("kg:6A350E487263733359E7F2B64BD974AC", "standard", {
+      name: "晴天",
+      artist: "周杰伦",
+    });
+    expect(kg.url).toContain("qingtian.mp3");
+    const ext = await chksz.fetchMusic("ext:kw:7201115", "standard", {
+      name: "我好像在哪见过你",
+      artist: "薛之谦",
+    });
+    expect(ext.url || "").not.toContain("qingtian");
+  });
+
+  it("does not search NetEase when no title hint is present", async () => {
+    const calls: string[] = [];
+    chksz.setHttpTransport(async (_m, url) => {
+      calls.push(String(url));
+      return { status: 200, json: async () => ({ code: 200 }) };
+    });
+    const raw = await chksz.fetchMusic("qq:0039MnYb0qxYhV", "standard");
+    expect(raw.url).toBeUndefined();
+    expect(calls.some((u) => u.includes("163_search"))).toBe(false);
+  });
+
+  it("rejects a weak title when picking a NetEase fallback", () => {
+    const hit = {
+      id: 1,
+      name: "晴天娃娃",
+      artist: "别人",
+      album: "",
+      cover: "",
+      duration: 0,
+    };
+    expect(chksz.pickNeteaseFallback("晴天", "周杰伦", [hit])).toBeNull();
+    expect(
+      chksz.pickNeteaseFallback("晴天", "周杰伦", [
+        { ...hit, id: 9, name: "晴天", artist: "周杰伦" },
+      ])?.id
+    ).toBe(9);
+  });
+
   it("fetchMusic routes qq: ids to qq_music", async () => {
     let seen = "";
     chksz.setHttpTransport(async (_m, url) => {

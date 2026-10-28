@@ -14,7 +14,7 @@ import { CHKSZ_APIKEY } from "./config.js";
 import { fetchAndCacheCover, readCoverCache } from "./cover-cache.js";
 import { getLibrary, type ListType } from "./library.js";
 import { resolveLyrics } from "./lyrics.js";
-import { chooseAudioSrc, onRemoteError, resolvePlay } from "./play.js";
+import { chooseAudioSrc, onRemoteError, resolvePlay, streamPathFor } from "./play.js";
 import {
   envLibraryReadonly,
   libraryGate,
@@ -180,11 +180,13 @@ export function createApp(opts?: {
     const level = c.req.query("level");
     const withQualities = c.req.query("qualities") === "1";
     try {
-      const src = await resolvePlay(sid, level, { apikey: keyOf() });
+      const name = String(c.req.query("name") || "").trim();
+      const artist = String(c.req.query("artist") || "").trim();
+      const src = await resolvePlay(sid, level, { apikey: keyOf(), name, artist });
       if (src.source === "none" && !src.meta) {
         return c.json({ ok: false, error: "no url" }, 404);
       }
-      const stream = `/api/stream/${sid}${level ? `?level=${encodeURIComponent(level)}` : ""}`;
+      const stream = streamPathFor(sid, { level, name, artist });
       const remoteUrl = src.source === "remote" ? src.url : "";
       let qualities: chksz.ProbedQuality[] | undefined;
       if (withQualities) {
@@ -247,6 +249,8 @@ export function createApp(opts?: {
     try {
       const raw = await chksz.fetchMusic(c.req.param("sid"), c.req.query("level"), {
         apikey: keyOf(),
+        name: c.req.query("name") || "",
+        artist: c.req.query("artist") || "",
       });
       const audioUrl = raw?.url || "";
       if (!chksz.isRemoteUrl(audioUrl) || !isSafeUpstreamUrl(audioUrl)) return c.body(null, 404);

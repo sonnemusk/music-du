@@ -277,8 +277,12 @@ export function TrackList({
 
   const warmRow = useCallback(
     (t: Track) => {
-      void prefetchSongResolveOne(t.id, (id) =>
-        api.resolveSong(id, { level: preferredQuality })
+      void prefetchSongResolveOne(t.id, (id, opts) =>
+        api.resolveSong(id, {
+          level: opts?.level || preferredQuality,
+          name: opts?.name || t.name,
+          artist: opts?.artist || t.artist,
+        })
       );
     },
     [preferredQuality]

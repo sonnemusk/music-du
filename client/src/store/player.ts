@@ -677,8 +677,15 @@ export const usePlayer = create<State>((set, get) => ({
     }
     if (t === "charts") void get().loadCharts();
     // Switching tabs → pre-resolve visible list so click/play hits cache
-    const resolve = (id: string | number, opts?: { level?: string }) =>
-      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
+    const resolve = (
+      id: string | number,
+      opts?: { level?: string; name?: string; artist?: string }
+    ) =>
+      api.resolveSong(id, {
+        level: opts?.level || get().preferredQuality,
+        name: opts?.name,
+        artist: opts?.artist,
+      });
     if (t === "favorites") {
       prefetchSongResolves(get().favorites, resolve, { level: get().preferredQuality, 
         limit: 4,
@@ -873,8 +880,15 @@ export const usePlayer = create<State>((set, get) => ({
       get().schedulePrefetchAround(start.id);
 
       // Pre-resolve favorites / playlist / history URLs in background (not full audio)
-      const resolve = (id: string | number, opts?: { level?: string }) =>
-      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
+      const resolve = (
+      id: string | number,
+      opts?: { level?: string; name?: string; artist?: string }
+    ) =>
+      api.resolveSong(id, {
+        level: opts?.level || get().preferredQuality,
+        name: opts?.name,
+        artist: opts?.artist,
+      });
       prefetchSongResolves(favorites, resolve, { level: get().preferredQuality, limit: 4,
         concurrency: 1,
         startDelayMs: 800,
@@ -893,8 +907,15 @@ export const usePlayer = create<State>((set, get) => ({
         prefetchCovers(favorites, 8);
       }, 1200);
     } else if (playlist.length || history.length) {
-      const resolve = (id: string | number, opts?: { level?: string }) =>
-      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
+      const resolve = (
+      id: string | number,
+      opts?: { level?: string; name?: string; artist?: string }
+    ) =>
+      api.resolveSong(id, {
+        level: opts?.level || get().preferredQuality,
+        name: opts?.name,
+        artist: opts?.artist,
+      });
       prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 3, concurrency: 1, startDelayMs: 800 });
     }
 
@@ -947,10 +968,16 @@ export const usePlayer = create<State>((set, get) => ({
           queueSource: "search",
         });
         // Warm URLs for list (and siblings) while playing the random pick
-        prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-          limit: 3,
-          concurrency: 1,
-        });
+        prefetchSongResolves(
+          list,
+          (id, opts) =>
+            api.resolveSong(id, {
+              level: opts?.level || get().preferredQuality,
+              name: opts?.name,
+              artist: opts?.artist,
+            }),
+          { limit: 3, concurrency: 1 }
+        );
         get().showToast(i18n("toast.random", { name: pick.name || "Douyin" }));
         void get().playTrack(pick, { from: "search" });
       } catch (e: any) {
@@ -974,11 +1001,16 @@ export const usePlayer = create<State>((set, get) => ({
       // List is ready — resolve top results in background so click/play is instant
       else {
         recordRecentSearch(query);
-        prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-          limit: 3,
-          concurrency: 1,
-          startDelayMs: 250,
-        });
+        prefetchSongResolves(
+          list,
+          (id, opts) =>
+            api.resolveSong(id, {
+              level: opts?.level || get().preferredQuality,
+              name: opts?.name,
+              artist: opts?.artist,
+            }),
+          { limit: 3, concurrency: 1, startDelayMs: 250 }
+        );
       }
     } catch (e: any) {
       if (gen !== searchGen) return;
@@ -1043,7 +1075,12 @@ export const usePlayer = create<State>((set, get) => ({
       });
       prefetchCovers(localHit.payload.tracks, 8);
       prefetchSongResolves(
-        localHit.payload.tracks.map(norm).filter(Boolean) as Track[], (id) => api.resolveSong(id, { level: get().preferredQuality }),
+        localHit.payload.tracks.map(norm).filter(Boolean) as Track[], (id, opts) =>
+          api.resolveSong(id, {
+            level: opts?.level || get().preferredQuality,
+            name: opts?.name,
+            artist: opts?.artist,
+          }),
         { limit: 3, concurrency: 1, startDelayMs: 600 }
       );
       if (!localHit.stale && !force) return;
@@ -1114,11 +1151,16 @@ export const usePlayer = create<State>((set, get) => ({
         chartBoard: payload.board,
       });
       prefetchCovers(tracks, 8);
-      prefetchSongResolves(tracks, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-        limit: 3,
-        concurrency: 1,
-        startDelayMs: 500,
-      });
+      prefetchSongResolves(
+        tracks,
+        (id, opts) =>
+          api.resolveSong(id, {
+            level: opts?.level || get().preferredQuality,
+            name: opts?.name,
+            artist: opts?.artist,
+          }),
+        { limit: 3, concurrency: 1, startDelayMs: 500 }
+      );
       if (!tracks.length) get().showToast(i18n("toast.chartEmpty"));
     } catch (e: any) {
       if (gen !== chartGen) return;
@@ -1316,12 +1358,17 @@ export const usePlayer = create<State>((set, get) => ({
       }
     }, 900);
 
-    const stream = `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(prefQ)}`;
+    const stream = api.streamUrl(t.id, { level: prefQ, name: t.name, artist: t.artist });
     const clearSlow = () => window.clearTimeout(slowHint);
 
     /** Network resolve + write durable cache. force=true bypasses edge/D1 (expired CDN). */
     const fetchAndStoreResolve = async (force = false) => {
-      const data = await api.resolveSong(t.id, { level: prefQ, force });
+      const data = await api.resolveSong(t.id, {
+        level: prefQ,
+        force,
+        name: t.name,
+        artist: t.artist,
+      });
       const remoteUrl =
         data.url && /^https?:\/\//i.test(String(data.url)) ? String(data.url) : "";
       const actualLevel = String(data.level || prefQ);
@@ -1736,7 +1783,7 @@ export const usePlayer = create<State>((set, get) => ({
       let level = "";
       // Warm uses best-effort preferred; full probe happens on real play
       const prefQ = get().preferredQuality || DEFAULT_QUALITY;
-      const stream = `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(prefQ)}`;
+      const stream = api.streamUrl(t.id, { level: prefQ, name: t.name, artist: t.artist });
       const cached = getCachedSong(t.id, prefQ);
       if (cached && (cached.url || cached.stream)) {
         remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
@@ -1758,7 +1805,11 @@ export const usePlayer = create<State>((set, get) => ({
         }
       } else {
         try {
-          const meta = await api.resolveSong(t.id, { level: prefQ });
+          const meta = await api.resolveSong(t.id, {
+            level: prefQ,
+            name: t.name,
+            artist: t.artist,
+          });
           if (stale()) return;
           remote =
             meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
@@ -2246,7 +2297,11 @@ export const usePlayer = create<State>((set, get) => ({
         level = cached.level || prefLevel;
       } else {
         try {
-          const meta = await api.resolveSong(n.id, { level: prefLevel });
+          const meta = await api.resolveSong(n.id, {
+            level: prefLevel,
+            name: n.name,
+            artist: n.artist,
+          });
           if (String(get().curTrack?.id) === String(n.id)) return;
           remote =
             meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";

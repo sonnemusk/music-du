@@ -11,6 +11,8 @@ import {
   isResolvedSongId,
   resolveSource,
   kuwoTrackDuration,
+  kugouRankUrls,
+  parseKugouRankBody,
   _clearChartCache,
 } from "../server/charts.js";
 
@@ -91,6 +93,41 @@ describe("charts catalog", () => {
     expect(chartEdgeMaxAgeSec("soar")).toBe(2 * 3600);
     expect(chartEdgeMaxAgeSec("new")).toBe(3 * 3600);
     expect(chartEdgeMaxAgeSec("hot")).toBe(8 * 3600);
+  });
+
+  it("kugou rank avoids the broken mobilecdn certificate host", () => {
+    const urls = kugouRankUrls(8888, 5);
+    expect(urls[0]).toContain("https://mobiles.kugou.com/api/v3/rank/song?");
+    expect(urls[0]).toContain("rankid=8888");
+    expect(urls[0]).toContain("pagesize=5");
+    expect(urls.some((u) => u.includes("mobilecdn.kugou.com"))).toBe(false);
+    expect(urls.some((u) => u.includes("gatewayretry.kugou.com"))).toBe(true);
+  });
+
+  it("parses kugou rank hashes into playable kg ids", () => {
+    const rows = parseKugouRankBody(
+      {
+        data: {
+          info: [
+            {
+              filename: "周杰伦 - 晴天",
+              songname: "晴天",
+              hash: "6A350E487263733359E7F2B64BD974AC",
+              authors: [{ author_name: "周杰伦" }],
+              duration: 269,
+              album_name: "叶惠美",
+            },
+          ],
+        },
+      },
+      10
+    );
+    expect(rows[0]?.name).toBe("晴天");
+    expect(rows[0]?.artist).toBe("周杰伦");
+    expect(rows[0]?.sourceKey).toBe("kg:6A350E487263733359E7F2B64BD974AC");
+    const track = chartTrackFromRaw(rows[0]!, 1);
+    expect(track?.id).toBe("kg:6A350E487263733359E7F2B64BD974AC");
+    expect(isResolvedSongId(track?.id)).toBe(true);
   });
 
   it("kuwo bang duration uses song_duration seconds, not minutes*1000", () => {

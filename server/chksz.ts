@@ -435,10 +435,27 @@ async function fetchNativePlay(
     const { status, body } = await apiGet(path, params, { ...opts, timeout: 12000 });
     if ([401, 402, 403, 429].includes(status)) checkAuth(status, body);
     if (status >= 500) return null;
-    const code = body?.code;
-    if (code != null && code !== 200 && code !== 0) return null;
-    const raw = body?.data && typeof body.data === "object" && body.data.url ? body.data : body;
-    const url = tryHttps(String(raw?.url || body?.url || "").trim());
+    if (!isOkUpstreamCode(body?.code)) return null;
+    const data = body?.data;
+    const first = Array.isArray(data) ? data[0] : data;
+    const resultObj =
+      body?.result && typeof body.result === "object" ? body.result : null;
+    const raw =
+      first && typeof first === "object" && (first.url || first.music_url || first.songurl)
+        ? first
+        : resultObj && (resultObj.url || resultObj.music_url || resultObj.songurl)
+          ? resultObj
+          : body;
+    const url = tryHttps(
+      String(
+        raw?.url ||
+          raw?.music_url ||
+          raw?.songurl ||
+          (typeof first === "string" ? first : "") ||
+          (typeof body?.result === "string" ? body.result : "") ||
+          ""
+      ).trim()
+    );
     if (!url.startsWith("http")) return null;
     const size = String(params.size || raw.bitrate || raw.format || "flac");
     return {
@@ -510,8 +527,7 @@ export async function fetchMusicExact(
       if (body?.url) raw = body;
       else return null;
     }
-    const code = body?.code;
-    if (code != null && code !== 200 && code !== 0) return null;
+    if (!isOkUpstreamCode(body?.code)) return null;
     const url = tryHttps(String(raw.url || "").trim());
     if (!url.startsWith("http")) return null;
     return {
@@ -534,10 +550,90 @@ function nativeSizeWalk(level?: string | null): string[] {
   return [want, ...NATIVE_SIZE_LADDER.filter((s) => s !== want)].slice(0, 4);
 }
 
+function isOkUpstreamCode(code: unknown): boolean {
+  if (code == null || code === "") return true;
+  const n = Number(code);
+  return n === 200 || n === 0;
+}
+
+function foldPlayTitle(s: string): string {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/\(.*?\)|（.*?）|\[.*?\]|【.*?】/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function primaryPlayArtist(s: string): string {
+  return foldPlayTitle(String(s || "").split(/[/、,&，]/)[0] || "");
+}
+
+/**
+ * Chart rows from QQ / Kugou often have a native id the gateway will not turn
+ * into a URL. Pick a NetEase hit only when the title actually matches.
+ * Score ≥ 95: exact title (100), or title overlap plus the same artist (95).
+ */
+export function pickNeteaseFallback(
+  wantName: string,
+  wantArtist: string,
+  hits: Track[]
+): Track | null {
+  const wantN = foldPlayTitle(wantName);
+  const wantA = primaryPlayArtist(wantArtist);
+  if (!wantN) return null;
+  let best: Track | null = null;
+  let bestScore = 0;
+  for (const h of hits) {
+    if (!h || !/^\d+$/.test(String(h.id ?? ""))) continue;
+    const n = foldPlayTitle(h.name || "");
+    if (!n) continue;
+    let score = 0;
+    if (n === wantN) score += 100;
+    else if (n.includes(wantN) || wantN.includes(n)) score += 55;
+    else continue;
+    const a = primaryPlayArtist(h.artist || "");
+    if (wantA && a && (a.includes(wantA) || wantA.includes(a))) score += 40;
+    if (score > bestScore) {
+      bestScore = score;
+      best = h;
+    }
+  }
+  if (!best || bestScore < 95) return null;
+  return best;
+}
+
+async function playResolvedNetease(
+  neId: string,
+  level: string | null | undefined,
+  opts?: { apikey?: string }
+): Promise<Record<string, any> | null> {
+  for (const lv of qualityLevels(level).slice(0, 4)) {
+    const hit = await fetchMusicExact(neId, lv, opts);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** When a native id has no URL, search NetEase by the chart row's title. */
+async function fallbackNeteaseByName(
+  level: string | null | undefined,
+  opts?: { apikey?: string; name?: string; artist?: string }
+): Promise<Record<string, any> | null> {
+  const name = String(opts?.name || "").trim().slice(0, 120);
+  const artist = String(opts?.artist || "").trim().slice(0, 120);
+  if (!name) return null;
+  const q = [name, artist].filter(Boolean).join(" ");
+  let hits = await search(q, 8, opts);
+  if (!hits.length && artist) hits = await search(name, 8, opts);
+  const best = pickNeteaseFallback(name, artist, hits);
+  if (!best) return null;
+  return playResolvedNetease(String(best.id), level, opts);
+}
+
 export async function fetchMusic(
   sid: string | number,
   level?: string | null,
-  opts?: { apikey?: string }
+  opts?: { apikey?: string; name?: string; artist?: string }
 ): Promise<Record<string, any>> {
   const parsed = parseSongId(sid);
   if (parsed?.provider === "qq") {
@@ -549,7 +645,7 @@ export async function fetchMusic(
       );
       if (hit) return { ...hit, id: `qq:${parsed.nativeId}` };
     }
-    return {};
+    return (await fallbackNeteaseByName(level, opts)) || {};
   }
   if (parsed?.provider === "kugou") {
     for (const size of nativeSizeWalk(level)) {
@@ -560,16 +656,15 @@ export async function fetchMusic(
       );
       if (hit) return { ...hit, id: `kg:${parsed.nativeId}` };
     }
-    return {};
+    return (await fallbackNeteaseByName(level, opts)) || {};
   }
   const neId = parsed?.provider === "netease" ? parsed.nativeId : String(sid);
-  if (!/^\d+$/.test(neId)) return {};
-  // Cap ladder walk: requested + next 3. Full 8-level walk is 8+ subrequests.
-  for (const lv of qualityLevels(level).slice(0, 4)) {
-    const hit = await fetchMusicExact(neId, lv, opts);
-    if (hit) return hit;
+  if (!/^\d+$/.test(neId)) {
+    // Kuwo and other ext: chart rows have no native gateway id.
+    return (await fallbackNeteaseByName(level, opts)) || {};
   }
-  return {};
+  const hit = await playResolvedNetease(neId, level, opts);
+  return hit || {};
 }
 
 export type ProbedQuality = {

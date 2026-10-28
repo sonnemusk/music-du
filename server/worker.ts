@@ -28,7 +28,7 @@ import {
 } from "./cover-fetch.js";
 import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
-import { chooseAudioSrc, resolvePlay } from "./play.js";
+import { chooseAudioSrc, resolvePlay, streamPathFor } from "./play.js";
 import {
   filterNewById,
   minScoreForMatch,
@@ -764,11 +764,15 @@ app.get("/api/song/:sid", async (c) => {
   }
 
   try {
+    const name = String(c.req.query("name") || "").trim();
+    const artist = String(c.req.query("artist") || "").trim();
     const src = await resolvePlay(sid, level || c.req.query("level"), {
       apikey: withKey(c.env),
+      name,
+      artist,
     });
     if (src.source === "none" && !src.meta) return c.json({ ok: false, error: "no url" }, 404);
-    const stream = `/api/stream/${sid}${level ? `?level=${encodeURIComponent(level)}` : ""}`;
+    const stream = streamPathFor(sid, { level, name, artist });
     const remoteUrl = src.source === "remote" ? src.url : "";
     const data = {
       id: sid,
@@ -908,6 +912,8 @@ app.get("/api/stream/:sid", async (c) => {
     }
     const raw = await chksz.fetchMusic(sid, level, {
       apikey: withKey(c.env),
+      name: c.req.query("name") || "",
+      artist: c.req.query("artist") || "",
     });
     const audioUrl = raw?.url || "";
     if (!isSafeUpstreamUrl(audioUrl)) {

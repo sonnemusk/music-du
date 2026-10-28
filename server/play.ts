@@ -16,10 +16,24 @@ export function onRemoteError(streamPath: string) {
   return { src: streamPath, mode: "stream" as const, fallback: null };
 }
 
+export function streamPathFor(
+  sid: string,
+  opts?: { level?: string | null; name?: string | null; artist?: string | null }
+): string {
+  const q = new URLSearchParams();
+  if (opts?.level) q.set("level", String(opts.level));
+  const name = String(opts?.name || "").trim().slice(0, 120);
+  const artist = String(opts?.artist || "").trim().slice(0, 120);
+  if (name) q.set("name", name);
+  if (artist) q.set("artist", artist);
+  const qs = q.toString();
+  return `/api/stream/${sid}${qs ? `?${qs}` : ""}`;
+}
+
 export async function resolvePlay(
   sid: string | number,
   level?: string | null,
-  opts?: { apikey?: string }
+  opts?: { apikey?: string; name?: string; artist?: string }
 ): Promise<PlaySource> {
   const id = String(sid);
   const raw = await chksz.fetchMusic(id, level, opts);

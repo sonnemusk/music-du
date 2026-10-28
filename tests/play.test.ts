@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import * as chksz from "../server/chksz.js";
-import { chooseAudioSrc, onRemoteError, resolvePlay } from "../server/play.js";
+import { chooseAudioSrc, onRemoteError, resolvePlay, streamPathFor } from "../server/play.js";
 
 afterEach(() => {
   chksz.setHttpTransport(null);
@@ -24,6 +24,18 @@ describe("play path", () => {
     const got = chooseAudioSrc({ url: "" }, "/api/stream/42");
     expect(got.mode).toBe("stream");
     expect(got.src).toBe("/api/stream/42");
+  });
+
+  it("stream path keeps the title hint for native-id fallback", () => {
+    const path = streamPathFor("qq:0039MnYb0qxYhV", {
+      level: "standard",
+      name: "晴天",
+      artist: "周杰伦",
+    });
+    expect(path.startsWith("/api/stream/qq:0039MnYb0qxYhV?")).toBe(true);
+    expect(path).toContain("level=standard");
+    expect(path).toContain("name=");
+    expect(path).toContain("%E6%99%B4%E5%A4%A9");
   });
 
   it("onRemoteError falls back to stream", () => {
