@@ -8,6 +8,8 @@ import {
   listChartPlatforms,
   normalizeBoard,
   chartTrackFromRaw,
+  kugouRankUrl,
+  KUGOU_RANK_BASES,
   isResolvedSongId,
   resolveSource,
   kuwoTrackDuration,
@@ -101,6 +103,14 @@ describe("charts catalog", () => {
   });
 });
 
+describe("kugou chart host", () => {
+  it("does not call the hostname whose TLS cert is wrong", () => {
+    expect(KUGOU_RANK_BASES.join(" ")).not.toContain("mobilecdn.kugou.com");
+    expect(kugouRankUrl(8888, 2)).toContain("https://mobileservice.kugou.com/api/v3/rank/song");
+    expect(kugouRankUrl(8888, 2)).toContain("rankid=8888");
+  });
+});
+
 describe("client loadCharts generation token", () => {
   it("drops stale board responses the way search drops stale queries", () => {
     const src = fs.readFileSync(
@@ -111,5 +121,6 @@ describe("client loadCharts generation token", () => {
     expect(src).toMatch(/const gen = \+\+chartGen/);
     expect(src).toMatch(/if \(gen !== chartGen\) return/);
     expect(src).toMatch(/await api\.fetchChart[\s\S]*if \(gen !== chartGen\) return/s);
+    expect(src).not.toMatch(/prefetchSongResolves/);
   });
 });

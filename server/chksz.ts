@@ -9,6 +9,7 @@ import {
   chkszPrimaryBase,
   qualityLevels,
 } from "./config.js";
+import { minScoreForMatch, scoreNameMatch } from "./favs-import.js";
 import {
   NATIVE_SIZE_LADDER,
   nativeSizeToLevel,
@@ -26,6 +27,12 @@ export class ChkszError extends Error {
   }
 }
 
+/** Worker/Node JSON error string. 429 must stay distinguishable for client backoff. */
+export function publicUpstreamError(e: unknown): string {
+  if (e instanceof ChkszError && e.status === 429) return "rate limited";
+  return "upstream error";
+}
+
 export type Transport = (
   method: string,
   url: string,
@@ -34,8 +41,34 @@ export type Transport = (
 
 let transport: Transport | null = null;
 
-/** Round-robin cursor for .com keys (module-level; Workers isolate per isolate). */
-let comKeyCursor = 0;
+/**
+ * Round-robin cursor for gateway keys.
+ * Random start so a cold Worker isolate does not always burn key 1.
+ */
+function randomKeyCursor(): number {
+  try {
+    const buf = new Uint32Array(1);
+    const webCrypto = (globalThis as { crypto?: { getRandomValues(b: Uint32Array): void } }).crypto;
+    if (!webCrypto) return Math.floor(Math.random() * 1_000_003);
+    webCrypto.getRandomValues(buf);
+    return buf[0]! % 1_000_003;
+  } catch {
+    return Math.floor(Math.random() * 1_000_003);
+  }
+}
+
+let comKeyCursor = randomKeyCursor();
+/** After a 429, skip upstream entirely until this time (per isolate). */
+let gatewayOpenAt = 0;
+const GATEWAY_COOLDOWN_MS = 20_000;
+
+export function gatewayCoolingDown(): boolean {
+  return Date.now() < gatewayOpenAt;
+}
+
+function tripGatewayCooldown() {
+  gatewayOpenAt = Date.now() + GATEWAY_COOLDOWN_MS;
+}
 
 export function setHttpTransport(fn: Transport | null) {
   transport = fn;
@@ -44,6 +77,7 @@ export function setHttpTransport(fn: Transport | null) {
 /** Test helper — reset RR cursor. */
 export function resetKeyRotationForTests() {
   comKeyCursor = 0;
+  gatewayOpenAt = 0;
 }
 
 export function tryHttps(url: string): string {
@@ -101,10 +135,13 @@ function gatewayKeys(opts?: { apikey?: string }): string[] {
 
 /**
  * Try order:
- * 1) primary host × configured keys (round-robin start)
- * 2) optional fallback host with the same keys
+ * 1) every configured key on the primary host, starting at the round-robin cursor
+ * 2) one attempt on the fallback host (same starting key) — after the other keys
  *
- * Mock transport (unit tests): primary only. Key is attached only when configured.
+ * A fallback host must not consume the only retry before key 2, or a 429 on key 1
+ * never reaches the spare quota.
+ *
+ * Transport with no key (unit tests) stays a single no-key attempt.
  */
 function buildAttempts(opts?: { apikey?: string }): Attempt[] {
   const primary = chkszPrimaryBase();
@@ -112,25 +149,22 @@ function buildAttempts(opts?: { apikey?: string }): Attempt[] {
   const keys = gatewayKeys(opts);
   const need = chkszHostNeedsKey(primary);
 
-  if (transport) {
-    return [{ base: primary, key: keys[0] || "", label: keys[0] ? "primary" : "primary-nokey" }];
+  if (transport && !keys.length) {
+    return [{ base: primary, key: "", label: "primary-nokey" }];
   }
 
   const out: Attempt[] = [];
   if (keys.length) {
     const start = comKeyCursor % keys.length;
     comKeyCursor += 1;
-    const first = keys[start]!;
-    out.push({ base: primary, key: first, label: "primary#1" });
-    // Fail over to the other host before burning more keys on a dead primary.
-    if (fallback) out.push({ base: fallback, key: first, label: "fallback" });
-    for (let i = 1; i < keys.length; i++) {
+    for (let i = 0; i < keys.length; i++) {
       out.push({
         base: primary,
         key: keys[(start + i) % keys.length]!,
         label: `primary#${i + 1}`,
       });
     }
+    if (fallback) out.push({ base: fallback, key: keys[start]!, label: "fallback" });
   } else if (need) {
     throw new ChkszError("CHKSZ_APIKEY not configured (needed for api.chksz.com)", 401);
   } else {
@@ -138,6 +172,18 @@ function buildAttempts(opts?: { apikey?: string }): Attempt[] {
     if (fallback) out.push({ base: fallback, key: "", label: "fallback" });
   }
   return out;
+}
+
+/**
+ * 429/401/402 are per-key, so walk the key list.
+ * 403/5xx is usually the whole edge — one extra hop, then stop.
+ */
+function retryAttempt(status: number, nextIndex: number): boolean {
+  if (!isRetryableStatus(status)) return false;
+  if (nextIndex >= 4) return false;
+  const perKey = status === 429 || status === 401 || status === 402;
+  if (!perKey && nextIndex >= 2) return false;
+  return true;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -213,25 +259,25 @@ async function apiGet(
   params: Record<string, string | number> = {},
   opts?: { apikey?: string; timeout?: number }
 ): Promise<{ status: number; body: any }> {
-  // Free Workers: primary + at most one fallback host (not every .com key).
-  const attempts = buildAttempts(opts).slice(0, 2);
+  // Isolate breaker: a live 429 means more subrequests only make the bill worse.
+  if (gatewayCoolingDown()) {
+    throw new ChkszError("rate limited", 429);
+  }
+  // Cap fan-out: at most 4 key/host tries for one logical call.
+  const attempts = buildAttempts(opts).slice(0, 4);
   const timeout = opts?.timeout ?? 12000;
   let last: { status: number; body: any } | null = null;
   let lastErr: unknown = null;
 
   for (let i = 0; i < attempts.length; i++) {
+    if (i > 0 && last && !retryAttempt(last.status, i)) break;
     const a = attempts[i]!;
     try {
       const res = await rawGet(a.base, path, params, a.key, timeout);
       last = res;
-      // Success or non-retryable client error (e.g. 404) — stop
       if (!isRetryableStatus(res.status)) return res;
-      // Retryable: try next key/base if any
-      if (i < attempts.length - 1) continue;
-      return res;
     } catch (e) {
       lastErr = e;
-      // Network / abort → try next
       if (i < attempts.length - 1) continue;
       if (e instanceof ChkszError) throw e;
       throw new ChkszError(
@@ -241,6 +287,7 @@ async function apiGet(
     }
   }
 
+  if (last?.status === 429) tripGatewayCooldown();
   if (last) return last;
   if (lastErr instanceof ChkszError) throw lastErr;
   throw new ChkszError("upstream request failed", 502);
@@ -300,20 +347,6 @@ export function normalizeSong(s: any): Track {
     cover: extractCover(s),
     duration: s.duration || s.dt || 0,
   };
-}
-
-function foldTrackKey(name: string, artist: string): string {
-  const n = String(name || "")
-    .toLowerCase()
-    .replace(/\(.*?\)|（.*?）|\[.*?\]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const a = String(artist || "")
-    .toLowerCase()
-    .split(/[/,&、]/)[0]
-    ?.replace(/[^a-z0-9\u4e00-\u9fff]+$/g, "")
-    .trim() || "";
-  return n ? `${n}|${a}` : "";
 }
 
 function qqRows(body: any): Track[] {
@@ -396,34 +429,41 @@ export async function searchKugou(
   }
 }
 
-/** NetEase first, then unique QQ / Kugou hits (same title+artist collapsed). */
+/**
+ * NetEase first. QQ / Kugou searches are extra upstream calls, so they run
+ * only when NetEase returns nothing — and one provider at a time, not in parallel.
+ * A 429 on NetEase stops the chain (do not multiply a rate limit).
+ */
 export async function searchAll(
   keyword: string,
   limit = 30,
   opts?: { apikey?: string }
 ): Promise<Track[]> {
   const cap = Math.max(5, Math.min(40, limit || 30));
-  const extra = Math.min(12, cap);
-  const settled = await Promise.allSettled([
-    search(keyword, cap, opts),
-    searchQq(keyword, extra, opts),
-    searchKugou(keyword, extra, opts),
-  ]);
-  const lists = settled.map((r) => (r.status === "fulfilled" ? r.value : []));
-  const firstReject = settled.find((r): r is PromiseRejectedResult => r.status === "rejected");
-  if (settled.every((r) => r.status === "rejected") && firstReject) {
-    throw firstReject.reason;
+  const extra = Math.min(8, cap);
+  let primary: Track[] = [];
+  try {
+    primary = await search(keyword, cap, opts);
+  } catch (e) {
+    if (e instanceof ChkszError) throw e;
+    primary = [];
   }
-  const seen = new Set<string>();
-  const out: Track[] = [];
-  for (const t of lists.flat()) {
-    const k = foldTrackKey(t.name, t.artist);
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    out.push(t);
-    if (out.length >= cap) break;
+  if (primary.length) return primary.slice(0, cap);
+  if (gatewayCoolingDown()) return [];
+  try {
+    const qq = await searchQq(keyword, extra, opts);
+    if (qq.length) return qq.slice(0, cap);
+  } catch (e) {
+    if (e instanceof ChkszError && e.status === 429) throw e;
   }
-  return out;
+  if (gatewayCoolingDown()) return [];
+  try {
+    const kg = await searchKugou(keyword, extra, opts);
+    if (kg.length) return kg.slice(0, cap);
+  } catch (e) {
+    if (e instanceof ChkszError && e.status === 429) throw e;
+  }
+  return [];
 }
 
 async function fetchNativePlay(
@@ -531,41 +571,89 @@ export async function fetchMusicExact(
 
 function nativeSizeWalk(level?: string | null): string[] {
   const want = qualityToNativeSize(level);
-  return [want, ...NATIVE_SIZE_LADDER.filter((s) => s !== want)].slice(0, 4);
+  return [want, ...NATIVE_SIZE_LADDER.filter((s) => s !== want)];
+}
+
+/** Play path: requested quality plus one fallback. Never an 8-step ladder. */
+const PLAY_QUALITY_ATTEMPTS = 2;
+
+export type MusicLookup = {
+  apikey?: string;
+  name?: string;
+  artist?: string;
+};
+
+/**
+ * Chart rows from QQ often have a mid the gateway cannot turn into a URL.
+ * Match a NetEase track by title instead of walking every QQ bitrate.
+ */
+async function matchViaNetease(
+  name: string | undefined,
+  artist: string | undefined,
+  level: string | null | undefined,
+  opts?: MusicLookup
+): Promise<Record<string, any> | null> {
+  const title = String(name || "").trim();
+  if (!title || gatewayCoolingDown()) return null;
+  const lead = String(artist || "").split(/[/、,&，]/)[0]?.trim() || "";
+  const q = lead ? `${title} ${lead}` : title;
+  const hits = await search(q, 6, opts);
+  let best: Track | null = null;
+  let bestScore = -1;
+  for (const h of hits) {
+    if (!/^\d+$/.test(String(h.id))) continue;
+    const s = scoreNameMatch(title, artist || "", h.name, h.artist);
+    if (s > bestScore) {
+      bestScore = s;
+      best = h;
+    }
+  }
+  if (!best || bestScore < minScoreForMatch(Boolean(lead))) return null;
+  for (const lv of qualityLevels(level).slice(0, PLAY_QUALITY_ATTEMPTS)) {
+    const hit = await fetchMusicExact(String(best.id), lv, opts);
+    if (hit) {
+      return {
+        ...hit,
+        name: hit.name || best.name,
+        artist: hit.artist || best.artist,
+        _matched_from: String(best.id),
+      };
+    }
+  }
+  return null;
 }
 
 export async function fetchMusic(
   sid: string | number,
   level?: string | null,
-  opts?: { apikey?: string }
+  opts?: MusicLookup
 ): Promise<Record<string, any>> {
   const parsed = parseSongId(sid);
-  if (parsed?.provider === "qq") {
-    for (const size of nativeSizeWalk(level)) {
-      const hit = await fetchNativePlay(
-        "/api/qq_music",
-        { mid: parsed.nativeId, size, type: "json" },
-        opts
-      );
-      if (hit) return { ...hit, id: `qq:${parsed.nativeId}` };
+  if (parsed?.provider === "qq" || parsed?.provider === "kugou") {
+    const named = String(opts?.name || "").trim();
+    // QQ chart mids currently return an empty URL and still spend quota.
+    const skipNative = parsed.provider === "qq" && Boolean(named);
+    if (!skipNative) {
+      const sizes = nativeSizeWalk(level).slice(0, parsed.provider === "qq" ? 1 : 2);
+      const path = parsed.provider === "qq" ? "/api/qq_music" : "/api/kugou_music";
+      const idKey = parsed.provider === "qq" ? "mid" : "id";
+      const prefix = parsed.provider === "qq" ? "qq" : "kg";
+      for (const size of sizes) {
+        const hit = await fetchNativePlay(
+          path,
+          { [idKey]: parsed.nativeId, size, type: "json" },
+          opts
+        );
+        if (hit) return { ...hit, id: `${prefix}:${parsed.nativeId}` };
+      }
     }
-    return {};
-  }
-  if (parsed?.provider === "kugou") {
-    for (const size of nativeSizeWalk(level)) {
-      const hit = await fetchNativePlay(
-        "/api/kugou_music",
-        { id: parsed.nativeId, size, type: "json" },
-        opts
-      );
-      if (hit) return { ...hit, id: `kg:${parsed.nativeId}` };
-    }
+    const via = await matchViaNetease(opts?.name, opts?.artist, level, opts);
+    if (via) return via;
     return {};
   }
   const neId = parsed?.provider === "netease" ? parsed.nativeId : String(sid);
   if (!/^\d+$/.test(neId)) return {};
-  // Cap ladder walk: requested + next 3. Full 8-level walk is 8+ subrequests.
-  for (const lv of qualityLevels(level).slice(0, 4)) {
+  for (const lv of qualityLevels(level).slice(0, PLAY_QUALITY_ATTEMPTS)) {
     const hit = await fetchMusicExact(neId, lv, opts);
     if (hit) return hit;
   }
@@ -595,10 +683,12 @@ export async function probeTopQualities(
   const max = Math.max(1, Math.min(5, limit || 3));
   const parsed = parseSongId(sid);
   if (parsed?.provider === "qq" || parsed?.provider === "kugou") {
+    // QQ direct URLs are empty in production; probing the ladder only burns quota.
+    if (parsed.provider === "qq") return [];
     const out: ProbedQuality[] = [];
-    const path = parsed.provider === "qq" ? "/api/qq_music" : "/api/kugou_music";
-    const idKey = parsed.provider === "qq" ? "mid" : "id";
-    for (const size of NATIVE_SIZE_LADDER) {
+    const path = "/api/kugou_music";
+    const idKey = "id";
+    for (const size of NATIVE_SIZE_LADDER.slice(0, 2)) {
       if (out.length >= max) break;
       const hit = await fetchNativePlay(path, { [idKey]: parsed.nativeId, size, type: "json" }, opts);
       if (!hit?.url) continue;
@@ -620,7 +710,7 @@ export async function probeTopQualities(
   if (!/^\d+$/.test(neId)) return [];
   const ladder = qualityLevels(null);
   const out: ProbedQuality[] = [];
-  const batchSize = 3;
+  const batchSize = 1;
   for (let i = 0; i < ladder.length && out.length < max; i += batchSize) {
     const batch = ladder.slice(i, i + batchSize);
     const hits = await Promise.all(

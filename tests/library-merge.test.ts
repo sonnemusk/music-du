@@ -6,6 +6,7 @@ import {
   nextLibraryRevision,
   planListUpserts,
   planHistoryWrites,
+  planListDelta,
   sanitizeLibTrack,
   trackIdSetsEqual,
   trackListSameIds,
@@ -248,5 +249,52 @@ describe("planHistoryWrites (P1-1)", () => {
     const plan = planHistoryWrites(existing, [{ id: "a" }, { id: "c" }], 200);
     expect(plan.deleteSids).toEqual(["gone"]);
     expect(plan.finalOrder).toEqual(["a", "c"]);
+  });
+});
+
+describe("planListDelta", () => {
+  it("one new favorite among hundreds is a single write", () => {
+    const existing = Array.from({ length: 600 }, (_, i) => ({
+      sid: `fav-${i}`,
+      pos: i,
+      name: `Song ${i}`,
+      artist: "A",
+      album: "",
+      cover: "",
+      duration: 0,
+    }));
+    const incoming = [
+      { id: "new-fav", name: "New", artist: "A" },
+      ...existing.map((e) => ({
+        id: e.sid,
+        name: e.name,
+        artist: e.artist,
+        duration: 0,
+      })),
+    ];
+    const plan = planListDelta(existing, incoming, 2000);
+    expect(plan.writeOps).toBe(1);
+    expect(plan.upserts.map((u) => u.sid)).toEqual(["new-fav"]);
+    expect(plan.deleteSids).toEqual([]);
+    expect(plan.finalOrder[0]).toBe("new-fav");
+    expect(plan.finalOrder).toHaveLength(601);
+  });
+
+  it("metadata change on a stable row is one upsert and no rewrite of the tail", () => {
+    const existing = [
+      { sid: "a", pos: 0, name: "Old", artist: "A", album: "", cover: "", duration: 0 },
+      { sid: "b", pos: 1, name: "B", artist: "A", album: "", cover: "", duration: 0 },
+    ];
+    const plan = planListDelta(
+      existing,
+      [
+        { id: "a", name: "New title", artist: "A", duration: 0 },
+        { id: "b", name: "B", artist: "A", duration: 0 },
+      ],
+      2000
+    );
+    expect(plan.upserts.map((u) => u.sid)).toEqual(["a"]);
+    expect(plan.deleteSids).toEqual([]);
+    expect(plan.finalOrder).toEqual(["a", "b"]);
   });
 });

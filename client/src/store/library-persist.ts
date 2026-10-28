@@ -51,14 +51,24 @@ function normTrack(t: Track | null | undefined): Track | null {
 }
 
 export function applyLib(set: PersistSet) {
-  return (lib: Library) => {
-    set({
-      playlist: (lib.playlist || []).map(normTrack).filter(Boolean) as Track[],
-      favorites: (lib.favorites || []).map(normTrack).filter(Boolean) as Track[],
-      history: (lib.history || []).map(normTrack).filter(Boolean) as Track[],
-      curIdx: lib.curIdx ?? -1,
+  return (lib: Library & { partial?: boolean }) => {
+    const partial = Boolean(lib.partial);
+    const patch: Partial<LibraryPersistSlice> = {
       libraryRevision: Number(lib.revision ?? 0) || 0,
-    });
+    };
+    if (!partial || lib.playlist !== undefined) {
+      patch.playlist = (lib.playlist || []).map(normTrack).filter(Boolean) as Track[];
+    }
+    if (!partial || lib.favorites !== undefined) {
+      patch.favorites = (lib.favorites || []).map(normTrack).filter(Boolean) as Track[];
+    }
+    if (!partial || lib.history !== undefined) {
+      patch.history = (lib.history || []).map(normTrack).filter(Boolean) as Track[];
+    }
+    if (!partial || lib.curIdx !== undefined) {
+      patch.curIdx = lib.curIdx ?? -1;
+    }
+    set(patch);
   };
 }
 
@@ -132,20 +142,29 @@ export async function flushLibrarySave(get: PersistGet) {
   }
   if (saveInflight) return;
   if (!saveDirty) return;
+  const structural = savePendingFast || Object.keys(saveForce).length > 0;
   saveInflight = true;
   saveDirty = false;
   savePendingFast = false;
   const force = { ...saveForce };
   saveForce = {};
   const s = get();
-  const payload = {
-    playlist: s.playlist,
-    favorites: s.favorites,
-    history: s.history,
-    curIdx: s.curIdx,
-    revision: s.libraryRevision,
-    ...force,
-  };
+  // A track change only needs history. Sending favorites would make D1 read
+  // the whole likes list on every song.
+  const payload = structural
+    ? {
+        playlist: s.playlist,
+        favorites: s.favorites,
+        history: s.history,
+        curIdx: s.curIdx,
+        revision: s.libraryRevision,
+        ...force,
+      }
+    : {
+        history: s.history,
+        curIdx: s.curIdx,
+        revision: s.libraryRevision,
+      };
   mirrorLibraryLocal(get);
   try {
     const lib = await api.saveLibrary(payload);
@@ -159,9 +178,11 @@ export async function flushLibrarySave(get: PersistGet) {
     if (e instanceof api.LibraryConflictError) {
       const server = e.data;
       const rev = Number(server.revision ?? 0) || 0;
+      const sentFav = "favorites" in payload ? payload.favorites : undefined;
+      const sentPl = "playlist" in payload ? payload.playlist : undefined;
       const sameFavPl =
-        trackIdSetEqual(payload.favorites, server.favorites) &&
-        trackIdSetEqual(payload.playlist, server.playlist);
+        (sentFav === undefined || trackIdSetEqual(sentFav, server.favorites)) &&
+        (sentPl === undefined || trackIdSetEqual(sentPl, server.playlist));
       if (sameFavPl) {
         persistSet({ libraryRevision: rev });
         saveDirty = true;

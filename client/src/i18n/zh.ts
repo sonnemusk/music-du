@@ -211,6 +211,7 @@ export const zh: Dict = {
     chartFail: "热榜加载失败",
     resolving: "正在解析音源…",
     cannotPlay: "无法播放",
+    autoStop: "连续解析失败，已停止自动切歌",
     clickOrSpace: "点击播放或按空格键开始",
     muted: "已静音",
     unmuted: "取消静音",

@@ -28,7 +28,7 @@ import {
 } from "./cover-fetch.js";
 import { edgeMatch, edgePut, withCacheHeaders } from "./edge-cache.js";
 import { resolveLyrics } from "./lyrics.js";
-import { chooseAudioSrc, resolvePlay } from "./play.js";
+import { chooseAudioSrc, playHintsFromQuery, resolvePlay } from "./play.js";
 import {
   filterNewById,
   minScoreForMatch,
@@ -41,8 +41,9 @@ import {
   libraryRevisionOk,
   mergeTrackList,
   nextLibraryRevision,
-  planHistoryWrites,
+  planListDelta,
   trackListSameIds,
+  type StoredListRow,
 } from "./library-merge.js";
 import {
   ensureResolveCacheSchema,
@@ -123,21 +124,6 @@ async function ensureSchema(db: D1Database) {
   return p;
 }
 
-function sanitize(t: any) {
-  if (!t || t.id == null || t.id === "") return null;
-  return {
-    id: t.id,
-    name: String(t.name || ""),
-    artist: String(t.artist || ""),
-    album: String(t.album || ""),
-    cover: String(t.cover || ""),
-    duration: Number(t.duration || 0),
-    level: String(t.level || ""),
-    br: Number(t.br || 0),
-    size: Number(t.size || 0),
-  };
-}
-
 async function getMeta(db: D1Database, key: string): Promise<string | null> {
   const row = await db
     .prepare(`SELECT value FROM library_meta WHERE key=?`)
@@ -165,107 +151,89 @@ async function bumpRevision(db: D1Database, from: number): Promise<number> {
   return next;
 }
 
-async function loadLib(db: D1Database) {
+type LibListName = "playlist" | "favorites" | "history";
+
+function trackFromRow(r: any) {
+  return {
+    id: /^\d+$/.test(String(r.sid)) ? Number(r.sid) : r.sid,
+    name: r.name || "",
+    artist: r.artist || "",
+    album: r.album || "",
+    cover: r.cover || "",
+    duration: r.duration || 0,
+  };
+}
+
+function storedRow(r: any): StoredListRow {
+  return {
+    sid: String(r.sid),
+    pos: Number(r.pos),
+    name: r.name || "",
+    artist: r.artist || "",
+    album: r.album || "",
+    cover: r.cover || "",
+    duration: Number(r.duration || 0) || 0,
+  };
+}
+
+/** Drop server-only fields before a JSON response. */
+function clientLibraryView(lib: any) {
+  if (!lib || typeof lib !== "object") return lib;
+  const { positions: _positions, ...rest } = lib;
+  return rest;
+}
+
+async function loadLib(db: D1Database, lists?: LibListName[]) {
   await ensureSchema(db);
-  const lists: any = { playlist: [], favorites: [], history: [] };
-  for (const lt of Object.keys(lists)) {
+  const want: LibListName[] = lists?.length
+    ? lists
+    : ["playlist", "favorites", "history"];
+  const out: any = {
+    positions: {} as Record<string, StoredListRow[]>,
+  };
+  for (const lt of want) {
     const { results } = await db
-      .prepare(`SELECT * FROM library_tracks WHERE list_type=? ORDER BY pos ASC LIMIT 2000`)
+      .prepare(
+        `SELECT sid, pos, name, artist, album, cover, duration
+         FROM library_tracks WHERE list_type=? ORDER BY pos ASC LIMIT 2000`
+      )
       .bind(lt)
       .all();
-    lists[lt] = (results || []).map((r: any) => ({
-      id: /^\d+$/.test(String(r.sid)) ? Number(r.sid) : r.sid,
-      name: r.name || "",
-      artist: r.artist || "",
-      album: r.album || "",
-      cover: r.cover || "",
-      duration: r.duration || 0,
-    }));
+    out[lt] = (results || []).map(trackFromRow);
+    out.positions[lt] = (results || []).map(storedRow);
   }
   const row = await db
     .prepare(`SELECT value FROM library_meta WHERE key='curIdx'`)
     .first<{ value: string }>();
   let curIdx = row ? parseInt(row.value, 10) : -1;
-  if (Number.isNaN(curIdx) || curIdx >= lists.playlist.length) {
-    curIdx = lists.playlist.length ? 0 : -1;
+  const plLen = Array.isArray(out.playlist) ? out.playlist.length : 0;
+  if (out.playlist && (Number.isNaN(curIdx) || curIdx >= plLen)) {
+    curIdx = plLen ? 0 : -1;
   }
   const revision = await loadRevision(db);
-  return { ...lists, curIdx, revision };
+  return { ...out, curIdx, revision };
 }
 
 /**
- * Safe list rewrite: upsert first, then delete stale rows.
- * Never DELETE-all before inserts — a mid-flight timeout used to wipe favorites
- * (observed drop ~578 → ~240 ≈ partial batch after wipe).
+ * Delta writes from rows already loaded with the PUT.
+ * Does not query library_tracks again, and does not INSERT OR REPLACE the
+ * unchanged tail of a 600-row favorites list.
  */
-/**
- * P1-1: history sparse writes (monotonic pos).
- * Returns the sid order the table will report, so the PUT response can echo the
- * stored order instead of whatever the client happened to send.
- */
-function listWriteStatements(
+function listDeltaStatements(
   db: D1Database,
   listType: string,
   tracks: any[],
+  existingRows: StoredListRow[] | undefined,
   cap: number,
   now: number
-): D1PreparedStatement[] {
-  const seen = new Set<string>();
-  let pos = 0;
-  const stmts: D1PreparedStatement[] = [];
-  for (const raw of tracks || []) {
-    const t = sanitize(raw);
-    if (!t) continue;
-    const k = String(t.id);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    if (pos >= cap) break;
-    stmts.push(
-      db
-        .prepare(
-          `INSERT OR REPLACE INTO library_tracks
-           (list_type,sid,pos,name,artist,album,cover,duration,level,br,size,cached,updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
-        )
-        .bind(
-          listType,
-          k,
-          pos,
-          t.name,
-          t.artist,
-          t.album,
-          t.cover,
-          t.duration,
-          t.level,
-          t.br,
-          t.size,
-          0,
-          now
-        )
-    );
-    pos++;
+): { stmts: D1PreparedStatement[]; finalOrder: string[] } {
+  if (!tracks?.length) {
+    return {
+      stmts: [db.prepare(`DELETE FROM library_tracks WHERE list_type=?`).bind(listType)],
+      finalOrder: [],
+    };
   }
-  stmts.push(
-    db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND updated_at < ?`).bind(listType, now)
-  );
-  return stmts;
-}
-
-async function historyWritePlan(
-  db: D1Database,
-  tracks: any[],
-  cap: number
-): Promise<{ stmts: D1PreparedStatement[]; finalOrder: string[] }> {
-  const { results } = await db
-    .prepare(`SELECT sid, pos FROM library_tracks WHERE list_type=? LIMIT 2000`)
-    .bind("history")
-    .all();
-  const existing = (results || []).map((r: any) => ({
-    sid: String(r.sid),
-    pos: Number(r.pos),
-  }));
-  const plan = planHistoryWrites(existing, tracks, cap);
-  const now = Date.now() / 1000;
+  const plan = planListDelta(existingRows || [], tracks, cap);
   const stmts: D1PreparedStatement[] = [];
   for (const u of plan.upserts) {
     const t = u.track;
@@ -277,7 +245,7 @@ async function historyWritePlan(
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
         )
         .bind(
-          "history",
+          listType,
           u.sid,
           u.pos,
           t.name || "",
@@ -295,7 +263,7 @@ async function historyWritePlan(
   }
   for (const sid of plan.deleteSids) {
     stmts.push(
-      db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`).bind("history", sid)
+      db.prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`).bind(listType, sid)
     );
   }
   return { stmts, finalOrder: plan.finalOrder };
@@ -322,7 +290,7 @@ function orderTracksBySids(tracks: any[], sids: string[]): any[] {
 async function saveLib(
   db: D1Database,
   data: any,
-  opts?: { expectedRevision?: number | null; existing?: any; verify?: boolean }
+  opts?: { expectedRevision?: number | null; existing?: any; verify?: boolean; partial?: boolean }
 ) {
   await ensureSchema(db);
   const serverRev = await loadRevision(db);
@@ -333,29 +301,48 @@ async function saveLib(
         ? Number(data.revision)
         : null;
   if (!libraryRevisionOk(serverRev, clientRev)) {
-    const current = opts?.existing || (await loadLib(db));
-    return { conflict: true as const, data: current };
+    const current = await loadLib(db);
+    return { conflict: true as const, data: clientLibraryView(current) };
   }
-  // P1-2: reuse caller's snapshot when provided (PUT already loaded once)
+  // Reuse the PUT snapshot (positions included) so history is not selected twice.
   const existing = opts?.existing || (await loadLib(db));
-  const pl = data.playlist !== undefined ? data.playlist || [] : existing.playlist;
-  const fav = data.favorites !== undefined ? data.favorites || [] : existing.favorites;
-  const hi = data.history !== undefined ? data.history || [] : existing.history;
+  const touchPl = data.playlist !== undefined;
+  const touchFav = data.favorites !== undefined;
+  const touchHi = data.history !== undefined;
+  const pl = touchPl ? data.playlist || [] : existing.playlist || [];
+  const fav = touchFav ? data.favorites || [] : existing.favorites || [];
+  const hi = touchHi ? data.history || [] : existing.history || [];
   const curIdx = data.curIdx !== undefined ? data.curIdx : existing.curIdx ?? -1;
-  const plChanged = data.playlist !== undefined && !trackListSameIds(pl, existing.playlist);
-  const favChanged = data.favorites !== undefined && !trackListSameIds(fav, existing.favorites);
-  const hiChanged = data.history !== undefined && !trackListSameIds(hi, existing.history);
-  const curChanged = String(curIdx) !== String(existing.curIdx ?? -1);
+  const plChanged = touchPl && !trackListSameIds(pl, existing.playlist || []);
+  const favChanged = touchFav && !trackListSameIds(fav, existing.favorites || []);
+  const hiChanged = touchHi && !trackListSameIds(hi, existing.history || []);
+  const curChanged = data.curIdx !== undefined && String(curIdx) !== String(existing.curIdx ?? -1);
+  const partial = opts?.partial !== undefined ? opts.partial : !(touchPl && touchFav && touchHi);
+  const viewOf = (lib: any) => {
+    const view = clientLibraryView(lib);
+    if (partial) view.partial = true;
+    return view;
+  };
   if (!plChanged && !favChanged && !hiChanged && !curChanged) {
-    return { conflict: false as const, data: existing };
+    return { conflict: false as const, data: viewOf(existing) };
   }
   const now = Date.now() / 1000;
   const stmts: D1PreparedStatement[] = [];
-  if (plChanged) stmts.push(...listWriteStatements(db, "playlist", pl, 2000, now));
-  if (favChanged) stmts.push(...listWriteStatements(db, "favorites", fav, 2000, now));
+  let playlistOut = pl;
+  let favoritesOut = fav;
   let historyOut = hi;
+  if (plChanged) {
+    const planned = listDeltaStatements(db, "playlist", pl, existing.positions?.playlist, 2000, now);
+    stmts.push(...planned.stmts);
+    playlistOut = orderTracksBySids(pl, planned.finalOrder);
+  }
+  if (favChanged) {
+    const planned = listDeltaStatements(db, "favorites", fav, existing.positions?.favorites, 2000, now);
+    stmts.push(...planned.stmts);
+    favoritesOut = orderTracksBySids(fav, planned.finalOrder);
+  }
   if (hiChanged) {
-    const planned = await historyWritePlan(db, hi, 2000);
+    const planned = listDeltaStatements(db, "history", hi, existing.positions?.history, 2000, now);
     stmts.push(...planned.stmts);
     historyOut = orderTracksBySids(hi, planned.finalOrder);
   }
@@ -372,15 +359,13 @@ async function saveLib(
     await db.batch(stmts.slice(i, i + 80));
   }
   if (opts?.verify) {
-    return { conflict: false as const, data: await loadLib(db) };
+    return { conflict: false as const, data: clientLibraryView(await loadLib(db)) };
   }
-  const out = {
-    playlist: pl,
-    favorites: fav,
-    history: historyOut,
-    curIdx,
-    revision: nextRev,
-  };
+  const out: any = { revision: nextRev, curIdx };
+  if (touchPl) out.playlist = playlistOut;
+  if (touchFav) out.favorites = favoritesOut;
+  if (touchHi) out.history = historyOut;
+  if (partial) out.partial = true;
   return { conflict: false as const, data: out };
 }
 
@@ -399,28 +384,24 @@ async function deleteSid(
     .prepare(`DELETE FROM library_tracks WHERE list_type=? AND sid=?`)
     .bind(listType, String(sid))
     .run();
-  // History uses sparse monotonic pos — do not rewrite 200 rows on one delete.
-  if (listType !== "history") {
-    const { results } = await db
-      .prepare(`SELECT sid FROM library_tracks WHERE list_type=? ORDER BY pos ASC`)
+  // Sparse pos on every list — one DELETE, no renumber of the remaining rows.
+  if (listType === "playlist") {
+    const countRow = await db
+      .prepare(`SELECT COUNT(*) AS c FROM library_tracks WHERE list_type=?`)
       .bind(listType)
-      .all();
-    const stmts: D1PreparedStatement[] = [];
-    let i = 0;
-    for (const r of results || []) {
-      stmts.push(
-        db
-          .prepare(`UPDATE library_tracks SET pos=? WHERE list_type=? AND sid=?`)
-          .bind(i++, listType, (r as any).sid)
-      );
-      if (stmts.length >= 80) {
-        await db.batch(stmts.splice(0, stmts.length));
-      }
+      .first<{ c: number }>();
+    const n = Number(countRow?.c || 0);
+    const curRow = await db
+      .prepare(`SELECT value FROM library_meta WHERE key='curIdx'`)
+      .first<{ value: string }>();
+    let cur = curRow ? parseInt(curRow.value, 10) : -1;
+    if (Number.isNaN(cur) || cur >= n) {
+      cur = n ? n - 1 : -1;
+      await setMeta(db, "curIdx", String(cur));
     }
-    if (stmts.length) await db.batch(stmts);
   }
   await bumpRevision(db, serverRev);
-  return { conflict: false as const, data: await loadLib(db) };
+  return { conflict: false as const, data: clientLibraryView(await loadLib(db)) };
 }
 
 function envReadonly(env: Env): boolean {
@@ -458,6 +439,26 @@ function demoRateLimited(
     });
   }
   return null;
+}
+
+function negativeJson(
+  c: { executionCtx?: { waitUntil?(p: Promise<unknown>): void } },
+  cacheUrl: string,
+  status: number,
+  error: string,
+  sec: number
+): Response {
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": `public, max-age=${sec}, s-maxage=${sec}`,
+    "X-Song-Cache": "NEG",
+  };
+  const res = new Response(JSON.stringify({ ok: false, error }), { status, headers });
+  const ctx = c.executionCtx?.waitUntil
+    ? { waitUntil: (p: Promise<unknown>) => c.executionCtx!.waitUntil!(p) }
+    : undefined;
+  edgePut(cacheUrl, res, ctx, { allowError: true });
+  return res;
 }
 
 function clampSearchLimit(raw: string | undefined): number {
@@ -531,15 +532,32 @@ app.get("/api/search", async (c) => {
   const denied = demoRateLimited(c, "search", 20);
   if (denied) return denied;
   const q = c.req.query("q") || c.req.query("keyword") || "";
+  const hit = await edgeMatch(c.req.url);
+  if (hit) {
+    const headers = new Headers(hit.headers);
+    headers.set("X-Search-Cache", "CF-HIT");
+    return new Response(hit.body, { status: hit.status, headers });
+  }
   try {
     const songs = await chksz.searchAll(q, clampSearchLimit(c.req.query("limit")), {
       apikey: withKey(c.env),
     });
-    return c.json({ ok: true, data: songs });
+    const res = new Response(JSON.stringify({ ok: true, data: songs }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=60, s-maxage=90",
+        "X-Search-Cache": "MISS",
+      },
+    });
+    edgePut(c.req.url, res, c.executionCtx);
+    return res;
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
     console.error(e);
-    return c.json({ ok: false, error: "upstream error" }, status as any);
+    const error = chksz.publicUpstreamError(e);
+    if (status === 429) return negativeJson(c, c.req.url, 429, error, 30);
+    return c.json({ ok: false, error }, status as any);
   }
 });
 
@@ -600,7 +618,11 @@ app.get("/api/charts/:platform", async (c) => {
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 502;
     console.error(e);
-    return c.json({ ok: false, error: "upstream error" }, status as any);
+    const error = chksz.publicUpstreamError(e);
+    if (status === 429 || status === 502) {
+      return negativeJson(c, c.req.url, status === 429 ? 429 : 502, error, 60);
+    }
+    return c.json({ ok: false, error }, status as any);
   }
 });
 
@@ -703,7 +725,7 @@ app.get("/api/song/:sid/qualities", async (c) => {
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
     console.error(e);
-    return c.json({ ok: false, error: "upstream error" }, status as any);
+    return c.json({ ok: false, error: chksz.publicUpstreamError(e) }, status as any);
   }
 });
 
@@ -717,13 +739,12 @@ app.get("/api/song/:sid", async (c) => {
   const cacheUrl = new URL(c.req.url);
   cacheUrl.searchParams.set("level", level || "default");
   cacheUrl.searchParams.delete("force");
-  if (!force) {
-    const hit = await edgeMatch(cacheUrl.toString());
-    if (hit) {
-      const headers = new Headers(hit.headers);
-      headers.set("X-Song-Cache", "CF-HIT");
-      return new Response(hit.body, { status: hit.status, headers });
-    }
+  const edgeHit = await edgeMatch(cacheUrl.toString());
+  // force=1 may refresh a live URL. A cached 404/429 must not stampede upstream.
+  if (edgeHit && !(force && edgeHit.ok)) {
+    const headers = new Headers(edgeHit.headers);
+    headers.set("X-Song-Cache", "CF-HIT");
+    return new Response(edgeHit.body, { status: edgeHit.status, headers });
   }
 
   const db = c.env.MUSIC_DU_DB;
@@ -764,10 +785,14 @@ app.get("/api/song/:sid", async (c) => {
   }
 
   try {
-    const src = await resolvePlay(sid, level || c.req.query("level"), {
-      apikey: withKey(c.env),
-    });
-    if (src.source === "none" && !src.meta) return c.json({ ok: false, error: "no url" }, 404);
+    const src = await resolvePlay(
+      sid,
+      level || c.req.query("level"),
+      playHintsFromQuery((k) => c.req.query(k), withKey(c.env))
+    );
+    if (src.source === "none" && !src.meta) {
+      return negativeJson(c, cacheUrl.toString(), 404, "no url", 90);
+    }
     const stream = `/api/stream/${sid}${level ? `?level=${encodeURIComponent(level)}` : ""}`;
     const remoteUrl = src.source === "remote" ? src.url : "";
     const data = {
@@ -830,7 +855,9 @@ app.get("/api/song/:sid", async (c) => {
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
     console.error(e);
-    return c.json({ ok: false, error: "upstream error" }, status as any);
+    const error = chksz.publicUpstreamError(e);
+    if (status === 429) return negativeJson(c, cacheUrl.toString(), 429, error, 30);
+    return c.json({ ok: false, error }, status as any);
   }
 });
 
@@ -854,23 +881,25 @@ app.get("/api/lyric/:sid", async (c) => {
       duration: Number(c.req.query("duration") || 0) || 0,
       force,
     });
+    const empty = !(d?.lrc || d?.tlrc);
     const body = JSON.stringify({ ok: true, data: d });
     const headers = withCacheHeaders(
       {
         "Content-Type": "application/json; charset=utf-8",
         "X-Lyric-Cache": "MISS",
       },
-      "lyric"
+      "lyric",
+      empty ? { maxAgeSec: 600 } : undefined
     );
     const res = new Response(body, { status: 200, headers });
-    if (!force && (d?.lrc || d?.tlrc)) {
-      edgePut(c.req.url, res, c.executionCtx);
-    }
+    if (!force) edgePut(c.req.url, res, c.executionCtx);
     return res;
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 500;
     console.error(e);
-    return c.json({ ok: false, error: "upstream error" }, status as any);
+    const error = chksz.publicUpstreamError(e);
+    if (status === 429) return negativeJson(c, c.req.url, 429, error, 30);
+    return c.json({ ok: false, error }, status as any);
   }
 });
 
@@ -906,9 +935,11 @@ app.get("/api/stream/:sid", async (c) => {
         /* */
       }
     }
-    const raw = await chksz.fetchMusic(sid, level, {
-      apikey: withKey(c.env),
-    });
+    const raw = await chksz.fetchMusic(
+      sid,
+      level,
+      playHintsFromQuery((k) => c.req.query(k), withKey(c.env))
+    );
     const audioUrl = raw?.url || "";
     if (!isSafeUpstreamUrl(audioUrl)) {
       return c.json({ ok: false, error: "no remote url" }, 404);
@@ -941,7 +972,7 @@ app.get("/api/stream/:sid", async (c) => {
   } catch (e: any) {
     const status = e instanceof chksz.ChkszError ? e.status : 502;
     console.error(e);
-    return c.json({ ok: false, error: "upstream error" }, status as any);
+    return c.json({ ok: false, error: chksz.publicUpstreamError(e) }, status as any);
   }
 });
 
@@ -952,15 +983,19 @@ app.get("/api/cover-proxy", async (c) => {
 
   // Free: Cloudflare Cache API (no R2/KV). Only successful image bodies are stored.
   const cached = await edgeMatch(c.req.url);
-  if (cached && cached.ok) {
+  if (cached) {
     const headers = new Headers(cached.headers);
-    headers.set("X-Cover-Cache", "CF-HIT");
+    headers.set("X-Cover-Cache", cached.ok ? "CF-HIT" : "CF-NEG");
     return new Response(cached.body, { status: cached.status, headers });
   }
 
   try {
     const hit = await fetchCoverUpstream(url, { timeoutMs: 10000 });
-    if (!hit) return coverErrorResponse(404);
+    if (!hit) {
+      const miss = coverErrorResponse(404, { cacheSec: 120 });
+      edgePut(c.req.url, miss, c.executionCtx, { allowError: true });
+      return miss;
+    }
     const headers = withCacheHeaders(
       {
         "Content-Type": hit.contentType,
@@ -973,7 +1008,9 @@ app.get("/api/cover-proxy", async (c) => {
     edgePut(c.req.url, res, c.executionCtx);
     return res;
   } catch {
-    return coverErrorResponse(502);
+    const miss = coverErrorResponse(502, { cacheSec: 120 });
+    edgePut(c.req.url, miss, c.executionCtx, { allowError: true });
+    return miss;
   }
 });
 
@@ -990,7 +1027,7 @@ app.get("/api/library", async (c) => {
       503
     );
   }
-  const lib = await loadLib(c.env.MUSIC_DU_DB);
+  const lib = clientLibraryView(await loadLib(c.env.MUSIC_DU_DB));
   const readOnly = envReadonly(c.env);
   // C2: demo / readonly public GET never exposes history or curIdx
   const data = readOnly ? publicReadonlyLibraryData(lib) : lib;
@@ -1023,7 +1060,7 @@ async function favoritesExportResponse(c: {
       { status: 503, headers: { "Content-Type": "application/json;charset=utf-8" } }
     );
   }
-  const lib = await loadLib(c.env.MUSIC_DU_DB);
+  const lib = clientLibraryView(await loadLib(c.env.MUSIC_DU_DB));
   const favorites = (lib.favorites || []).map((t: any) => ({
     id: t.id,
     name: t.name || "",
@@ -1289,13 +1326,10 @@ app.post("/import", async (c) => {
       const result = await saveLib(
         c.env.MUSIC_DU_DB,
         {
-          playlist: existing.playlist,
           favorites: fav,
-          history: existing.history,
-          curIdx: existing.curIdx,
           revision: existing.revision,
         },
-        { expectedRevision: existing.revision ?? 0 }
+        { expectedRevision: existing.revision ?? 0, existing, partial: true }
       );
       if (result.conflict) {
         return c.html(favoritesImportHtml("库正在被其他端写入，请重试"), 409);
@@ -1352,19 +1386,19 @@ app.put("/api/library", async (c) => {
     );
   }
   const body = await c.req.json().catch(() => ({}));
-  const existing = await loadLib(c.env.MUSIC_DU_DB);
   const clientRev =
     body.revision != null && body.revision !== ""
       ? Number(body.revision)
       : null;
-  // Check revision before merge work so client can re-fetch cleanly
-  if (!libraryRevisionOk(existing.revision ?? 0, clientRev)) {
+  const serverRev = await loadRevision(c.env.MUSIC_DU_DB);
+  if (!libraryRevisionOk(serverRev, clientRev)) {
+    const current = clientLibraryView(await loadLib(c.env.MUSIC_DU_DB));
     return c.json(
       {
         ok: false,
         error: "library conflict — reload and retry",
         conflict: true,
-        data: existing,
+        data: current,
       },
       409
     );
@@ -1372,35 +1406,51 @@ app.put("/api/library", async (c) => {
   const forcePl = Boolean(body.forceClearPlaylist);
   const forceFav = Boolean(body.forceClearFavorites);
   const forceHi = Boolean(body.forceClearHistory);
-  const pl = mergeTrackList(existing.playlist, body.playlist, forcePl, 2000);
-  const fav = mergeTrackList(existing.favorites, body.favorites, forceFav, 2000);
-  let hi = existing.history;
-  if (forceHi) hi = body.history || [];
-  else if (body.history?.length) {
-    const seen = new Set<string>();
-    hi = [];
-    for (const t of [...body.history, ...existing.history]) {
-      const k = String(t.id ?? t.sid ?? "");
-      if (!k || seen.has(k)) continue;
-      seen.add(k);
-      hi.push(t);
-      if (hi.length >= 2000) break;
+  // Playback sync sends history only. A favorite edit sends the lists it changed.
+  // Lists absent from the body are not read and not rewritten.
+  const touchPl = body.playlist !== undefined || forcePl;
+  const touchFav = body.favorites !== undefined || forceFav;
+  const touchHi = body.history !== undefined || forceHi;
+  const want: LibListName[] = [];
+  if (touchPl) want.push("playlist");
+  if (touchFav) want.push("favorites");
+  if (touchHi) want.push("history");
+  const existing = await loadLib(c.env.MUSIC_DU_DB, want);
+  const payload: any = { revision: clientRev };
+  if (touchPl) {
+    payload.playlist = mergeTrackList(existing.playlist || [], body.playlist, forcePl, 2000);
+  }
+  if (touchFav) {
+    payload.favorites = mergeTrackList(existing.favorites || [], body.favorites, forceFav, 2000);
+  }
+  if (touchHi) {
+    if (forceHi) payload.history = body.history || [];
+    else if (body.history?.length) {
+      const seen = new Set<string>();
+      const hi: any[] = [];
+      for (const t of [...body.history, ...(existing.history || [])]) {
+        const k = String(t.id ?? t.sid ?? "");
+        if (!k || seen.has(k)) continue;
+        seen.add(k);
+        hi.push(t);
+        if (hi.length >= 2000) break;
+      }
+      payload.history = hi;
+    } else {
+      payload.history = existing.history || [];
     }
   }
+  if (body.curIdx !== undefined) payload.curIdx = body.curIdx;
   const verify =
     new URL(c.req.url).searchParams.get("verify") === "1" ||
     new URL(c.req.url).searchParams.get("verify") === "true";
-  const result = await saveLib(
-    c.env.MUSIC_DU_DB,
-    {
-      playlist: pl,
-      favorites: fav,
-      history: hi,
-      curIdx: body.curIdx ?? existing.curIdx,
-      revision: clientRev,
-    },
-    { expectedRevision: clientRev, existing, verify }
-  );
+  const partial = !(touchPl && touchFav && touchHi);
+  const result = await saveLib(c.env.MUSIC_DU_DB, payload, {
+    expectedRevision: clientRev,
+    existing,
+    verify,
+    partial,
+  });
   if (result.conflict) {
     return c.json(
       {

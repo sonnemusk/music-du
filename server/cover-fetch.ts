@@ -102,12 +102,13 @@ export async function fetchCoverUpstream(
 ): Promise<CoverUpstreamHit | null> {
   if (!url || !url.startsWith("http") || !isAllowedCoverUrl(url)) return null;
   const timeoutMs = opts?.timeoutMs ?? 10000;
-  const candidates = coverMirrorCandidates(url);
+  // Original URL plus one mirror. Four hosts × redirects is a subrequest storm.
+  const candidates = coverMirrorCandidates(url).slice(0, 2);
 
   for (const start of candidates) {
     try {
       let current = start;
-      for (let hop = 0; hop < 3; hop++) {
+      for (let hop = 0; hop < 2; hop++) {
         if (!isAllowedCoverUrl(current)) break;
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -151,13 +152,20 @@ export async function fetchCoverUpstream(
   return null;
 }
 
-/** Standard error response: never cache failures in browser/CDN. */
-export function coverErrorResponse(status: 400 | 403 | 404 | 502): Response {
+/** 400/403 stay uncached. 404/502 can take a short negative TTL so a dead cover is not refetched. */
+export function coverErrorResponse(
+  status: 400 | 403 | 404 | 502,
+  opts?: { cacheSec?: number }
+): Response {
+  const cacheSec =
+    opts?.cacheSec && (status === 404 || status === 502) ? opts.cacheSec : 0;
   return new Response(null, {
     status,
     headers: {
-      "Cache-Control": "no-store",
-      "CDN-Cache-Control": "no-store",
+      "Cache-Control": cacheSec
+        ? `public, max-age=${cacheSec}, s-maxage=${cacheSec}`
+        : "no-store",
+      "CDN-Cache-Control": cacheSec ? `public, max-age=${cacheSec}` : "no-store",
       "X-Cover-Cache": "ERR",
     },
   });

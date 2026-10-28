@@ -1,6 +1,6 @@
 # Current project status
 
-**Updated:** 2026-08-21 · cover-page swipe + pocket desktop stack (`cursor/cover-page-swipe-layout-2fd6`)  
+**Updated:** 2026-10-28 · chart resolve, request budget, D1 delta library (`cursor/fix-chart-resolve-a48c`)  
 This is the living brief for humans and agents. Do **not** execute `OPTIMIZATION-PLAN.md` or `GROK-RUNBOOK.md` — those 2026-08-12 construction docs are closed.
 
 ## What this app is
@@ -12,7 +12,7 @@ Personal music SPA + BFF. Production for the maintainer is **Cloudflare Workers 
 | Default skin | `stage-dim`（暗场） |
 | Layouts | **15** — 10 experience shells + pocket + side / immersive / compact / gallery |
 | Themes | **73** (classic palettes + dim/deep per experience + gallery pale/deep + pocket paper/ink) |
-| Tests | 54 files / 418 tests (`npm test`) |
+| Tests | 55 files / 427 tests (`npm test`) |
 | Main JS (prod) | ~194 KB / **gzip ~60 KB** after layout + SearchOverlay `React.lazy` |
 | CI | lint + typecheck + test + build + `check:bundle`; CodeQL on PR/main; push to `main` deploys primary + demo Workers |
 

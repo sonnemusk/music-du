@@ -14,8 +14,6 @@ import {
   disposeWarmer,
   getAudioBlob,
   getAudioObjectURL,
-  hasAudioBlob,
-  neighborBlobSignal,
   warmMediaUrl,
 } from "../lib/audio-cache";
 import {
@@ -30,7 +28,6 @@ import {
   getCachedLyric,
   getCachedLyricByMeta,
   hydrateLyricCache,
-  prefetchLyric,
   setCachedLyric,
 } from "../lib/lyric-cache";
 import {
@@ -76,7 +73,11 @@ import {
   type QualityRank,
   savePreferredRank,
 } from "../lib/quality";
-import { prefetchSongResolves } from "../lib/resolve-prefetch";
+import {
+  isUpstreamBlocked,
+  noteUpstreamError,
+  noteUpstreamOk,
+} from "../lib/upstream-backoff";
 import {
   getCachedSong,
   hydrateSongCache,
@@ -141,6 +142,10 @@ function setShuffleHistoryState(
 }
 
 /** Neighbor prefetch must wait so current track owns the network. */
+/** Stop auto-advance after this many songs fail in a row. Manual next still works. */
+const AUTO_ADVANCE_LIMIT = 2;
+let autoFailStreak = 0;
+
 const PREFETCH_START_DELAY_MS = 900;
 const PREFETCH_POLL_MS = 400;
 const PREFETCH_FORCE_MS = 7000;
@@ -393,7 +398,7 @@ type State = {
   setChartBoard: (b: ChartBoardId) => void;
   playTrack: (t: Track, opts?: PlayOpts) => Promise<void>;
   togglePlay: () => void;
-  next: (delta?: number) => void;
+  next: (delta?: number, opts?: { auto?: boolean }) => void;
   seek: (ratio: number) => void;
   seekBy: (deltaSec: number) => void;
   setVolume: (v: number) => void;
@@ -676,15 +681,7 @@ export const usePlayer = create<State>((set, get) => ({
       set({ tab: t, ...queuePatch });
     }
     if (t === "charts") void get().loadCharts();
-    // Switching tabs → pre-resolve visible list so click/play hits cache
-    const resolve = (id: string | number, opts?: { level?: string }) =>
-      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
     if (t === "favorites") {
-      prefetchSongResolves(get().favorites, resolve, { level: get().preferredQuality, 
-        limit: 4,
-        concurrency: 1,
-        startDelayMs: 200,
-      });
       // Auto-scroll after list has a chance to mount (defer nonce so TrackList effect re-runs)
       const cur = get().curTrack;
       if (cur && get().favorites.some((x) => String(x.id) === String(cur.id))) {
@@ -698,18 +695,6 @@ export const usePlayer = create<State>((set, get) => ({
           set({ locateRequest: { id, nonce } });
         }, 100);
       }
-    } else if (t === "playlist") {
-      prefetchSongResolves(get().playlist, resolve, { level: get().preferredQuality, 
-        limit: 3,
-        concurrency: 1,
-        startDelayMs: 200,
-      });
-    } else if (t === "search") {
-      prefetchSongResolves(get().searchResults, resolve, { level: get().preferredQuality, 
-        limit: 3,
-        concurrency: 1,
-        startDelayMs: 120,
-      });
     }
   },
   setSeeking: (v) => set({ seeking: v }),
@@ -867,35 +852,14 @@ export const usePlayer = create<State>((set, get) => ({
         },
       });
 
-      // Priority: warm selected first; neighbor only after current has headroom
+      // Paint the already-cached URL only. Opening the app must not resolve songs.
       get().warmTrack(start);
       get().recomputePredictedNext();
-      get().schedulePrefetchAround(start.id);
-
-      // Pre-resolve favorites / playlist / history URLs in background (not full audio)
-      const resolve = (id: string | number, opts?: { level?: string }) =>
-      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
-      prefetchSongResolves(favorites, resolve, { level: get().preferredQuality, limit: 4,
-        concurrency: 1,
-        startDelayMs: 800,
-      });
-      setTimeout(
-        () =>
-          prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 2,
-            concurrency: 1,
-            startDelayMs: 0,
-          }),
-        4000
-      );
 
       // Secondary: a few covers only — lyrics wait until the user opens that tab
       setTimeout(() => {
         prefetchCovers(favorites, 8);
       }, 1200);
-    } else if (playlist.length || history.length) {
-      const resolve = (id: string | number, opts?: { level?: string }) =>
-      api.resolveSong(id, { level: opts?.level || get().preferredQuality });
-      prefetchSongResolves(playlist, resolve, { level: get().preferredQuality, limit: 3, concurrency: 1, startDelayMs: 800 });
     }
 
     // Prefetch default chart into memory from localStorage + background refresh
@@ -946,11 +910,6 @@ export const usePlayer = create<State>((set, get) => ({
           searchResults: list,
           queueSource: "search",
         });
-        // Warm URLs for list (and siblings) while playing the random pick
-        prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-          limit: 3,
-          concurrency: 1,
-        });
         get().showToast(i18n("toast.random", { name: pick.name || "Douyin" }));
         void get().playTrack(pick, { from: "search" });
       } catch (e: any) {
@@ -971,15 +930,7 @@ export const usePlayer = create<State>((set, get) => ({
         searching: false,
       });
       if (!data.length) get().showToast(i18n("toast.noResults"));
-      // List is ready — resolve top results in background so click/play is instant
-      else {
-        recordRecentSearch(query);
-        prefetchSongResolves(list, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-          limit: 3,
-          concurrency: 1,
-          startDelayMs: 250,
-        });
-      }
+      else recordRecentSearch(query);
     } catch (e: any) {
       if (gen !== searchGen) return;
       set({ searching: false, searchResults: [] });
@@ -1042,10 +993,6 @@ export const usePlayer = create<State>((set, get) => ({
         chartLoading: localHit.stale,
       });
       prefetchCovers(localHit.payload.tracks, 8);
-      prefetchSongResolves(
-        localHit.payload.tracks.map(norm).filter(Boolean) as Track[], (id) => api.resolveSong(id, { level: get().preferredQuality }),
-        { limit: 3, concurrency: 1, startDelayMs: 600 }
-      );
       if (!localHit.stale && !force) return;
     }
 
@@ -1114,11 +1061,6 @@ export const usePlayer = create<State>((set, get) => ({
         chartBoard: payload.board,
       });
       prefetchCovers(tracks, 8);
-      prefetchSongResolves(tracks, (id) => api.resolveSong(id, { level: get().preferredQuality }), {
-        limit: 3,
-        concurrency: 1,
-        startDelayMs: 500,
-      });
       if (!tracks.length) get().showToast(i18n("toast.chartEmpty"));
     } catch (e: any) {
       if (gen !== chartGen) return;
@@ -1321,7 +1263,14 @@ export const usePlayer = create<State>((set, get) => ({
 
     /** Network resolve + write durable cache. force=true bypasses edge/D1 (expired CDN). */
     const fetchAndStoreResolve = async (force = false) => {
-      const data = await api.resolveSong(t.id, { level: prefQ, force });
+      if (isUpstreamBlocked()) throw new Error("HTTP 429 rate limited");
+      const data = await api.resolveSong(t.id, {
+        level: prefQ,
+        force,
+        name: t.name,
+        artist: t.artist,
+      });
+      noteUpstreamOk();
       const remoteUrl =
         data.url && /^https?:\/\//i.test(String(data.url)) ? String(data.url) : "";
       const actualLevel = String(data.level || prefQ);
@@ -1355,7 +1304,7 @@ export const usePlayer = create<State>((set, get) => ({
       return { data, remoteUrl, updated };
     };
 
-    /** Play a URL; on media error, re-resolve once then stream fallback. */
+    /** Play a URL. A cached CDN link may be refreshed once; a fresh URL is not. */
     const playRemoteOrStream = async (
       remoteUrl: string,
       fromCache: boolean
@@ -1366,56 +1315,18 @@ export const usePlayer = create<State>((set, get) => ({
         await audio.play();
         if (get().playToken !== token) return false;
         set({ playing: true, loadingPlay: false, playSource: sourceLabel });
-        // Late decode/CDN errors after play() resolves → refresh once
-        if (sourceLabel === "remote") {
-          const onErr = () => {
-            if (get().playToken !== token) return;
-            audio.removeEventListener("error", onErr);
-            void (async () => {
-              try {
-                invalidateCachedSong(t.id, prefQ);
-                // force: skip edge/D1 stale signed URL
-                const fresh = await fetchAndStoreResolve(true);
-                if (get().playToken !== token) return;
-                if (fresh.remoteUrl) {
-                  audio.src = fresh.remoteUrl;
-                  set({
-                    curTrack: fresh.updated,
-                    quality: String(fresh.data.level || ""),
-                    playSource: "remote",
-                  });
-                  await audio.play();
-                } else {
-                  set({ playSource: "stream" });
-                  audio.src = stream;
-                  await audio.play();
-                }
-              } catch {
-                try {
-                  set({ playSource: "stream" });
-                  audio.src = stream;
-                  await audio.play();
-                } catch {
-                  /* */
-                }
-              }
-            })();
-          };
-          audio.addEventListener("error", onErr, { once: true });
-        }
         return true;
       };
 
       try {
-        if (remoteUrl) {
-          if (await tryPlay(remoteUrl, "remote")) return true;
-        }
-      } catch {
-        /* try refresh / stream */
+        if (remoteUrl && (await tryPlay(remoteUrl, "remote"))) return true;
+      } catch (e: any) {
+        const msg = String(e?.message || e?.name || "");
+        if (/NotAllowedError|not allowed|user gesture/i.test(msg)) throw e;
       }
 
-      // Cached CDN link often expires — force re-resolve once, then stream
-      if (fromCache || remoteUrl) {
+      // One refresh, and only when the URL came from cache (signed CDN expiry).
+      if (fromCache && !isUpstreamBlocked()) {
         try {
           invalidateCachedSong(t.id, prefQ);
           const fresh = await fetchAndStoreResolve(true);
@@ -1424,23 +1335,20 @@ export const usePlayer = create<State>((set, get) => ({
             curTrack: fresh.updated,
             quality: String(fresh.data.level || get().quality || ""),
           });
-          if (fresh.remoteUrl) {
-            try {
-              if (await tryPlay(fresh.remoteUrl, "remote")) return true;
-            } catch {
-              /* stream next */
-            }
-          }
-        } catch {
-          /* stream next */
+          if (fresh.remoteUrl && (await tryPlay(fresh.remoteUrl, "remote"))) return true;
+        } catch (e: any) {
+          const msg = String(e?.message || e?.name || "");
+          if (/NotAllowedError|not allowed|user gesture/i.test(msg)) throw e;
+          if (/429|rate limited/i.test(msg)) throw e;
         }
       }
 
       try {
         set({ playSource: "stream" });
         if (await tryPlay(stream, "stream")) return true;
-      } catch {
-        /* */
+      } catch (e: any) {
+        const msg = String(e?.message || e?.name || "");
+        if (/NotAllowedError|not allowed|user gesture/i.test(msg)) throw e;
       }
       return false;
     };
@@ -1544,6 +1452,7 @@ export const usePlayer = create<State>((set, get) => ({
         }
         if (!ok) {
           clearSlow();
+          autoFailStreak += 1;
           set({ loadingPlay: false });
           get().showToast(i18n("toast.cannotPlay"));
         } else {
@@ -1575,6 +1484,7 @@ export const usePlayer = create<State>((set, get) => ({
           }
           if (!ok) {
             clearSlow();
+            autoFailStreak += 1;
             set({ loadingPlay: false });
             get().showToast(i18n("toast.cannotPlay"));
           } else {
@@ -1588,13 +1498,18 @@ export const usePlayer = create<State>((set, get) => ({
           clearSlow();
           set({ loadingPlay: false });
           const msg = String(e?.message || e?.name || "");
+          if (/429|rate limited/i.test(msg)) noteUpstreamError(429);
+          else if (/upstream|gateway|chksz|5\d\d/i.test(msg)) noteUpstreamError(502);
           if (/NotAllowedError|not allowed|user gesture/i.test(msg)) {
             get().showToast(i18n("toast.autoplayBlocked"));
-          } else if (/network|fetch|Failed to fetch|timeout|abort/i.test(msg)) {
-            get().showToast(i18n("toast.networkFail"));
-          } else if (/upstream|no url|apikey|gateway|chksz/i.test(msg)) {
+          } else if (/429|rate limited|upstream|apikey|gateway|chksz/i.test(msg)) {
+            autoFailStreak += 1;
             get().showToast(i18n("toast.gatewayFail"));
+          } else if (/network|fetch|Failed to fetch|timeout|abort/i.test(msg)) {
+            autoFailStreak += 1;
+            get().showToast(i18n("toast.networkFail"));
           } else {
+            autoFailStreak += 1;
             get().showToast(i18n("toast.noSource"));
           }
         }
@@ -1736,7 +1651,6 @@ export const usePlayer = create<State>((set, get) => ({
       let level = "";
       // Warm uses best-effort preferred; full probe happens on real play
       const prefQ = get().preferredQuality || DEFAULT_QUALITY;
-      const stream = `/api/stream/${encodeURIComponent(String(t.id))}?level=${encodeURIComponent(prefQ)}`;
       const cached = getCachedSong(t.id, prefQ);
       if (cached && (cached.url || cached.stream)) {
         remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
@@ -1757,65 +1671,24 @@ export const usePlayer = create<State>((set, get) => ({
           });
         }
       } else {
-        try {
-          const meta = await api.resolveSong(t.id, { level: prefQ });
-          if (stale()) return;
-          remote =
-            meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
-          level = String(meta.level || "");
-          const updated = {
-            ...(get().curTrack && String(get().curTrack!.id) === String(t.id)
-              ? get().curTrack!
-              : t),
-            name: meta.name || t.name,
-            artist: meta.artist || t.artist,
-            cover: meta.cover || t.cover,
-            level: meta.level,
-            br: meta.br,
-            size: meta.size,
-          };
-          setCachedSong({
-            id: String(t.id),
-            url: remote,
-            stream: meta.stream || stream,
-            level,
-            br: Number(meta.br || 0),
-            size: Number(meta.size || 0),
-            name: updated.name,
-            artist: updated.artist,
-            cover: updated.cover || "",
-            source: String(meta.source || ""),
-            play: meta.play,
-          }, prefQ);
-          if (!stale()) {
-            set({
-              curTrack: updated,
-              quality: level || "…",
-              playSource: remote ? "remote" : "stream",
-            });
-          }
-        } catch {
-          return;
-        }
+        return;
       }
 
       if (stale()) return;
 
-      // Prefer durable blob (favorites re-visit) → CDN → stream proxy
-      let playUrl = remote || stream;
-      let fromBlob = false;
+      // CDN or local blob only. Do not point the element at /api/stream during warm.
+      let playUrl = remote;
       try {
         const blobUrl = await getAudioObjectURL(t.id);
         if (blobUrl && !stale()) {
           playUrl = blobUrl;
-          fromBlob = true;
           set({ playSource: "cache", quality: level || "缓存" });
         }
       } catch {
         /* */
       }
 
-      if (stale()) return;
+      if (stale() || !playUrl) return;
 
       // Load onto the actual player element (hidden warmer alone doesn't help Space)
       const audio = get().audioEl;
@@ -1831,9 +1704,8 @@ export const usePlayer = create<State>((set, get) => ({
         } catch {
           /* */
         }
-      } else if (!fromBlob) {
-        // audio not mounted yet — keep hidden warmer as fallback
-        warmMediaUrl(t.id, remote || stream);
+      } else if (remote) {
+        warmMediaUrl(t.id, remote);
       }
 
       // Lyrics into cache; apply to UI if still selected and empty
@@ -1850,21 +1722,21 @@ export const usePlayer = create<State>((set, get) => ({
         }
       };
       applyLyricsIfNeeded();
-      prefetchLyric(
-        t.id,
-        {
-          name: t.name,
-          artist: t.artist,
-          duration: Number(t.duration || 0) || undefined,
-        },
-        (id, o) => api.fetchLyric(id, o)
-      );
-      setTimeout(applyLyricsIfNeeded, 1200);
-      setTimeout(applyLyricsIfNeeded, 3500);
     })();
   },
 
-  next: (delta = 1) => {
+  next: (delta = 1, opts) => {
+    if (opts?.auto && autoFailStreak >= AUTO_ADVANCE_LIMIT) {
+      const audio = get().audioEl;
+      try {
+        audio?.pause();
+      } catch {
+        /* */
+      }
+      set({ playing: false, loadingPlay: false });
+      get().showToast(i18n("toast.autoStop"));
+      return;
+    }
     const q = get().queue();
     if (!q.length) return;
     const cur = get().curTrack
@@ -2007,6 +1879,7 @@ export const usePlayer = create<State>((set, get) => ({
   },
 
   onPlayerPlay: () => {
+    autoFailStreak = 0;
     stopPausedBufferPump();
     // Re-sync from main element after resume (HTTP cache may already be warm)
     get().tick();
@@ -2239,91 +2112,16 @@ export const usePlayer = create<State>((set, get) => ({
       }
 
       let remote = "";
-      let level = prefLevel;
       const cached = getCachedSong(n.id, prefLevel);
       if (cached && (cached.url || cached.stream)) {
         remote = cached.url && /^https?:\/\//i.test(cached.url) ? cached.url : "";
-        level = cached.level || prefLevel;
       } else {
-        try {
-          const meta = await api.resolveSong(n.id, { level: prefLevel });
-          if (String(get().curTrack?.id) === String(n.id)) return;
-          remote =
-            meta.url && /^https?:\/\//i.test(meta.url) ? String(meta.url) : "";
-          level = String(meta.level || prefLevel);
-          setCachedSong(
-            {
-              id: String(n.id),
-              url: remote,
-              stream: meta.stream || `/api/stream/${n.id}`,
-              level,
-              br: Number(meta.br || 0),
-              size: Number(meta.size || 0),
-              name: meta.name || n.name,
-              artist: meta.artist || n.artist,
-              cover: meta.cover || n.cover || "",
-              source: String(meta.source || ""),
-              play: meta.play,
-            },
-            // Key under both sticky pref and resolved level so next play hits cache
-            prefLevel
-          );
-          if (level && level !== prefLevel) {
-            setCachedSong(
-              {
-                id: String(n.id),
-                url: remote,
-                stream: meta.stream || `/api/stream/${n.id}`,
-                level,
-                br: Number(meta.br || 0),
-                size: Number(meta.size || 0),
-                name: meta.name || n.name,
-                artist: meta.artist || n.artist,
-                cover: meta.cover || n.cover || "",
-                source: String(meta.source || ""),
-                play: meta.play,
-              },
-              level
-            );
-          }
-          if (meta.cover) prefetchCover(String(meta.cover), "thumb");
-        } catch {
-          return;
-        }
+        return;
       }
+      if (!remote) return;
 
-      // Single warmer for preferred level only — never all top-3
-      const warmUrl =
-        remote ||
-        `/api/stream/${encodeURIComponent(String(n.id))}?level=${encodeURIComponent(level || prefLevel)}`;
-      warmMediaUrl(n.id, warmUrl);
-
-      // Durable blob only for predicted next when in favorites context (abortable)
-      const shouldBlob =
-        get().queueSource === "favorites" ||
-        get().favorites.some((f) => String(f.id) === String(n.id));
-      if (shouldBlob) {
-        const already = await hasAudioBlob(n.id);
-        if (!already) {
-          await new Promise((r) => setTimeout(r, 1500));
-          if (String(get().curTrack?.id) === String(n.id)) return;
-          if (String(get().curTrack?.id) !== String(id)) return;
-          await cacheAudioFromStream(n.id, {
-            level: level || prefLevel,
-            signal: neighborBlobSignal(),
-          });
-        }
-      }
-
-      prefetchLyric(
-        n.id,
-        {
-          name: n.name,
-          artist: n.artist,
-          duration: Number(n.duration || 0) || undefined,
-        },
-        (id2, o) => api.fetchLyric(id2, o)
-      );
+      // Browser → CDN only. Do not resolve or open /api/stream for the next song.
+      warmMediaUrl(n.id, remote);
     })();
   },
 

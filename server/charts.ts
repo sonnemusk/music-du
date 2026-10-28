@@ -467,11 +467,42 @@ export async function fetchQqToplist(topid: number, limit = MAX_TRACKS): Promise
   return out;
 }
 
+/**
+ * mobilecdn.kugou.com presents a Tencent CDN cert that does not list that
+ * hostname, so Workers fetch() fails TLS and the chart route 502s.
+ * mobileservice / mobiles have a matching certificate and the same JSON.
+ */
+export const KUGOU_RANK_BASES = [
+  "https://mobileservice.kugou.com",
+  "https://mobiles.kugou.com",
+] as const;
+
+export function kugouRankUrl(
+  rankid: number,
+  limit: number,
+  base: string = KUGOU_RANK_BASES[0]
+): string {
+  return (
+    `${base}/api/v3/rank/song?version=9108` +
+    `&rankid=${encodeURIComponent(String(rankid))}&page=1&pagesize=${limit}` +
+    `&area_code=1&plat=0&with_cover=1`
+  );
+}
+
 export async function fetchKugouRank(rankid = 8888, limit = MAX_TRACKS): Promise<RawRow[]> {
-  const url =
-    `https://mobilecdn.kugou.com/api/v3/rank/song?version=9108` +
-    `&rankid=${rankid}&page=1&pagesize=${limit}&area_code=1&with_cover=1`;
-  const body = await httpJson(url);
+  let lastErr: unknown = null;
+  for (const base of KUGOU_RANK_BASES) {
+    try {
+      const body = await httpJson(kugouRankUrl(rankid, limit, base));
+      return kugouRowsFromBody(body, limit);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("kugou rank failed");
+}
+
+function kugouRowsFromBody(body: any, limit: number): RawRow[] {
   const info = body?.data?.info || [];
   const out: RawRow[] = [];
   for (const t of info) {
